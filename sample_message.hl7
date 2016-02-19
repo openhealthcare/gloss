@@ -1,0 +1,18 @@
+MSH|^~\&|WINPATH|UCLH|ELCID|UCLH|201401172357||ORU^R01|0117235810U1119701|P|2.2|||AL|AL
+PID||1234567890^^|12345678^^HOSP^2||ISURNAME^FIRSTNAME MNAME||19820515|F|||
+PV1|||OPDP1^OPD 1st Floor Podium UCH^^^^^^^OP||||||DAI^ISENBERG PROF DA
+ORC|RE|10U111970|10U111970||CM||||201401172357|||GP39BRU||||
+OBR|1|10U111970|10U111970|ELU^RENAL
+PROFILE^WinPath||201401172045|201401171700|||||||201401172045||DAI^ISENBERG PROF
+DA||||10U111970||201401172258||CC|F
+OBX|1|NM|NA^Sodium^Winpath||143|mmol/L|135-145||||F|||201401172358
+OBX|2|NM|K^Potassium^Winpath||3.9|mmol/L|3.5-5.1||||F|||201401172358
+OBX|3|NM|UREA^Urea^Winpath||3.9|mmol/L|1.7-8.3||||F|||201401172358
+OBX|4|NM|CREA^Creatinine^Winpath||61|umol/L|49-92||||F|||201401172358
+OBX|5|NM|GFR^Estimated GFR^Winpath||>90|.|||||F|||201401172358
+NTE|1||Units: mL/min/1.73sqm
+NTE|1||Multiply eGFR by 1.21 for people of African
+NTE|1||Caribbean origin. Interpret with regard to
+NTE|1||UK CKD guidelines: www.renal.org/CKDguide/ckd.html
+NTE|1||Use with caution for adjusting drug dosages -
+NTE|1||contact clinical pharmacist for advice.
