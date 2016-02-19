@@ -1,4 +1,4 @@
-MLLP Handler
+Gloss
 ====
 
 a very quick hl7 implementation
