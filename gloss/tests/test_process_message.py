@@ -1,6 +1,8 @@
 from unittest import TestCase
 from test_messages import (INPATIENT_ADMISSION, RESULTS_MESSAGE,
-                           RESULTS_CANCELLATION_MESSAGE, read_message)
+                           RESULTS_CANCELLATION_MESSAGE,
+                           URINE_CULTURE_RESULT_MESSAGE,
+                           read_message)
 from gloss.process_message import (MessageProcessor, InpatientAdmit,
                                    WinPathResults)
 
@@ -84,3 +86,45 @@ class WinPathResultsTestCase(TestCase):
                           "Use with caution for adjusting drug dosages -",
                           "contact clinical pharmacist for advice."])
         self.assertEqual(note, self.results_message.nte.comments)
+
+    def test_urine_culture_result(self):
+        #
+        # This test may well be adding nothing to the above.
+        # Consider deleting - it's just belt & braces for initial
+        # exploration
+        #
+        message = WinPathResults(read_message(URINE_CULTURE_RESULT_MESSAGE))
+        #PID
+        self.assertEqual('C2088885408', message.pid.hospital_number)
+        self.assertEqual('GRECE', message.pid.surname)
+        self.assertEqual('POPEDULE', message.pid.forename)
+        self.assertEqual('19880608', message.pid.date_of_birth)
+        self.assertEqual('M', message.pid.gender)
+
+        # Investigation medatada
+        self.assertEqual('12V777833', message.obr.lab_number)
+        self.assertEqual('URNC', message.obr.profile_code)
+        self.assertEqual('URINE CULTURE', message.obr.profile_description)
+        self.assertEqual('201205201715', message.obr.request_datetime)
+        self.assertEqual('201205201413', message.obr.observation_datetime)
+        self.assertEqual('201205211100', message.obr.last_edited)
+        self.assertEqual('FINAL', message.obr.result_status)
+
+    def test_obx_free_text_value_type(self):
+        message = WinPathResults(read_message(URINE_CULTURE_RESULT_MESSAGE))
+
+        # Values
+        self.assertEqual('URNC', message.obx[0].test_code)
+        self.assertEqual('URINE CULTURE', message.obx[0].test_name)
+        self.assertEqual('URINE CULTURE REPORT', message.obx[0].observation_value)
+        self.assertEqual('FINAL', message.obx[0].result_status)
+
+        self.assertEqual('UPRE', message.obx[1].test_code)
+        self.assertEqual('Culture', message.obx[1].test_name)
+        self.assertEqual('Screening culture negative.', message.obx[1].observation_value)
+        self.assertEqual('FINAL', message.obx[1].result_status)
+
+        self.assertEqual('URST', message.obx[2].test_code)
+        self.assertEqual('STATUS', message.obx[2].test_name)
+        self.assertEqual('COMPLETE: 21/08/13', message.obx[2].observation_value)
+        self.assertEqual('FINAL', message.obx[2].result_status)
