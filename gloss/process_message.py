@@ -19,7 +19,7 @@ class Segment(object):
 class MSH(Segment):
     def __init__(self, segment):
         self.message_type, self.trigger_event = segment[9][0]
-        self.message_datetime = datetime.strptime(segment[7], DATETIME_FORMAT)
+        self.message_datetime = datetime.strptime(segment[7][0], DATETIME_FORMAT)
 
 
 class EVN(Segment):
@@ -38,7 +38,8 @@ class PD1(Segment):
     def __init__(self, segment):
         identifiers = segment["3"]
         self.hospital_number = identifiers[0][0]
-        self.nhs_number = identifiers[1][0]
+        if identifiers[1][0]:
+            self.nhs_number = identifiers[1][0]
 
 
 class MessageType(object):

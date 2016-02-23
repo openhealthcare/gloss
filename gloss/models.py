@@ -117,8 +117,10 @@ def __is_connected(hospital_number, issuing_source, session):
 
 # we need to get subscription from hospital number
 def is_subscribed(hospital_number, issuing_source="uclh", session=None):
-    return __is_connected.filter(Subscription.active == True).count()
+    is_connected = __is_connected(hospital_number, issuing_source, session)
+    return is_connected.filter(Subscription.active == True).count()
 
 
 def is_known(hospital_number, issuing_source="uclh", session=None):
-    return __is_connected.count()
+    is_connected = __is_connected(hospital_number, issuing_source, session)
+    return is_connected.count()
