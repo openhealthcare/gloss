@@ -77,6 +77,37 @@ OBX|9|FT|PLT^Platelet count^Winpath||Request entered in error|x10\S\9/L|||||F|||
 OBX|10|FT|MPVU^MPV^Winpath||Request entered in error|fL|||||F|||201401180344"""
 
 
+CYTOPATHOLOGY_RESULTS_MESSAGE = """
+MSH|^~\&|OADD||DADD||20120920142301||ORU^R01|20120350348973|P|2.1||||
+PID|||C1130045684^^^2||BOYLE^SUSECCA^||19881107|F|^^|||||||||||
+PV1||CFP|BPHC^||||O10070^Neilson^Nurse^M.|^||||||||||CFP||||||||||||||||||||||||||201308160000||
+ORC|RE|UG13-33365|UG13-33365|||||||||O10070^Neilson^Nurse^M.|LAB|||^|||
+OBR||UG13-33365|UG13-33365|C^Cytopathology|||201209141719|||||||201309151719|^CervicalSample|O10070^Neilson^Nurse^M.||||UG13-33365||||AP|F||^^^^^R|^~^~^||||||||
+OBX|1|ST|CPRpt^|1|(NOTE)||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|2|LAST SMEAR||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|3|2010 - normal||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|4|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|5|DATE OF LAST MENSTRUAL PERIOD:||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|6|5/12 ago - pre menop||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|7|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|8|CLINICAL DATA:||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|9|Cx visualised with difficulty however ox appears to be closed . Minimal contact||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|10|bleeding .||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|11|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|12|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|13|CERVICAL SAMPLE REPORT||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|14|Diagnosis: Cytology negative Recommendation: Normal recall.||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|15|Action Code 2A||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|16|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|17|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|18|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|19|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|20|ELECTRONICALLY SIGNED OUT BY:||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|21|Pippa Horsey||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|22|||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|23|REPORTED:||||||F|||201209201423||^^
+OBX|1|ST|CPRpt^|24|20/08/2013||||||F|||201209201423||^^"""
+
 MESSAGES = [i.replace("\n", "\r") for i in [
     PATIENT_UPDATE, PATIENT_DEATH, PATIENT_MERGE,
     INPATIENT_ADMISSION, RESULTS_MESSAGE
