@@ -31,6 +31,29 @@ class MessageTypeTestCase(TestCase):
         self.assertEqual('1234567890', message.pid.nhs_number)
 
 
+class InpatientAdmitTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(INPATIENT_ADMISSION)
+        message = InpatientAdmit(raw)
+        return message
+
+    def test_inpatient_admit_has_pid(self):
+        message = self.results_message
+        self.assertEqual('50099878', message.pid.hospital_number)
+        self.assertEqual('9949657660', message.pid.nhs_number)
+        self.assertEqual('TUCKER', message.pid.surname)
+        self.assertEqual('ANN', message.pid.forename)
+        self.assertEqual('196203040000', message.pid.date_of_birth)
+        self.assertEqual('F', message.pid.gender)
+
+    def test_inpatient_event(self):
+        message = self.results_message
+        self.assertEqual("A01", message.evn.event_type)
+        self.assertEqual("201511181757", message.evn.recorded_time)
+        self.assertEqual("ADM", message.evn.event_description)
+
+
 class WinPathResultsTestCase(TestCase):
 
     @property

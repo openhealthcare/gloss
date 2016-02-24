@@ -25,19 +25,32 @@ class MSH(Segment):
         self.message_datetime = datetime.strptime(segment[7][0], DATETIME_FORMAT)
 
 
-class EVN(Segment):
-    pass
-
-
 class NK1(Segment):
     pass
 
 
-class PID(Segment):
+class Results_PID(Segment):
+    """
+        the pid definition used by the winpath results
+    """
     def __init__(self, segment):
         self.nhs_number = segment[2][0]
         if isinstance(self.nhs_number, list):
             self.nhs_number = self.nhs_number[0][0]
+
+        self.hospital_number = segment[3][0][0][0]
+        self.surname = segment[5][0][0][0]
+        self.forename = segment[5][0][1][0]
+        self.date_of_birth = segment[7][0]
+        self.gender = segment[8][0]
+
+class Inpatient_PID(Segment):
+    """
+        the pid definition used by inpatient admissions
+    """
+    def __init__(self, segment):
+        self.hospital_number = segment[3][0][0][0]
+        self.nhs_number = segment[3][1][0][0]
 
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
@@ -76,6 +89,13 @@ class OBX(Segment):
         self.result_status = OBX.STATUSES[segment[11][0]]
 
 
+class EVN(Segment):
+    def __init__(self, segment):
+        self.event_type = segment[1][0]
+        self.recorded_time = segment[2][0]
+        self.event_description = segment[4][0]
+
+
 class NTE(Segment):
     def __init__(self, segments):
         self.comments = "\n".join(
@@ -94,7 +114,7 @@ class MessageType(object):
 
     @property
     def pid(self):
-        return PID(self.raw_msg.segment("PID"))
+        return Results_PID(self.raw_msg.segment("PID"))
 
     @property
     def msh(self):
@@ -105,11 +125,13 @@ class InpatientAdmit(MessageType):
     message_type = u"ADT"
     trigger_event = u"A01"
 
+    @property
+    def pid(self):
+        return Inpatient_PID(self.raw_msg.segment("PID"))
 
-    def process_message(self, session):
-        # shouldn't this be is known?
-        if is_subscribed():
-            pass
+    @property
+    def evn(self):
+        return EVN(self.raw_msg.segment("EVN"))
 
 
 class WinPathResults(MessageType):
@@ -131,7 +153,6 @@ class WinPathResults(MessageType):
     def process_message(self, session):
         logging.debug('Processing WinPath Results Message')
         pass
-
 
 
 class MessageProcessor(object):
