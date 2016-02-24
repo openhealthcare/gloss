@@ -6,13 +6,10 @@ from models import session_scope, is_known, is_subscribed
 DATETIME_FORMAT = "%Y%m%d%H%M"
 
 
-
-
 def get_fields(msg):
     ''' figures out what type of message it is based on the fields
     '''
     return [i[0][0] for i in msg]
-
 
 
 class Segment(object):
@@ -26,21 +23,22 @@ class MSH(Segment):
         # allergy information contains milli seconds, lets strip that
         # off for the time being
         self.message_datetime = datetime.strptime(segment[7][0][:12], DATETIME_FORMAT)
+        self.sending_application = segment[3][0]
 
 
-class NK1(Segment):
-    pass
+class MRG(Segment):
+    def __init__(self, segment):
+        self.duplicate_hospital_number = segment[1][0][0][0]
 
 
 class ResultsPID(Segment):
     """
-        the pid definition used by the winpath results
+        the pid definition used by the WINPATH systems
     """
     def __init__(self, segment):
         self.nhs_number = segment[2][0]
         if isinstance(self.nhs_number, list):
             self.nhs_number = self.nhs_number[0][0]
-
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
         self.forename = segment[5][0][1][0]
@@ -50,11 +48,17 @@ class ResultsPID(Segment):
 
 class InpatientPID(Segment):
     """
-        the pid definition used by inpatient admissions
+        the pid definition used by CARECAST systems
     """
     def __init__(self, segment):
-        self.nhs_number = segment[3][1][0][0]
+
         self.hospital_number = segment[3][0][0][0]
+
+        if len(segment[3][1][0][0]):
+            self.nhs_number = segment[3][1][0][0]
+        else:
+            self.nhs_number = None
+
         self.surname = segment[5][0][0][0]
         self.forename = segment[5][0][1][0]
         self.date_of_birth = segment[7][0]
@@ -63,6 +67,12 @@ class InpatientPID(Segment):
         # this is used by spell delete
         # it seems similar to our episode id
         self.patient_account_number = segment[18][0]
+
+        if len(segment[29][0]):
+            self.date_of_death = segment[29][0]
+
+        if len(segment[30][0]):
+            self.death_indicator = segment[30][0]
 
 
 class AllergiesPID(Segment):
@@ -105,6 +115,7 @@ class OBX(Segment):
         'F': 'FINAL',
         'I': 'INTERIM'
     }
+
     def __init__(self, segment):
         self.test_code = segment[3][0][0][0]
         self.test_name = segment[3][0][1][0]
@@ -182,6 +193,29 @@ class MessageType(object):
     @property
     def msh(self):
         return MSH(self.raw_msg.segment("MSH"))
+
+
+class PatientMerge(MessageType):
+    message_type = u"ADT"
+    trigger_event = u"A34"
+
+    @property
+    def pid(self):
+        return InpatientPID(self.raw_msg.segment("PID"))
+
+    @property
+    def mrg(self):
+        return MRG(self.raw_msg.segment("MRG"))
+
+
+class PatientUpdate(MessageType):
+    message_type = u"ADT"
+    trigger_event = u"A31"
+    sending_application = "CARECAST"
+
+    @property
+    def pid(self):
+        return InpatientPID(self.raw_msg.segment("PID"))
 
 
 class InpatientAdmit(MessageType):
@@ -264,6 +298,7 @@ class InpatientCancelDischarge(MessageType):
 class Allergy(MessageType):
     message_type = "ADT"
     trigger_event = "A31"
+    sending_application = "ePMA"
 
     @property
     def pid(self):
@@ -312,7 +347,11 @@ class MessageProcessor(object):
         for message_type in MessageType.__subclasses__():
             if msh.message_type == message_type.message_type:
                 if msh.trigger_event == message_type.trigger_event:
-                    return message_type
+                    if hasattr(message_type, "sending_application"):
+                        if(message_type.sending_application == msh.sending_application):
+                            return message_type
+                    else:
+                        return message_type
 
 
     def process_message(self, msg):
