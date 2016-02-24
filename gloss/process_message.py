@@ -58,6 +58,10 @@ class Inpatient_PID(Segment):
         self.date_of_birth = segment[7][0]
         self.gender = segment[8][0]
 
+        # this is used by spell delete
+        # it seems similar to our episode id
+        self.patient_account_number = segment[18][0]
+
 
 class OBR(Segment):
     STATUSES = {
@@ -163,12 +167,30 @@ class InpatientDischarge(MessageType):
         return PV1(self.raw_msg.segment("PV1"))
 
 
-
 class InpatientTransfer(MessageType):
     # currently untested and incomplete
     # pending us being given an example message
     message_type = "ADT"
     trigger_event = "A02"
+
+
+class InpatientSpellDelete(MessageType):
+    # currently untested and incomplete
+    # pending us being given an example message
+    message_type = "ADT"
+    trigger_event = "A07"
+
+    @property
+    def pid(self):
+        return Inpatient_PID(self.raw_msg.segment("PID"))
+
+    @property
+    def evn(self):
+        return EVN(self.raw_msg.segment("EVN"))
+
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
 
 
 class InpatientCancelDischarge(MessageType):

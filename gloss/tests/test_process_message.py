@@ -2,11 +2,12 @@ from unittest import TestCase
 from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
-    INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE, read_message
+    INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE,
+    INPATIENT_SPELL_DELETE, read_message
 )
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
-    InpatientDischarge, InpatientCancelDischarge
+    InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete
 )
 
 
@@ -63,6 +64,7 @@ class InpatientAdmitTestCase(TestCase):
         self.assertEqual('ANN', message.pid.forename)
         self.assertEqual('196203040000', message.pid.date_of_birth)
         self.assertEqual('F', message.pid.gender)
+        self.assertEqual('940358', message.pid.patient_account_number)
 
     def test_inpatient_event(self):
         message = self.results_message
@@ -89,6 +91,7 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual("ELIZABETH", pid.forename)
         self.assertEqual('193508040000', pid.date_of_birth)
         self.assertEqual('F', pid.gender)
+        self.assertEqual('940347', pid.patient_account_number)
 
     def test_discharge_date(self):
         pv1 = self.results_message.pv1
@@ -110,6 +113,7 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("ELIZABETH", pid.forename)
         self.assertEqual('193508040000', pid.date_of_birth)
         self.assertEqual('F', pid.gender)
+        self.assertEqual('940347', pid.patient_account_number)
 
     def test_discharge_date(self):
         pv1 = self.results_message.pv1
