@@ -3,16 +3,27 @@ from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
     INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE,
-    read_message, ALLERGY, NO_ALLERGY
+    read_message, ALLERGY, NO_ALLERGY, PATIENT_DEATH, PATIENT_MERGE,
+    PATIENT_UPDATE,
 )
+
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
     InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete,
-    Allergy
+    Allergy, PatientUpdate, PatientMerge,
 )
 
 
 class MessageProcessorTestCase(TestCase):
+    def test_get_msh_for_message(self):
+        msg = read_message(PATIENT_DEATH)
+        message_processor = MessageProcessor()
+        msh = message_processor.get_msh_for_message(msg)
+        self.assertEqual(msh.trigger_event, "A31")
+        self.assertEqual(msh.message_type, "ADT")
+        self.assertEqual(msh.sending_application, "CARECAST")
+
+
     def test_inpatient_admission(self):
         msg = read_message(INPATIENT_ADMISSION)
         message_processor = MessageProcessor()
@@ -48,6 +59,24 @@ class MessageProcessorTestCase(TestCase):
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
         assert(result == Allergy)
+
+    def test_patient_merge(self):
+        msg = read_message(PATIENT_MERGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == PatientMerge)
+
+    def test_patient_death(self):
+        msg = read_message(PATIENT_DEATH)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == PatientUpdate)
+
+    def test_patient_update(self):
+        msg = read_message(PATIENT_UPDATE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == PatientUpdate)
 
 
 class MessageTypeTestCase(TestCase):
@@ -104,7 +133,6 @@ class InpatientAdmitTestCase(TestCase):
     def test_inpatient_admit_has_pid(self):
         message = self.results_message
         self.assertEqual('50099878', message.pid.hospital_number)
-        self.assertEqual('9949657660', message.pid.nhs_number)
         self.assertEqual('TUCKER', message.pid.surname)
         self.assertEqual('ANN', message.pid.forename)
         self.assertEqual('196203040000', message.pid.date_of_birth)
@@ -176,6 +204,59 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed)
 
+class PatientDeathTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(PATIENT_DEATH)
+        message = PatientUpdate(raw)
+        return message
+
+    def test_patient_death_pid(self):
+        message = self.results_message
+        self.assertEqual('50092915', message.pid.hospital_number)
+        self.assertEqual('TESTING MEDCHART', message.pid.surname)
+        self.assertEqual('MEDHCART FIRSTNAME', message.pid.forename)
+        self.assertEqual('19870612', message.pid.date_of_birth)
+        self.assertEqual('M', message.pid.gender)
+        self.assertEqual('Y', message.pid.death_indicator)
+        self.assertEqual('20141101', message.pid.date_of_death)
+
+class PatientMergeTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(PATIENT_MERGE)
+        message = PatientMerge(raw)
+        return message
+
+    def test_pid(self):
+        pid = self.results_message.pid
+        self.assertEqual("MV 19823", pid.hospital_number)
+        self.assertEqual("TESTSOA", pid.surname)
+        self.assertEqual("SPACEINHOSPIDCHANGE", pid.forename)
+        self.assertEqual('19861112', pid.date_of_birth)
+        self.assertEqual('M', pid.gender)
+
+    def test_mrg(self):
+        mrg = self.results_message.mrg
+        self.assertEqual(mrg.duplicate_hospital_number, "50028000")
+
+
+class PatientUpdateTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(PATIENT_DEATH)
+        message = PatientUpdate(raw)
+        return message
+
+    def test_patient_death_pid(self):
+        message = self.results_message
+        self.assertEqual('50092915', message.pid.hospital_number)
+        self.assertEqual('TESTING MEDCHART', message.pid.surname)
+        self.assertEqual('MEDHCART FIRSTNAME', message.pid.forename)
+        self.assertEqual('19870612', message.pid.date_of_birth)
+        self.assertEqual('M', message.pid.gender)
+        self.assertEqual('Y', message.pid.death_indicator)
+        self.assertEqual('20141101', message.pid.date_of_death)
 
 
 class WinPathResultsTestCase(TestCase):
