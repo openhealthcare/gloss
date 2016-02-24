@@ -97,6 +97,13 @@ class EVN(Segment):
         self.event_description = segment[4][0]
 
 
+class PV1(Segment):
+        def __init__(self, segment):
+            self.admission_datetime = segment[44][0]
+
+            if len(segment) > 44:
+                self.discharge_datetime = segment[45][0]
+
 class NTE(Segment):
     def __init__(self, segments):
         self.comments = "\n".join(
@@ -134,6 +141,10 @@ class InpatientAdmit(MessageType):
     def evn(self):
         return EVN(self.raw_msg.segment("EVN"))
 
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
+
 
 class InpatientDischarge(MessageType):
     message_type = u"ADT"
@@ -147,6 +158,34 @@ class InpatientDischarge(MessageType):
     def evn(self):
         return EVN(self.raw_msg.segment("EVN"))
 
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
+
+
+
+class InpatientTransfer(MessageType):
+    # currently untested and incomplete
+    # pending us being given an example message
+    message_type = "ADT"
+    trigger_event = "A02"
+
+
+class InpatientCancelDischarge(MessageType):
+    message_type = "ADT"
+    trigger_event = "A13"
+
+    @property
+    def pid(self):
+        return Inpatient_PID(self.raw_msg.segment("PID"))
+
+    @property
+    def evn(self):
+        return EVN(self.raw_msg.segment("EVN"))
+
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
 
 
 class WinPathResults(MessageType):
