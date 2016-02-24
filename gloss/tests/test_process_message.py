@@ -3,11 +3,12 @@ from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
     INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE,
-    read_message
+    read_message, ALLERGY, NO_ALLERGY
 )
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
-    InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete
+    InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete,
+    Allergy
 )
 
 
@@ -35,6 +36,20 @@ class MessageProcessorTestCase(TestCase):
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
         assert(result == InpatientCancelDischarge)
+
+    def test_inpatient_allergy(self):
+        msg = read_message(ALLERGY)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == Allergy)
+
+    def test_inpatient_no_allergy(self):
+        msg = read_message(NO_ALLERGY)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == Allergy)
+
+
 
 
 class MessageTypeTestCase(TestCase):
@@ -130,6 +145,7 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed)
+
 
 
 class WinPathResultsTestCase(TestCase):

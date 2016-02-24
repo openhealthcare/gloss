@@ -44,6 +44,7 @@ class Results_PID(Segment):
         self.date_of_birth = segment[7][0]
         self.gender = segment[8][0]
 
+
 class Inpatient_PID(Segment):
     """
         the pid definition used by inpatient admissions
@@ -218,6 +219,16 @@ class InpatientCancelDischarge(MessageType):
     @property
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
+
+
+class Allergy(MessageType):
+    message_type = "ADT"
+    trigger_event = "A31"
+
+    @property
+    def pid(self):
+        return Inpatient_PID(self.raw_msg.segment("PID"))
+
 
 
 class WinPathResults(MessageType):
