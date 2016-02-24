@@ -1,10 +1,12 @@
 from unittest import TestCase
-from test_messages import (INPATIENT_ADMISSION, RESULTS_MESSAGE,
-                           RESULTS_CANCELLATION_MESSAGE,
-                           URINE_CULTURE_RESULT_MESSAGE,
-                           read_message)
-from gloss.process_message import (MessageProcessor, InpatientAdmit,
-                                   WinPathResults)
+from test_messages import (
+    INPATIENT_ADMISSION, RESULTS_MESSAGE,
+    RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
+    INPATIENT_DISCHARGE, read_message
+)
+from gloss.process_message import (
+    MessageProcessor, InpatientAdmit, WinPathResults
+)
 
 
 def test_message_processor():
@@ -52,6 +54,22 @@ class InpatientAdmitTestCase(TestCase):
         self.assertEqual("A01", message.evn.event_type)
         self.assertEqual("201511181757", message.evn.recorded_time)
         self.assertEqual("ADM", message.evn.event_description)
+
+
+class InpatientDischargeTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(INPATIENT_DISCHARGE)
+        message = InpatientAdmit(raw)
+        return message
+
+    def test_discharge_pid(self):
+        pid = self.results_message.pid
+        self.assertEqual("50099886", pid.hospital_number)
+        self.assertEqual("TOMLINSON", pid.surname)
+        self.assertEqual("ELIZABETH", pid.forename)
+        self.assertEqual('193508040000', pid.date_of_birth)
+        self.assertEqual('F', pid.gender)
 
 
 class WinPathResultsTestCase(TestCase):
