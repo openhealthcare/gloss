@@ -3,7 +3,7 @@ from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
     INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE,
-    INPATIENT_SPELL_DELETE, read_message
+    read_message
 )
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
@@ -74,7 +74,11 @@ class InpatientAdmitTestCase(TestCase):
 
     def test_inpatient_pv1(self):
         message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
         self.assertEqual("201511181756", message.pv1.admission_datetime)
+        self.assertEqual("BBNU", message.pv1.ward_code)
+        self.assertEqual("BCOT", message.pv1.room_code)
+        self.assertEqual("BCOT- 02B", message.pv1.bed)
 
 
 class InpatientDischargeTestCase(TestCase):
@@ -93,10 +97,14 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual('F', pid.gender)
         self.assertEqual('940347', pid.patient_account_number)
 
-    def test_discharge_date(self):
-        pv1 = self.results_message.pv1
-        self.assertEqual("201511181217", pv1.admission_datetime)
-        self.assertEqual("201511181615", pv1.discharge_datetime)
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
+        self.assertEqual("201511181217", message.pv1.admission_datetime)
+        self.assertEqual("201511181615", message.pv1.discharge_datetime)
+        self.assertEqual("F3NU", message.pv1.ward_code)
+        self.assertEqual("F3SR", message.pv1.room_code)
+        self.assertEqual("F3SR-36", message.pv1.bed)
 
 
 class InpatientCancelDischargeTestCase(TestCase):
@@ -115,9 +123,13 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual('F', pid.gender)
         self.assertEqual('940347', pid.patient_account_number)
 
-    def test_discharge_date(self):
-        pv1 = self.results_message.pv1
-        self.assertEqual("201511181217", pv1.admission_datetime)
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
+        self.assertEqual("201511181217", message.pv1.admission_datetime)
+        self.assertEqual("F3NU", message.pv1.ward_code)
+        self.assertEqual("F3SR", message.pv1.room_code)
+        self.assertEqual("F3SR-36", message.pv1.bed)
 
 
 class WinPathResultsTestCase(TestCase):

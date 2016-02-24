@@ -93,7 +93,6 @@ class OBX(Segment):
         self.result_status = OBX.STATUSES[segment[11][0]]
 
 
-
 class EVN(Segment):
     def __init__(self, segment):
         self.event_type = segment[1][0]
@@ -102,11 +101,22 @@ class EVN(Segment):
 
 
 class PV1(Segment):
-        def __init__(self, segment):
-            self.admission_datetime = segment[44][0]
+    EPISODE_TYPES = {
+        "A": "DAY CASE",
+        "I": "INPATIENT",
+        "E": "EMERGENCY",
+    }
 
-            if len(segment) > 44:
-                self.discharge_datetime = segment[45][0]
+    def __init__(self, segment):
+        self.ward_code = segment[3][0][0][0]
+        self.room_code = segment[3][0][1][0]
+        self.bed = segment[3][0][2][0]
+        self.admission_datetime = segment[44][0]
+
+        self.episode_type = self.EPISODE_TYPES[segment[2][0]]
+
+        if len(segment) > 44:
+            self.discharge_datetime = segment[45][0]
 
 class NTE(Segment):
     def __init__(self, segments):
