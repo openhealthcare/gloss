@@ -318,5 +318,9 @@ class MessageProcessor(object):
     def process_message(self, msg):
         message_type = self.get_message_type(msg)
         if not message_type:
-            raise ValueError("unable to find message type for {}".format(message_type))
+            # not necessarily an error, we ignore messages such
+            # as results orders
+            logging.info(
+                "unable to find message type for {}".format(message_type)
+            )
         message_type(msg).process()
