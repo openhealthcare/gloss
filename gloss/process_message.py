@@ -165,6 +165,7 @@ class AL1(Segment):
         self.diagnosis_data = segments[4][0][4][0]
         self.allergy_start_date = segments[6][0]
 
+
 class MessageType(object):
 
     def __init__(self, msg):
