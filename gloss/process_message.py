@@ -89,6 +89,7 @@ class OBX(Segment):
         self.result_status = OBX.STATUSES[segment[11][0]]
 
 
+
 class EVN(Segment):
     def __init__(self, segment):
         self.event_type = segment[1][0]
@@ -132,6 +133,20 @@ class InpatientAdmit(MessageType):
     @property
     def evn(self):
         return EVN(self.raw_msg.segment("EVN"))
+
+
+class InpatientDischarge(MessageType):
+    message_type = u"ADT"
+    trigger_event = "A03"
+
+    @property
+    def pid(self):
+        return Inpatient_PID(self.raw_msg.segment("PID"))
+
+    @property
+    def evn(self):
+        return EVN(self.raw_msg.segment("EVN"))
+
 
 
 class WinPathResults(MessageType):
