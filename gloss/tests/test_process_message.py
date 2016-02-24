@@ -2,24 +2,39 @@ from unittest import TestCase
 from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
-    INPATIENT_DISCHARGE, read_message
+    INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE, read_message
 )
 from gloss.process_message import (
-    MessageProcessor, InpatientAdmit, WinPathResults
+    MessageProcessor, InpatientAdmit, WinPathResults,
+    InpatientDischarge, InpatientCancelDischarge
 )
 
 
-def test_message_processor():
-    msg = read_message(INPATIENT_ADMISSION)
-    message_processor = MessageProcessor()
-    result = message_processor.get_message_type(msg)
-    assert(result == InpatientAdmit)
+class MessageProcessorTestCase(TestCase):
+    def test_inpatient_admission(self):
+        msg = read_message(INPATIENT_ADMISSION)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientAdmit)
 
-def test_winpath_results():
-    msg = read_message(RESULTS_MESSAGE)
-    message_processor = MessageProcessor()
-    result = message_processor.get_message_type(msg)
-    assert(result == WinPathResults)
+    def test_winpath_results(self):
+        msg = read_message(RESULTS_MESSAGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == WinPathResults)
+
+    def test_inpatient_discharge(self):
+        msg = read_message(INPATIENT_DISCHARGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientDischarge)
+
+    def test_cancel_inpatient_discharge(self):
+        msg = read_message(INPATIENT_CANCEL_DISCHARGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientCancelDischarge)
+
 
 class MessageTypeTestCase(TestCase):
     def test_pid_segment_nhs_number_single(self):
@@ -55,6 +70,10 @@ class InpatientAdmitTestCase(TestCase):
         self.assertEqual("201511181757", message.evn.recorded_time)
         self.assertEqual("ADM", message.evn.event_description)
 
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("201511181756", message.pv1.admission_datetime)
+
 
 class InpatientDischargeTestCase(TestCase):
     @property
@@ -70,6 +89,31 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual("ELIZABETH", pid.forename)
         self.assertEqual('193508040000', pid.date_of_birth)
         self.assertEqual('F', pid.gender)
+
+    def test_discharge_date(self):
+        pv1 = self.results_message.pv1
+        self.assertEqual("201511181217", pv1.admission_datetime)
+        self.assertEqual("201511181615", pv1.discharge_datetime)
+
+
+class InpatientCancelDischargeTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(INPATIENT_CANCEL_DISCHARGE)
+        message = InpatientCancelDischarge(raw)
+        return message
+
+    def test_discharge_pid(self):
+        pid = self.results_message.pid
+        self.assertEqual("50099886", pid.hospital_number)
+        self.assertEqual("TOMLINSON", pid.surname)
+        self.assertEqual("ELIZABETH", pid.forename)
+        self.assertEqual('193508040000', pid.date_of_birth)
+        self.assertEqual('F', pid.gender)
+
+    def test_discharge_date(self):
+        pv1 = self.results_message.pv1
+        self.assertEqual("201511181217", pv1.admission_datetime)
 
 
 class WinPathResultsTestCase(TestCase):
