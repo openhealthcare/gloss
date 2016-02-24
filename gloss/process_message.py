@@ -7,6 +7,7 @@ DATETIME_FORMAT = "%Y%m%d%H%M"
 
 
 
+
 def get_fields(msg):
     ''' figures out what type of message it is based on the fields
     '''
@@ -22,14 +23,16 @@ class MSH(Segment):
     def __init__(self, segment):
         self.trigger_event = segment[9][0][1][0]
         self.message_type = segment[9][0][0][0]
-        self.message_datetime = datetime.strptime(segment[7][0], DATETIME_FORMAT)
+        # allergy information contains milli seconds, lets strip that
+        # off for the time being
+        self.message_datetime = datetime.strptime(segment[7][0][:12], DATETIME_FORMAT)
 
 
 class NK1(Segment):
     pass
 
 
-class Results_PID(Segment):
+class ResultsPID(Segment):
     """
         the pid definition used by the winpath results
     """
@@ -45,14 +48,12 @@ class Results_PID(Segment):
         self.gender = segment[8][0]
 
 
-class Inpatient_PID(Segment):
+class InpatientPID(Segment):
     """
         the pid definition used by inpatient admissions
     """
     def __init__(self, segment):
-        self.hospital_number = segment[3][0][0][0]
         self.nhs_number = segment[3][1][0][0]
-
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
         self.forename = segment[5][0][1][0]
@@ -62,6 +63,25 @@ class Inpatient_PID(Segment):
         # this is used by spell delete
         # it seems similar to our episode id
         self.patient_account_number = segment[18][0]
+
+
+class AllergiesPID(Segment):
+    """
+        the pid definition used by allergies
+    """
+
+    def __init__(self, segment):
+        self.hospital_number = segment[3][0][0][0]
+        self.surname = segment[5][0][0][0]
+        self.forename = segment[5][0][1][0]
+        self.date_of_birth = segment[7][0]
+        self.gender = segment[8][0]
+
+        # sample messages record 2 different types of
+        # message "No Known Allergies" and
+        # "Allergies Known and Recorde" we're
+        # querying as to whether there are others
+        self.allergy_status = segment[37][0]
 
 
 class OBR(Segment):
@@ -119,12 +139,31 @@ class PV1(Segment):
         if len(segment) > 44:
             self.discharge_datetime = segment[45][0]
 
+
 class NTE(Segment):
     def __init__(self, segments):
         self.comments = "\n".join(
             s[3][0] for s in segments
         )
 
+
+class AL1(Segment):
+    # there's a good chance we won't need
+    # all these fields, but they
+    # raise a lot of questions
+    def __init__(self, segments):
+        self.allergy_type = segments[2][0][0][0]
+        self.allergy_type_description = segments[2][0][1][0]
+        self.certainty_id = segments[2][0][3][0]
+        self.certainty_description = segments[2][0][4][0]
+        self.allergy_reference_name = segments[3][0][0][0]
+        self.allergy_description = segments[3][0][1][0]
+        self.allergen_reference_system = segments[3][0][2][0]
+        self.allergen_reference = segments[3][0][3][0]
+        self.status_id = segments[4][0][0][0]
+        self.status_description = segments[4][0][1][0]
+        self.diagnosis_data = segments[4][0][4][0]
+        self.allergy_start_date = segments[6][0]
 
 class MessageType(object):
 
@@ -137,7 +176,7 @@ class MessageType(object):
 
     @property
     def pid(self):
-        return Results_PID(self.raw_msg.segment("PID"))
+        return ResultsPID(self.raw_msg.segment("PID"))
 
     @property
     def msh(self):
@@ -150,7 +189,7 @@ class InpatientAdmit(MessageType):
 
     @property
     def pid(self):
-        return Inpatient_PID(self.raw_msg.segment("PID"))
+        return InpatientPID(self.raw_msg.segment("PID"))
 
     @property
     def evn(self):
@@ -167,7 +206,7 @@ class InpatientDischarge(MessageType):
 
     @property
     def pid(self):
-        return Inpatient_PID(self.raw_msg.segment("PID"))
+        return InpatientPID(self.raw_msg.segment("PID"))
 
     @property
     def evn(self):
@@ -193,7 +232,7 @@ class InpatientSpellDelete(MessageType):
 
     @property
     def pid(self):
-        return Inpatient_PID(self.raw_msg.segment("PID"))
+        return InpatientPID(self.raw_msg.segment("PID"))
 
     @property
     def evn(self):
@@ -210,7 +249,7 @@ class InpatientCancelDischarge(MessageType):
 
     @property
     def pid(self):
-        return Inpatient_PID(self.raw_msg.segment("PID"))
+        return InpatientPID(self.raw_msg.segment("PID"))
 
     @property
     def evn(self):
@@ -227,8 +266,14 @@ class Allergy(MessageType):
 
     @property
     def pid(self):
-        return Inpatient_PID(self.raw_msg.segment("PID"))
+        return AllergiesPID(self.raw_msg.segment("PID"))
 
+    @property
+    def al1(self):
+        try:
+            return AL1(self.raw_msg.segment("AL1"))
+        except KeyError:
+            return None
 
 
 class WinPathResults(MessageType):

@@ -50,8 +50,6 @@ class MessageProcessorTestCase(TestCase):
         assert(result == Allergy)
 
 
-
-
 class MessageTypeTestCase(TestCase):
     def test_pid_segment_nhs_number_single(self):
         raw = read_message(RESULTS_CANCELLATION_MESSAGE)
@@ -62,6 +60,38 @@ class MessageTypeTestCase(TestCase):
         raw = read_message(RESULTS_MESSAGE)
         message = WinPathResults(raw)
         self.assertEqual('1234567890', message.pid.nhs_number)
+
+
+class AllergyTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(ALLERGY)
+        message = Allergy(raw)
+        return message
+
+    def test_allergies_pid(self):
+        message = self.results_message
+        self.assertEqual('97995111', message.pid.hospital_number)
+        self.assertEqual('TESTPATIENT2', message.pid.surname)
+        self.assertEqual('SABINE', message.pid.forename)
+        self.assertEqual('19720221', message.pid.date_of_birth)
+        self.assertEqual('F', message.pid.gender)
+        self.assertEqual('Allergies Known and Recorded', message.pid.allergy_status)
+
+    def test_allergies_al1(self):
+        message = self.results_message
+        self.assertEqual('1', message.al1.allergy_type)
+        self.assertEqual('Product Allergy', message.al1.allergy_type_description)
+        self.assertEqual('CERT-1', message.al1.certainty_id)
+        self.assertEqual('Definite', message.al1.certainty_description)
+        self.assertEqual('CO-CODAMOL (Generic Manuf)', message.al1.allergy_reference_name)
+        self.assertEqual('CO-CODAMOL (Generic Manuf) : ', message.al1.allergy_description)
+        self.assertEqual(u'UDM', message.al1.allergen_reference_system)
+        self.assertEqual('8f75c6d8-45b7-4b40-913f-8ca1f59b5350', message.al1.allergen_reference)
+        self.assertEqual(u'1', message.al1.status_id)
+        self.assertEqual(u'Active', message.al1.status_description)
+        self.assertEqual(u'201511190916', message.al1.diagnosis_data)
+        self.assertEqual(u'201511191200', message.al1.allergy_start_date)
 
 
 class InpatientAdmitTestCase(TestCase):
