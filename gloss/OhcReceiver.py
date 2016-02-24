@@ -1,22 +1,17 @@
+import logging
+
 from txHL7.receiver import AbstractHL7Receiver
 from twisted.internet import defer
-import logging
+
+from process_message import MessageProcessor
 
 
 class OhcReceiver(AbstractHL7Receiver):
     def handleMessage(self, container):
         message = container.message
         logging.info(message)
-
-
-        # Our business logic
-        mrn = message.segment('PID')
-        # # Do something with mrn
-
-        for i in mrn:
-            print "===="
-            for y in i:
-                print y
+        message_processor = MessageProcessor()
+        message_processor.process_message(message)
 
         # We succeeded, so ACK back (default is AA)
         return defer.succeed(container.ack())

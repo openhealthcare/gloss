@@ -10,4 +10,4 @@ twistd --nodaemon mllp --receiver OhcReceiver.OhcReceiver
 
 
 to run fire 1200 messages at it and get a timestamp run
-python tests/test_message_send.py 
+python tests/test_messages.py

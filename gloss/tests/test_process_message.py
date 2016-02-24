@@ -2,11 +2,13 @@ from unittest import TestCase
 from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
-    INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE, read_message
+    INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE,
+    read_message, ALLERGY, NO_ALLERGY
 )
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
-    InpatientDischarge, InpatientCancelDischarge
+    InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete,
+    Allergy
 )
 
 
@@ -35,6 +37,18 @@ class MessageProcessorTestCase(TestCase):
         result = message_processor.get_message_type(msg)
         assert(result == InpatientCancelDischarge)
 
+    def test_inpatient_allergy(self):
+        msg = read_message(ALLERGY)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == Allergy)
+
+    def test_inpatient_no_allergy(self):
+        msg = read_message(NO_ALLERGY)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == Allergy)
+
 
 class MessageTypeTestCase(TestCase):
     def test_pid_segment_nhs_number_single(self):
@@ -46,6 +60,38 @@ class MessageTypeTestCase(TestCase):
         raw = read_message(RESULTS_MESSAGE)
         message = WinPathResults(raw)
         self.assertEqual('1234567890', message.pid.nhs_number)
+
+
+class AllergyTestCase(TestCase):
+    @property
+    def results_message(self):
+        raw = read_message(ALLERGY)
+        message = Allergy(raw)
+        return message
+
+    def test_allergies_pid(self):
+        message = self.results_message
+        self.assertEqual('97995111', message.pid.hospital_number)
+        self.assertEqual('TESTPATIENT2', message.pid.surname)
+        self.assertEqual('SABINE', message.pid.forename)
+        self.assertEqual('19720221', message.pid.date_of_birth)
+        self.assertEqual('F', message.pid.gender)
+        self.assertEqual('Allergies Known and Recorded', message.pid.allergy_status)
+
+    def test_allergies_al1(self):
+        message = self.results_message
+        self.assertEqual('1', message.al1.allergy_type)
+        self.assertEqual('Product Allergy', message.al1.allergy_type_description)
+        self.assertEqual('CERT-1', message.al1.certainty_id)
+        self.assertEqual('Definite', message.al1.certainty_description)
+        self.assertEqual('CO-CODAMOL (Generic Manuf)', message.al1.allergy_reference_name)
+        self.assertEqual('CO-CODAMOL (Generic Manuf) : ', message.al1.allergy_description)
+        self.assertEqual(u'UDM', message.al1.allergen_reference_system)
+        self.assertEqual('8f75c6d8-45b7-4b40-913f-8ca1f59b5350', message.al1.allergen_reference)
+        self.assertEqual(u'1', message.al1.status_id)
+        self.assertEqual(u'Active', message.al1.status_description)
+        self.assertEqual(u'201511190916', message.al1.diagnosis_data)
+        self.assertEqual(u'201511191200', message.al1.allergy_start_date)
 
 
 class InpatientAdmitTestCase(TestCase):
@@ -63,6 +109,7 @@ class InpatientAdmitTestCase(TestCase):
         self.assertEqual('ANN', message.pid.forename)
         self.assertEqual('196203040000', message.pid.date_of_birth)
         self.assertEqual('F', message.pid.gender)
+        self.assertEqual('940358', message.pid.patient_account_number)
 
     def test_inpatient_event(self):
         message = self.results_message
@@ -72,7 +119,11 @@ class InpatientAdmitTestCase(TestCase):
 
     def test_inpatient_pv1(self):
         message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
         self.assertEqual("201511181756", message.pv1.admission_datetime)
+        self.assertEqual("BBNU", message.pv1.ward_code)
+        self.assertEqual("BCOT", message.pv1.room_code)
+        self.assertEqual("BCOT- 02B", message.pv1.bed)
 
 
 class InpatientDischargeTestCase(TestCase):
@@ -89,11 +140,16 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual("ELIZABETH", pid.forename)
         self.assertEqual('193508040000', pid.date_of_birth)
         self.assertEqual('F', pid.gender)
+        self.assertEqual('940347', pid.patient_account_number)
 
-    def test_discharge_date(self):
-        pv1 = self.results_message.pv1
-        self.assertEqual("201511181217", pv1.admission_datetime)
-        self.assertEqual("201511181615", pv1.discharge_datetime)
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
+        self.assertEqual("201511181217", message.pv1.admission_datetime)
+        self.assertEqual("201511181615", message.pv1.discharge_datetime)
+        self.assertEqual("F3NU", message.pv1.ward_code)
+        self.assertEqual("F3SR", message.pv1.room_code)
+        self.assertEqual("F3SR-36", message.pv1.bed)
 
 
 class InpatientCancelDischargeTestCase(TestCase):
@@ -110,10 +166,16 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("ELIZABETH", pid.forename)
         self.assertEqual('193508040000', pid.date_of_birth)
         self.assertEqual('F', pid.gender)
+        self.assertEqual('940347', pid.patient_account_number)
 
-    def test_discharge_date(self):
-        pv1 = self.results_message.pv1
-        self.assertEqual("201511181217", pv1.admission_datetime)
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
+        self.assertEqual("201511181217", message.pv1.admission_datetime)
+        self.assertEqual("F3NU", message.pv1.ward_code)
+        self.assertEqual("F3SR", message.pv1.room_code)
+        self.assertEqual("F3SR-36", message.pv1.bed)
+
 
 
 class WinPathResultsTestCase(TestCase):
