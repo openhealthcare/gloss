@@ -22,6 +22,7 @@ class MessageProcessorTestCase(TestCase):
         self.assertEqual(msh.trigger_event, "A31")
         self.assertEqual(msh.message_type, "ADT")
         self.assertEqual(msh.sending_application, "CARECAST")
+        self.assertEqual(msh.sending_facility, "UCLH")
 
 
     def test_inpatient_admission(self):
