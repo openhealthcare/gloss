@@ -7,20 +7,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
-from sqlalchemy import create_engine
-
-# Create an engine that stores data in the local directory's
-# sqlalchemy_example.db file.
-engine = create_engine('sqlite:///mllpHandler.db')
-
-# Create all tables in the engine. This is equivalent to "Create Table"
-# statements in raw SQL.
-
+from settings import engine
 
 
 def get_plural_name(cls):
     return "{}s".format(cls.__tablename__)
-
 
 @as_declarative()
 class Base(object):
@@ -45,6 +36,13 @@ class GlossSubrecord(object):
             back_populates=get_plural_name(cls)
         )
 
+    @classmethod
+    def get_from_gloss_id(cls, gloss_id, session):
+        result = session.query(cls, GlossolaliaReference).\
+        filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
+        all()
+        return [i[0] for i in result]
+
 
 class Patient(Base, GlossSubrecord):
     id = Column(Integer, primary_key=True)
@@ -53,6 +51,7 @@ class Patient(Base, GlossSubrecord):
     middle_name = Column(String(250))
     title = Column(String(250))
     date_of_birth = Column(Date, nullable=False)
+    birth_place = Column(String(250))
     sex = Column(String(250))
     marital_status = Column(String(250))
     religion = Column(String(250))
@@ -64,6 +63,15 @@ class Patient(Base, GlossSubrecord):
     # (also might give us an indicator and the max time of death)
     death = Column(Boolean, default=False)
     birth_place = Column(String)
+
+
+class InpatientEpisode(Base, GlossSubrecord):
+    datetime_of_admission = Column(DateTime)
+    datetime_of_discharge = Column(DateTime)
+    ward_code = Column(String(250))
+    room_code = Column(String(250))
+    bed_code = Column(String(250))
+    visit_number = Column(String(250))
 
 
 class PatientIdentifier(Base, GlossSubrecord):
@@ -79,10 +87,6 @@ class Subscription(Base, GlossSubrecord):
     active = Column(Boolean, default=True)
 
 
-class Admission(Base):
-    admission = Column(DateTime)
-
-
 class GlossolaliaReference(Base):
     id = Column(Integer, primary_key=True)
 
@@ -93,6 +97,7 @@ for subrecord in GlossSubrecord.__subclasses__():
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
+
 
 @contextmanager
 def session_scope():
@@ -107,8 +112,9 @@ def session_scope():
     finally:
         session.close()
 
-def __is_connected(hospital_number, issuing_source, session):
-    return session.query(Subscription, GlossolaliaReference, PatientIdentifier).\
+
+def __is_connected(hospital_number, session, issuing_source):
+    return session.query(GlossolaliaReference, Subscription, PatientIdentifier).\
     filter(Subscription.gloss_reference_id == GlossolaliaReference.id).\
     filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
     filter(PatientIdentifier.issuing_source == issuing_source).\
@@ -116,11 +122,26 @@ def __is_connected(hospital_number, issuing_source, session):
 
 
 # we need to get subscription from hospital number
-def is_subscribed(hospital_number, issuing_source="uclh", session=None):
-    is_connected = __is_connected(hospital_number, issuing_source, session)
+def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
+    is_connected = __is_connected(hospital_number, session, issuing_source)
     return is_connected.filter(Subscription.active == True).count()
 
+def get_gloss_id(hospital_number, session, issuing_source="uclh"):
+    gloss_information = session.query(GlossolaliaReference, PatientIdentifier).\
+    filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
+    filter(PatientIdentifier.issuing_source == issuing_source).\
+    filter(PatientIdentifier.identifier == hospital_number).one_or_none()
 
-def is_known(hospital_number, issuing_source="uclh", session=None):
-    is_connected = __is_connected(hospital_number, issuing_source, session)
-    return is_connected.count()
+    # we should change this to only query for gloss id rather than all 3 columns
+    if gloss_information:
+        return gloss_information[0].id
+
+def save_identifier(hospital_number, session, issuing_source="uclh"):
+    glossolalia_reference = GlossolaliaReference()
+    session.add(glossolalia_reference)
+    hospital_identifier = PatientIdentifier(
+        identifier=hospital_number,
+        issuing_source="uclh",
+        gloss_reference=glossolalia_reference
+    )
+    session.add(hospital_identifier)

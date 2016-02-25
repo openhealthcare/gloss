@@ -1,4 +1,7 @@
 from unittest import TestCase
+from mock import patch
+
+from datetime import date, datetime
 from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
@@ -9,9 +12,12 @@ from test_messages import (
 
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
-    InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete,
+    InpatientDischarge, InpatientCancelDischarge,
     Allergy, PatientUpdate, PatientMerge,
 )
+
+from gloss.models import Session, get_gloss_id, InpatientEpisode
+from gloss.tests.core import GlossTestCase
 
 
 class MessageProcessorTestCase(TestCase):
@@ -104,7 +110,7 @@ class AllergyTestCase(TestCase):
         self.assertEqual('97995111', message.pid.hospital_number)
         self.assertEqual('TESTPATIENT2', message.pid.surname)
         self.assertEqual('SABINE', message.pid.forename)
-        self.assertEqual('19720221', message.pid.date_of_birth)
+        self.assertEqual(date(1972, 02, 21), message.pid.date_of_birth)
         self.assertEqual('F', message.pid.gender)
         self.assertEqual('Allergies Known and Recorded', message.pid.allergy_status)
 
@@ -120,11 +126,11 @@ class AllergyTestCase(TestCase):
         self.assertEqual('8f75c6d8-45b7-4b40-913f-8ca1f59b5350', message.al1.allergen_reference)
         self.assertEqual(u'1', message.al1.status_id)
         self.assertEqual(u'Active', message.al1.status_description)
-        self.assertEqual(u'201511190916', message.al1.diagnosis_data)
-        self.assertEqual(u'201511191200', message.al1.allergy_start_date)
+        self.assertEqual(datetime(2015, 11, 19, 9, 16), message.al1.diagnosis_datetime)
+        self.assertEqual(datetime(2015, 11, 19, 12, 00), message.al1.allergy_start_datetime)
 
 
-class InpatientAdmitTestCase(TestCase):
+class InpatientAdmitTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(INPATIENT_ADMISSION)
@@ -136,24 +142,46 @@ class InpatientAdmitTestCase(TestCase):
         self.assertEqual('50099878', message.pid.hospital_number)
         self.assertEqual('TUCKER', message.pid.surname)
         self.assertEqual('ANN', message.pid.forename)
-        self.assertEqual('196203040000', message.pid.date_of_birth)
+        self.assertEqual(date(1962, 3, 4), message.pid.date_of_birth)
         self.assertEqual('F', message.pid.gender)
         self.assertEqual('940358', message.pid.patient_account_number)
 
     def test_inpatient_event(self):
         message = self.results_message
         self.assertEqual("A01", message.evn.event_type)
-        self.assertEqual("201511181757", message.evn.recorded_time)
+        self.assertEqual(
+            datetime(2015, 11, 18, 17, 57),
+            message.evn.recorded_datetime
+        )
         self.assertEqual("ADM", message.evn.event_description)
 
     def test_inpatient_pv1(self):
         message = self.results_message
         self.assertEqual("INPATIENT", message.pv1.episode_type)
-        self.assertEqual("201511181756", message.pv1.admission_datetime)
+        self.assertEqual(
+            datetime(2015, 11, 18, 17, 56), message.pv1.datetime_of_admission
+        )
         self.assertEqual("BBNU", message.pv1.ward_code)
         self.assertEqual("BCOT", message.pv1.room_code)
-        self.assertEqual("BCOT- 02B", message.pv1.bed)
+        self.assertEqual("BCOT- 02B", message.pv1.bed_code)
 
+    def test_process_message(self):
+        with patch("gloss.process_message.fetch_demographics") as p:
+            message = self.results_message
+            message.process_message(self.session)
+            gloss_id = get_gloss_id('50099878', self.session)
+            self.assertTrue(gloss_id is not None)
+            admissions = InpatientEpisode.get_from_gloss_id(
+                gloss_id, self.session
+            )
+            self.assertEqual(len(admissions), 1)
+            admission = admissions[0]
+            self.assertEqual("BBNU", admission.ward_code)
+            self.assertEqual("BCOT", admission.room_code)
+            self.assertEqual("BCOT- 02B", admission.bed_code)
+            self.assertEqual(
+                datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
+            )
 
 class InpatientDischargeTestCase(TestCase):
     @property
@@ -167,18 +195,22 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual("50099886", pid.hospital_number)
         self.assertEqual("TOMLINSON", pid.surname)
         self.assertEqual("ELIZABETH", pid.forename)
-        self.assertEqual('193508040000', pid.date_of_birth)
+        self.assertEqual(date(1935, 8, 4), pid.date_of_birth)
         self.assertEqual('F', pid.gender)
         self.assertEqual('940347', pid.patient_account_number)
 
     def test_inpatient_pv1(self):
         message = self.results_message
         self.assertEqual("INPATIENT", message.pv1.episode_type)
-        self.assertEqual("201511181217", message.pv1.admission_datetime)
-        self.assertEqual("201511181615", message.pv1.discharge_datetime)
+        self.assertEqual(
+            datetime(2015, 11, 18, 12, 17), message.pv1.datetime_of_admission
+        )
+        self.assertEqual(
+            datetime(2015, 11, 18, 16, 15), message.pv1.datetime_of_discharge
+        )
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
-        self.assertEqual("F3SR-36", message.pv1.bed)
+        self.assertEqual("F3SR-36", message.pv1.bed_code)
 
 
 class InpatientCancelDischargeTestCase(TestCase):
@@ -193,17 +225,20 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("50099886", pid.hospital_number)
         self.assertEqual("TOMLINSON", pid.surname)
         self.assertEqual("ELIZABETH", pid.forename)
-        self.assertEqual('193508040000', pid.date_of_birth)
+        self.assertEqual(date(1935, 8, 4), pid.date_of_birth)
         self.assertEqual('F', pid.gender)
         self.assertEqual('940347', pid.patient_account_number)
 
     def test_inpatient_pv1(self):
         message = self.results_message
         self.assertEqual("INPATIENT", message.pv1.episode_type)
-        self.assertEqual("201511181217", message.pv1.admission_datetime)
+        self.assertEqual(
+            datetime(2015, 11, 18, 12, 17), message.pv1.datetime_of_admission
+        )
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
-        self.assertEqual("F3SR-36", message.pv1.bed)
+        self.assertEqual("F3SR-36", message.pv1.bed_code)
+
 
 class PatientDeathTestCase(TestCase):
     @property
@@ -217,10 +252,11 @@ class PatientDeathTestCase(TestCase):
         self.assertEqual('50092915', message.pid.hospital_number)
         self.assertEqual('TESTING MEDCHART', message.pid.surname)
         self.assertEqual('MEDHCART FIRSTNAME', message.pid.forename)
-        self.assertEqual('19870612', message.pid.date_of_birth)
+        self.assertEqual(date(1987, 6, 12), message.pid.date_of_birth)
         self.assertEqual('M', message.pid.gender)
         self.assertEqual('Y', message.pid.death_indicator)
-        self.assertEqual('20141101', message.pid.date_of_death)
+        self.assertEqual(date(2014, 11, 01), message.pid.date_of_death)
+
 
 class PatientMergeTestCase(TestCase):
     @property
@@ -234,7 +270,7 @@ class PatientMergeTestCase(TestCase):
         self.assertEqual("MV 19823", pid.hospital_number)
         self.assertEqual("TESTSOA", pid.surname)
         self.assertEqual("SPACEINHOSPIDCHANGE", pid.forename)
-        self.assertEqual('19861112', pid.date_of_birth)
+        self.assertEqual(date(1986, 11, 12), pid.date_of_birth)
         self.assertEqual('M', pid.gender)
 
     def test_mrg(self):
@@ -254,10 +290,10 @@ class PatientUpdateTestCase(TestCase):
         self.assertEqual('50092915', message.pid.hospital_number)
         self.assertEqual('TESTING MEDCHART', message.pid.surname)
         self.assertEqual('MEDHCART FIRSTNAME', message.pid.forename)
-        self.assertEqual('19870612', message.pid.date_of_birth)
+        self.assertEqual(date(1987, 6, 12), message.pid.date_of_birth)
         self.assertEqual('M', message.pid.gender)
         self.assertEqual('Y', message.pid.death_indicator)
-        self.assertEqual('20141101', message.pid.date_of_death)
+        self.assertEqual(date(2014, 11, 1), message.pid.date_of_death)
 
 
 class WinPathResultsTestCase(TestCase):
@@ -273,7 +309,7 @@ class WinPathResultsTestCase(TestCase):
         self.assertEqual('12345678', message.pid.hospital_number)
         self.assertEqual('ISURNAME', message.pid.surname)
         self.assertEqual('FIRSTNAME MNAME', message.pid.forename)
-        self.assertEqual('19820515', message.pid.date_of_birth)
+        self.assertEqual(date(1982, 5, 15), message.pid.date_of_birth)
         self.assertEqual('F', message.pid.gender)
 
     def test_has_obr(self):
@@ -281,9 +317,9 @@ class WinPathResultsTestCase(TestCase):
         self.assertEqual('10U111970', message.obr.lab_number)
         self.assertEqual('ELU', message.obr.profile_code)
         self.assertEqual('RENAL PROFILE', message.obr.profile_description)
-        self.assertEqual('201401172045', message.obr.request_datetime)
-        self.assertEqual('201401171700', message.obr.observation_datetime)
-        self.assertEqual('201401172258', message.obr.last_edited)
+        self.assertEqual(datetime(2014, 1, 17, 20, 45), message.obr.request_datetime)
+        self.assertEqual(datetime(2014, 1, 17, 17, 00), message.obr.observation_datetime)
+        self.assertEqual(datetime(2014, 1, 17, 22, 58), message.obr.last_edited)
         self.assertEqual('FINAL', message.obr.result_status)
 
     def test_get_obx_test(self):
@@ -327,16 +363,22 @@ class WinPathResultsTestCase(TestCase):
         self.assertEqual('C2088885408', message.pid.hospital_number)
         self.assertEqual('GRECE', message.pid.surname)
         self.assertEqual('POPEDULE', message.pid.forename)
-        self.assertEqual('19880608', message.pid.date_of_birth)
+        self.assertEqual(date(1988, 6, 8), message.pid.date_of_birth)
         self.assertEqual('M', message.pid.gender)
 
         # Investigation medatada
         self.assertEqual('12V777833', message.obr.lab_number)
         self.assertEqual('URNC', message.obr.profile_code)
         self.assertEqual('URINE CULTURE', message.obr.profile_description)
-        self.assertEqual('201205201715', message.obr.request_datetime)
-        self.assertEqual('201205201413', message.obr.observation_datetime)
-        self.assertEqual('201205211100', message.obr.last_edited)
+        self.assertEqual(
+            datetime(2012, 5, 20, 17, 15), message.obr.request_datetime
+        )
+        self.assertEqual(
+            datetime(2012, 5, 20, 14, 13), message.obr.observation_datetime
+        )
+        self.assertEqual(
+            datetime(2012, 5, 21, 11, 00), message.obr.last_edited
+        )
         self.assertEqual('FINAL', message.obr.result_status)
 
     def test_obx_free_text_value_type(self):

@@ -1,181 +1,33 @@
-from datetime import datetime
+from gloss.message_segments import *
 import logging
 
-from models import session_scope, is_known, is_subscribed
-
-DATETIME_FORMAT = "%Y%m%d%H%M"
+from models import session_scope, get_gloss_id, save_identifier, InpatientEpisode
 
 
-def get_fields(msg):
-    ''' figures out what type of message it is based on the fields
-    '''
-    return [i[0][0] for i in msg]
+def get_inpatient_episode(gloss_id, pid, pv1):
+    return InpatientEpisode(
+        gloss_reference_id=gloss_id,
+        datetime_of_admission=pv1.datetime_of_admission,
+        datetime_of_discharge=pv1.datetime_of_admission,
+        ward_code=pv1.ward_code,
+        room_code=pv1.room_code,
+        bed_code=pv1.bed_code,
+        visit_number=pid.patient_account_number
+    )
 
 
-class Segment(object):
+def process_demographics(pid, session):
+    """ saves a gloss id to hospital number and then goes and fetches demogrphics
+    """
+    # save a reference to the pid and the hospital id in the db, then go fetch demographics
+    save_identifier(pid, session)
+    fetch_demographics(pid)
+
+
+def fetch_demographics(pid):
+    # stubbed method that will make the async call to the demographics query
+    # service
     pass
-
-
-class MSH(Segment):
-    def __init__(self, segment):
-        self.trigger_event = segment[9][0][1][0]
-        self.message_type = segment[9][0][0][0]
-        # allergy information contains milli seconds, lets strip that
-        # off for the time being
-        self.message_datetime = datetime.strptime(segment[7][0][:12], DATETIME_FORMAT)
-        self.sending_application = segment[3][0]
-        self.sending_facility = segment[4][0]
-
-
-class MRG(Segment):
-    def __init__(self, segment):
-        self.duplicate_hospital_number = segment[1][0][0][0]
-
-
-class ResultsPID(Segment):
-    """
-        the pid definition used by the WINPATH systems
-    """
-    def __init__(self, segment):
-        self.nhs_number = segment[2][0]
-        if isinstance(self.nhs_number, list):
-            self.nhs_number = self.nhs_number[0][0]
-        self.hospital_number = segment[3][0][0][0]
-        self.surname = segment[5][0][0][0]
-        self.forename = segment[5][0][1][0]
-        self.date_of_birth = segment[7][0]
-        self.gender = segment[8][0]
-
-
-class InpatientPID(Segment):
-    """
-        the pid definition used by CARECAST systems
-    """
-    def __init__(self, segment):
-
-        self.hospital_number = segment[3][0][0][0]
-
-        if len(segment[3][1][0][0]):
-            self.nhs_number = segment[3][1][0][0]
-        else:
-            self.nhs_number = None
-
-        self.surname = segment[5][0][0][0]
-        self.forename = segment[5][0][1][0]
-        self.date_of_birth = segment[7][0]
-        self.gender = segment[8][0]
-
-        # this is used by spell delete
-        # it seems similar to our episode id
-        self.patient_account_number = segment[18][0]
-
-        if len(segment[29][0]):
-            self.date_of_death = segment[29][0]
-
-        if len(segment[30][0]):
-            self.death_indicator = segment[30][0]
-
-
-class AllergiesPID(Segment):
-    """
-        the pid definition used by allergies
-    """
-
-    def __init__(self, segment):
-        self.hospital_number = segment[3][0][0][0]
-        self.surname = segment[5][0][0][0]
-        self.forename = segment[5][0][1][0]
-        self.date_of_birth = segment[7][0]
-        self.gender = segment[8][0]
-
-        # sample messages record 2 different types of
-        # message "No Known Allergies" and
-        # "Allergies Known and Recorde" we're
-        # querying as to whether there are others
-        self.allergy_status = segment[37][0]
-
-
-class OBR(Segment):
-    STATUSES = {
-        'F': 'FINAL',
-        'I': 'INTERIM',
-        'A': 'SOME RESULTS AVAILABLE'
-    }
-    def __init__(self, segment):
-        self.lab_number = segment[3][0]
-        self.profile_code = segment[4][0][0][0]
-        self.profile_description = segment[4][0][1][0]
-        self.request_datetime = segment[6][0]
-        self.observation_datetime = segment[7][0]
-        self.last_edited = segment[22][0]
-        self.result_status = OBR.STATUSES[segment[25][0]]
-
-
-class OBX(Segment):
-    STATUSES = {
-        'F': 'FINAL',
-        'I': 'INTERIM'
-    }
-
-    def __init__(self, segment):
-        self.test_code = segment[3][0][0][0]
-        self.test_name = segment[3][0][1][0]
-        self.observation_value = segment[5][0]
-        self.units = segment[6][0]
-        self.reference_range = segment[7][0]
-        self.result_status = OBX.STATUSES[segment[11][0]]
-
-
-class EVN(Segment):
-    def __init__(self, segment):
-        self.event_type = segment[1][0]
-        self.recorded_time = segment[2][0]
-        self.event_description = segment[4][0]
-
-
-class PV1(Segment):
-    EPISODE_TYPES = {
-        "A": "DAY CASE",
-        "I": "INPATIENT",
-        "E": "EMERGENCY",
-    }
-
-    def __init__(self, segment):
-        self.ward_code = segment[3][0][0][0]
-        self.room_code = segment[3][0][1][0]
-        self.bed = segment[3][0][2][0]
-        self.admission_datetime = segment[44][0]
-
-        self.episode_type = self.EPISODE_TYPES[segment[2][0]]
-
-        if len(segment) > 44:
-            self.discharge_datetime = segment[45][0]
-
-
-class NTE(Segment):
-    def __init__(self, segments):
-        self.comments = "\n".join(
-            s[3][0] for s in segments
-        )
-
-
-class AL1(Segment):
-    # there's a good chance we won't need
-    # all these fields, but they
-    # raise a lot of questions
-    def __init__(self, segments):
-        self.allergy_type = segments[2][0][0][0]
-        self.allergy_type_description = segments[2][0][1][0]
-        self.certainty_id = segments[2][0][3][0]
-        self.certainty_description = segments[2][0][4][0]
-        self.allergy_reference_name = segments[3][0][0][0]
-        self.allergy_description = segments[3][0][1][0]
-        self.allergen_reference_system = segments[3][0][2][0]
-        self.allergen_reference = segments[3][0][3][0]
-        self.status_id = segments[4][0][0][0]
-        self.status_description = segments[4][0][1][0]
-        self.diagnosis_data = segments[4][0][4][0]
-        self.allergy_start_date = segments[6][0]
 
 
 class MessageType(object):
@@ -237,6 +89,16 @@ class InpatientAdmit(MessageType):
     @property
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
+
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        gloss_id = get_gloss_id(hospital_number, session=session)
+
+        if gloss_id is None:
+            gloss_id = process_demographics(self.pid.hospital_number, session)
+
+        inpatient_episode = get_inpatient_episode(gloss_id, self.pid, self.pv1)
+        session.add(inpatient_episode)
 
 
 class InpatientDischarge(MessageType):
