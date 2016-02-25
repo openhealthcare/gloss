@@ -7,20 +7,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
-from sqlalchemy import create_engine
-
-# Create an engine that stores data in the local directory's
-# sqlalchemy_example.db file.
-engine = create_engine('sqlite:///mllpHandler.db')
-
-# Create all tables in the engine. This is equivalent to "Create Table"
-# statements in raw SQL.
-
+from settings import engine
 
 
 def get_plural_name(cls):
     return "{}s".format(cls.__tablename__)
-
 
 @as_declarative()
 class Base(object):
@@ -45,6 +36,13 @@ class GlossSubrecord(object):
             back_populates=get_plural_name(cls)
         )
 
+    @classmethod
+    def get_from_gloss_id(cls, gloss_id, session):
+        result = session.query(cls, GlossolaliaReference).\
+        filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
+        all()
+        return [i[0] for i in result]
+
 
 class Patient(Base, GlossSubrecord):
     id = Column(Integer, primary_key=True)
@@ -68,11 +66,11 @@ class Patient(Base, GlossSubrecord):
 
 
 class InpatientEpisode(Base, GlossSubrecord):
-    datetime_of_admission = Column(Date)
-    datetime_of_discharge = Column(Date)
-    ward_number = Column(String(250))
-    room_number = Column(String(250))
-    bed_number = Column(String(250))
+    datetime_of_admission = Column(DateTime)
+    datetime_of_discharge = Column(DateTime)
+    ward_code = Column(String(250))
+    room_code = Column(String(250))
+    bed_code = Column(String(250))
     visit_number = Column(String(250))
 
 
@@ -99,6 +97,7 @@ for subrecord in GlossSubrecord.__subclasses__():
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
+
 
 @contextmanager
 def session_scope():
@@ -127,12 +126,11 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
     is_connected = __is_connected(hospital_number, session, issuing_source)
     return is_connected.filter(Subscription.active == True).count()
 
-
-def get_gloss_id(hospital_number, issuing_source="uclh", session=None):
-    gloss_information = session.query(GlossolaliaReference, Subscription, PatientIdentifier).\
+def get_gloss_id(hospital_number, session, issuing_source="uclh"):
+    gloss_information = session.query(GlossolaliaReference, PatientIdentifier).\
     filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
     filter(PatientIdentifier.issuing_source == issuing_source).\
-    filter(PatientIdentifier.identifier == hospital_number).all()
+    filter(PatientIdentifier.identifier == hospital_number).one_or_none()
 
     # we should change this to only query for gloss id rather than all 3 columns
     if gloss_information:

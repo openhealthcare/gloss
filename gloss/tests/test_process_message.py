@@ -1,4 +1,6 @@
 from unittest import TestCase
+from mock import patch
+
 from datetime import date, datetime
 from test_messages import (
     INPATIENT_ADMISSION, RESULTS_MESSAGE,
@@ -10,9 +12,12 @@ from test_messages import (
 
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
-    InpatientDischarge, InpatientCancelDischarge, InpatientSpellDelete,
+    InpatientDischarge, InpatientCancelDischarge,
     Allergy, PatientUpdate, PatientMerge,
 )
+
+from gloss.models import Session, get_gloss_id, InpatientEpisode
+from gloss.tests.core import GlossTestCase
 
 
 class MessageProcessorTestCase(TestCase):
@@ -125,7 +130,7 @@ class AllergyTestCase(TestCase):
         self.assertEqual(datetime(2015, 11, 19, 12, 00), message.al1.allergy_start_datetime)
 
 
-class InpatientAdmitTestCase(TestCase):
+class InpatientAdmitTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(INPATIENT_ADMISSION)
@@ -144,7 +149,10 @@ class InpatientAdmitTestCase(TestCase):
     def test_inpatient_event(self):
         message = self.results_message
         self.assertEqual("A01", message.evn.event_type)
-        self.assertEqual("201511181757", message.evn.recorded_time)
+        self.assertEqual(
+            datetime(2015, 11, 18, 17, 57),
+            message.evn.recorded_datetime
+        )
         self.assertEqual("ADM", message.evn.event_description)
 
     def test_inpatient_pv1(self):
@@ -155,8 +163,25 @@ class InpatientAdmitTestCase(TestCase):
         )
         self.assertEqual("BBNU", message.pv1.ward_code)
         self.assertEqual("BCOT", message.pv1.room_code)
-        self.assertEqual("BCOT- 02B", message.pv1.bed)
+        self.assertEqual("BCOT- 02B", message.pv1.bed_code)
 
+    def test_process_message(self):
+        with patch("gloss.process_message.fetch_demographics") as p:
+            message = self.results_message
+            message.process_message(self.session)
+            gloss_id = get_gloss_id('50099878', self.session)
+            self.assertTrue(gloss_id is not None)
+            admissions = InpatientEpisode.get_from_gloss_id(
+                gloss_id, self.session
+            )
+            self.assertEqual(len(admissions), 1)
+            admission = admissions[0]
+            self.assertEqual("BBNU", admission.ward_code)
+            self.assertEqual("BCOT", admission.room_code)
+            self.assertEqual("BCOT- 02B", admission.bed_code)
+            self.assertEqual(
+                datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
+            )
 
 class InpatientDischargeTestCase(TestCase):
     @property
@@ -185,7 +210,7 @@ class InpatientDischargeTestCase(TestCase):
         )
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
-        self.assertEqual("F3SR-36", message.pv1.bed)
+        self.assertEqual("F3SR-36", message.pv1.bed_code)
 
 
 class InpatientCancelDischargeTestCase(TestCase):
@@ -212,7 +237,7 @@ class InpatientCancelDischargeTestCase(TestCase):
         )
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
-        self.assertEqual("F3SR-36", message.pv1.bed)
+        self.assertEqual("F3SR-36", message.pv1.bed_code)
 
 
 class PatientDeathTestCase(TestCase):

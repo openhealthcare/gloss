@@ -1,7 +1,7 @@
 from gloss.message_segments import *
 import logging
 
-from models import session_scope, get_gloss_id, is_subscribed, save_identifier
+from models import session_scope, get_gloss_id, save_identifier, InpatientEpisode
 
 
 def get_inpatient_episode(gloss_id, pid, pv1):
@@ -9,9 +9,9 @@ def get_inpatient_episode(gloss_id, pid, pv1):
         gloss_reference_id=gloss_id,
         datetime_of_admission=pv1.datetime_of_admission,
         datetime_of_discharge=pv1.datetime_of_admission,
-        ward_number=pv1.ward_number,
-        room_number=pv1.room_number,
-        bed_number=pv1.bed_number,
+        ward_code=pv1.ward_code,
+        room_code=pv1.room_code,
+        bed_code=pv1.bed_code,
         visit_number=pid.patient_account_number
     )
 
@@ -95,10 +95,10 @@ class InpatientAdmit(MessageType):
         gloss_id = get_gloss_id(hospital_number, session=session)
 
         if gloss_id is None:
-            gloss_id = process_demographics(pid)
+            gloss_id = process_demographics(self.pid.hospital_number, session)
 
         inpatient_episode = get_inpatient_episode(gloss_id, self.pid, self.pv1)
-        inpatient_episode.save()
+        session.add(inpatient_episode)
 
 
 class InpatientDischarge(MessageType):

@@ -135,7 +135,10 @@ class OBX(Segment):
 class EVN(Segment):
     def __init__(self, segment):
         self.event_type = segment[1][0]
-        self.recorded_time = segment[2][0]
+        self.recorded_datetime = datetime.strptime(
+            segment[2][0][:12], DATETIME_FORMAT
+        )
+
         self.event_description = segment[4][0]
 
 
@@ -149,7 +152,7 @@ class PV1(Segment):
     def __init__(self, segment):
         self.ward_code = segment[3][0][0][0]
         self.room_code = segment[3][0][1][0]
-        self.bed = segment[3][0][2][0]
+        self.bed_code = segment[3][0][2][0]
         self.datetime_of_admission = datetime.strptime(
             segment[44][0], DATETIME_FORMAT
         )

@@ -1,58 +1,67 @@
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
+from gloss.tests.core import GlossTestCase
 from ..models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
-    is_subscribed, Base
+    is_subscribed, get_gloss_id
 )
 
-engine = create_engine('sqlite:///:memory:')
 
-Base.metadata.create_all(engine)
+class IsSubscribedTestCase(GlossTestCase):
+    def setUp(self):
+        super(IsSubscribedTestCase, self).setUp()
+        self.glossolalia_reference = GlossolaliaReference()
+        self.session.add(self.glossolalia_reference)
+
+    def test_is_subscribed(self):
+        subscription = Subscription(
+            system="elcid", gloss_reference=self.glossolalia_reference
+        )
+        self.session.add(subscription)
+
+        hospital_identifier = PatientIdentifier(
+            identifier="12341234",
+            issuing_source="uclh",
+            gloss_reference=self.glossolalia_reference
+        )
+        self.session.add(hospital_identifier)
+        subscribed = is_subscribed("12341234", session=self.session)
+        assert(subscribed)
+
+    def test_is_not_subscribed(self):
+        glossolalia_reference = GlossolaliaReference()
+        self.session.add(glossolalia_reference)
+
+        subscription = Subscription(
+            system="elcid",
+            gloss_reference=self.glossolalia_reference,
+            active=False
+        )
+        self.session.add(subscription)
+
+        hospital_identifier = PatientIdentifier(
+            identifier="12341234",
+            issuing_source="uclh",
+            gloss_reference=glossolalia_reference
+        )
+        self.session.add(hospital_identifier)
+        subscribed = is_subscribed("12341234", session=self.session)
+        assert(not subscribed)
 
 
-def test_is_subscribed():
-    Session = sessionmaker(bind=engine)
-    session = Session()
+class GetGlossIdTestCase(GlossTestCase):
+    def setUp(self):
+        super(GetGlossIdTestCase, self).setUp()
+        self.glossolalia_reference = GlossolaliaReference()
+        self.session.add(self.glossolalia_reference)
 
-    glossolalia_reference = GlossolaliaReference()
-    session.add(glossolalia_reference)
+    def test_get_gloss_id(self):
+        hospital_identifier = PatientIdentifier(
+            identifier="12341234",
+            issuing_source="uclh",
+            gloss_reference=self.glossolalia_reference
+        )
+        self.session.add(hospital_identifier)
+        gloss_id = get_gloss_id("12341234", self.session)
+        self.assertEqual(self.glossolalia_reference.id, gloss_id)
 
-    subscription = Subscription(
-        system="elcid", gloss_reference=glossolalia_reference
-    )
-    session.add(subscription)
-
-    hospital_identifier = PatientIdentifier(
-        identifier="12341234",
-        issuing_source="uclh",
-        gloss_reference=glossolalia_reference
-    )
-    session.add(hospital_identifier)
-    subscribed = is_subscribed("12341234", session=session)
-    session.close()
-
-    assert(subscribed)
-
-
-def test_is_not_subscribed():
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    glossolalia_reference = GlossolaliaReference()
-    session.add(glossolalia_reference)
-
-    subscription = Subscription(
-        system="elcid", gloss_reference=glossolalia_reference, active=False
-    )
-    session.add(subscription)
-
-    hospital_identifier = PatientIdentifier(
-        identifier="12341234",
-        issuing_source="uclh",
-        gloss_reference=glossolalia_reference
-    )
-    session.add(hospital_identifier)
-    subscribed = is_subscribed("12341234", session=session)
-    session.close()
-
-    assert(not subscribed)
+    def test_return_none(self):
+        self.assertTrue(get_gloss_id("2342334", self.session) is None)
