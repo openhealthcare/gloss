@@ -6,7 +6,7 @@ Gloss
 a very quick hl7 implementation
 
 to run the server locally
-twistd --nodaemon mllp --receiver OhcReceiver.OhcReceiver
+twistd --nodaemon mllp --receiver ohc_receiver.OhcReceiver
 
 
 to run fire 1200 messages at it and get a timestamp run

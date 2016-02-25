@@ -24,6 +24,7 @@ class MSH(Segment):
         # off for the time being
         self.message_datetime = datetime.strptime(segment[7][0][:12], DATETIME_FORMAT)
         self.sending_application = segment[3][0]
+        self.sending_facility = segment[4][0]
 
 
 class MRG(Segment):
@@ -193,6 +194,9 @@ class MessageType(object):
     @property
     def msh(self):
         return MSH(self.raw_msg.segment("MSH"))
+
+    def process_message(self, session):
+        pass
 
 
 class PatientMerge(MessageType):
