@@ -53,6 +53,7 @@ class Patient(Base, GlossSubrecord):
     middle_name = Column(String(250))
     title = Column(String(250))
     date_of_birth = Column(Date, nullable=False)
+    birth_place = Column(String(250))
     sex = Column(String(250))
     marital_status = Column(String(250))
     religion = Column(String(250))
@@ -66,6 +67,15 @@ class Patient(Base, GlossSubrecord):
     birth_place = Column(String)
 
 
+class InpatientEpisode(Base, GlossSubrecord):
+    datetime_of_admission = Column(Date)
+    datetime_of_discharge = Column(Date)
+    ward_number = Column(String(250))
+    room_number = Column(String(250))
+    bed_number = Column(String(250))
+    visit_number = Column(String(250))
+
+
 class PatientIdentifier(Base, GlossSubrecord):
     id = Column(Integer, primary_key=True)
     identifier = Column(String(250))
@@ -77,10 +87,6 @@ class Subscription(Base, GlossSubrecord):
     id = Column(Integer, primary_key=True)
     system = Column(String(250))
     active = Column(Boolean, default=True)
-
-
-class Admission(Base):
-    admission = Column(DateTime)
 
 
 class GlossolaliaReference(Base):
@@ -107,8 +113,9 @@ def session_scope():
     finally:
         session.close()
 
-def __is_connected(hospital_number, issuing_source, session):
-    return session.query(Subscription, GlossolaliaReference, PatientIdentifier).\
+
+def __is_connected(hospital_number, session, issuing_source):
+    return session.query(GlossolaliaReference, Subscription, PatientIdentifier).\
     filter(Subscription.gloss_reference_id == GlossolaliaReference.id).\
     filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
     filter(PatientIdentifier.issuing_source == issuing_source).\
@@ -116,11 +123,27 @@ def __is_connected(hospital_number, issuing_source, session):
 
 
 # we need to get subscription from hospital number
-def is_subscribed(hospital_number, issuing_source="uclh", session=None):
-    is_connected = __is_connected(hospital_number, issuing_source, session)
+def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
+    is_connected = __is_connected(hospital_number, session, issuing_source)
     return is_connected.filter(Subscription.active == True).count()
 
 
-def is_known(hospital_number, issuing_source="uclh", session=None):
-    is_connected = __is_connected(hospital_number, issuing_source, session)
-    return is_connected.count()
+def get_gloss_id(hospital_number, issuing_source="uclh", session=None):
+    gloss_information = session.query(GlossolaliaReference, Subscription, PatientIdentifier).\
+    filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
+    filter(PatientIdentifier.issuing_source == issuing_source).\
+    filter(PatientIdentifier.identifier == hospital_number).all()
+
+    # we should change this to only query for gloss id rather than all 3 columns
+    if gloss_information:
+        return gloss_information[0].id
+
+def save_identifier(hospital_number, session, issuing_source="uclh"):
+    glossolalia_reference = GlossolaliaReference()
+    session.add(glossolalia_reference)
+    hospital_identifier = PatientIdentifier(
+        identifier=hospital_number,
+        issuing_source="uclh",
+        gloss_reference=glossolalia_reference
+    )
+    session.add(hospital_identifier)
