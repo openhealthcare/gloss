@@ -37,11 +37,24 @@ class GlossSubrecord(object):
         )
 
     @classmethod
+    def query_by_gloss_id(cls, gloss_id, session):
+        return session.query(cls).filter(cls.gloss_reference_id == gloss_id)
+
+    @classmethod
     def get_from_gloss_id(cls, gloss_id, session):
-        result = session.query(cls, GlossolaliaReference).\
+        return cls.query_by_gloss_id(gloss_id, session).one_or_none()
+
+    @classmethod
+    def list_from_gloss_id(cls, gloss_id, session):
+        return cls.query_by_gloss_id(gloss_id, session).all()
+
+    @classmethod
+    def query_from_identifier(cls, identifier, issuing_source, session):
+        return session.query(cls, GlossolaliaReference, PatientIdentifier).\
+        filter(cls.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
-        all()
-        return [i[0] for i in result]
+        filter(PatientIdentifier.issuing_source == issuing_source).\
+        filter(PatientIdentifier.identifier == identifier)
 
 
 class Patient(Base, GlossSubrecord):
@@ -66,12 +79,12 @@ class Patient(Base, GlossSubrecord):
 
 
 class InpatientEpisode(Base, GlossSubrecord):
-    datetime_of_admission = Column(DateTime)
+    datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
     ward_code = Column(String(250))
     room_code = Column(String(250))
     bed_code = Column(String(250))
-    visit_number = Column(String(250))
+    visit_number = Column(String(250), nullable=False)
 
 
 class PatientIdentifier(Base, GlossSubrecord):
@@ -123,8 +136,10 @@ def __is_connected(hospital_number, session, issuing_source):
 
 # we need to get subscription from hospital number
 def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
-    is_connected = __is_connected(hospital_number, session, issuing_source)
-    return is_connected.filter(Subscription.active == True).count()
+    subscription = Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    )
+    return subscription.filter(Subscription.active == True).count()
 
 def get_gloss_id(hospital_number, session, issuing_source="uclh"):
     gloss_information = session.query(GlossolaliaReference, PatientIdentifier).\
@@ -145,3 +160,4 @@ def save_identifier(hospital_number, session, issuing_source="uclh"):
         gloss_reference=glossolalia_reference
     )
     session.add(hospital_identifier)
+    return glossolalia_reference

@@ -16,7 +16,7 @@ from gloss.process_message import (
     Allergy, PatientUpdate, PatientMerge,
 )
 
-from gloss.models import Session, get_gloss_id, InpatientEpisode
+from gloss.models import get_gloss_id, InpatientEpisode
 from gloss.tests.core import GlossTestCase
 
 
@@ -171,11 +171,9 @@ class InpatientAdmitTestCase(GlossTestCase):
             message.process_message(self.session)
             gloss_id = get_gloss_id('50099878', self.session)
             self.assertTrue(gloss_id is not None)
-            admissions = InpatientEpisode.get_from_gloss_id(
+            admission = InpatientEpisode.get_from_gloss_id(
                 gloss_id, self.session
             )
-            self.assertEqual(len(admissions), 1)
-            admission = admissions[0]
             self.assertEqual("BBNU", admission.ward_code)
             self.assertEqual("BCOT", admission.room_code)
             self.assertEqual("BCOT- 02B", admission.bed_code)
@@ -183,11 +181,12 @@ class InpatientAdmitTestCase(GlossTestCase):
                 datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
             )
 
-class InpatientDischargeTestCase(TestCase):
+
+class InpatientDischargeTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(INPATIENT_DISCHARGE)
-        message = InpatientAdmit(raw)
+        message = InpatientDischarge(raw)
         return message
 
     def test_discharge_pid(self):
@@ -211,6 +210,48 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed_code)
+
+    def test_update_with_inpatient_session(self):
+        inpatient_episode = self.create_subrecord_with_id(
+            InpatientEpisode, "50099886"
+        )
+        inpatient_episode.visit_number = "940347"
+        inpatient_episode.datetime_of_admission = datetime(
+            2012, 10, 10, 17, 12
+        )
+        self.session.add(inpatient_episode)
+        message = self.results_message
+        message.process_message(self.session)
+        result = self.session.query(InpatientEpisode).all()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            result[0].datetime_of_discharge, datetime(2015, 11, 18, 16, 15)
+        )
+
+    def test_unknown_to_gloss(self):
+        # we just want to assert this doesn't blow up
+        self.assertEqual(self.session.query(InpatientEpisode).count(), 0)
+        self.results_message.process_message(self.session)
+
+    def test_with_unknown_inpatient_episode(self):
+        # make sure we don't update the wrong episode
+
+        inpatient_episode = self.create_subrecord_with_id(
+            InpatientEpisode, "50099886"
+        )
+        inpatient_episode.visit_number = "1231223"
+        inpatient_episode.datetime_of_admission = datetime(
+            2012, 10, 10, 17, 12
+        )
+
+        self.session.add(inpatient_episode)
+        message = self.results_message
+        message.process_message(self.session)
+        result = self.session.query(InpatientEpisode).all()
+        self.assertEqual(len(result), 1)
+        self.assertEqual(
+            result[0].datetime_of_discharge, None
+        )
 
 
 class InpatientCancelDischargeTestCase(TestCase):

@@ -20,8 +20,8 @@ def process_demographics(pid, session):
     """ saves a gloss id to hospital number and then goes and fetches demogrphics
     """
     # save a reference to the pid and the hospital id in the db, then go fetch demographics
-    save_identifier(pid, session)
     fetch_demographics(pid)
+    return save_identifier(pid, session)
 
 
 def fetch_demographics(pid):
@@ -116,6 +116,23 @@ class InpatientDischarge(MessageType):
     @property
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
+
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_result = query.one_or_none()
+
+        if inpatient_result:
+            inpatient_episode = inpatient_result[0]
+            inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
+            session.add(inpatient_episode)
 
 
 class InpatientTransfer(MessageType):
