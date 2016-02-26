@@ -1,7 +1,7 @@
 from gloss.tests.core import GlossTestCase
 from ..models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
-    is_subscribed, get_gloss_id
+    is_subscribed, get_gloss_reference
 )
 
 
@@ -53,15 +53,15 @@ class GetGlossIdTestCase(GlossTestCase):
         self.glossolalia_reference = GlossolaliaReference()
         self.session.add(self.glossolalia_reference)
 
-    def test_get_gloss_id(self):
+    def test_get_gloss_reference(self):
         hospital_identifier = PatientIdentifier(
             identifier="12341234",
             issuing_source="uclh",
             gloss_reference=self.glossolalia_reference
         )
         self.session.add(hospital_identifier)
-        gloss_id = get_gloss_id("12341234", self.session)
-        self.assertEqual(self.glossolalia_reference.id, gloss_id)
+        glossolalia_reference = get_gloss_reference("12341234", self.session)
+        self.assertEqual(self.glossolalia_reference, glossolalia_reference)
 
     def test_return_none(self):
-        self.assertTrue(get_gloss_id("2342334", self.session) is None)
+        self.assertTrue(get_gloss_reference("2342334", self.session) is None)

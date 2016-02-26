@@ -1,12 +1,16 @@
 from gloss.message_segments import *
+from gloss import notification
 import logging
 
-from models import session_scope, get_gloss_id, save_identifier, InpatientEpisode
+from models import (
+    session_scope, get_gloss_reference, save_identifier, InpatientEpisode,
+    is_subscribed
+)
 
 
-def get_inpatient_episode(gloss_id, pid, pv1):
+def get_inpatient_episode(gloss_reference, pid, pv1):
     return InpatientEpisode(
-        gloss_reference_id=gloss_id,
+        gloss_reference=gloss_reference,
         datetime_of_admission=pv1.datetime_of_admission,
         datetime_of_discharge=pv1.datetime_of_admission,
         ward_code=pv1.ward_code,
@@ -92,13 +96,16 @@ class InpatientAdmit(MessageType):
 
     def process_message(self, session):
         hospital_number = self.pid.hospital_number
-        gloss_id = get_gloss_id(hospital_number, session=session)
+        gloss_reference = get_gloss_reference(hospital_number, session=session)
 
-        if gloss_id is None:
-            gloss_id = process_demographics(self.pid.hospital_number, session)
+        if gloss_reference is None:
+            gloss_reference = process_demographics(self.pid.hospital_number, session)
 
-        inpatient_episode = get_inpatient_episode(gloss_id, self.pid, self.pv1)
+        inpatient_episode = get_inpatient_episode(gloss_reference, self.pid, self.pv1)
         session.add(inpatient_episode)
+
+        if is_subscribed(hospital_number, session):
+            notification.notify("elcid", InpatientEpisode)
 
 
 class InpatientDischarge(MessageType):
@@ -141,10 +148,43 @@ class InpatientTransfer(MessageType):
     message_type = "ADT"
     trigger_event = "A02"
 
+    @property
+    def pid(self):
+        return InpatientPID(self.raw_msg.segment("PID"))
+
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
+
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_result = query.one_or_none()
+
+        if inpatient_result:
+            # we should always have an inpatient result, but for now
+            # we'll just log
+            inpatient_episode = inpatient_result[0]
+            inpatient_episode.ward_code = self.pv1.ward_code
+            inpatient_episode.room_code = self.pv1.room_code
+            inpatient_episode.bed_code = self.pv1.bed_code
+            session.add(inpatient_episode)
+
+            if is_subscribed(hospital_number, session):
+                notification.notify("elcid", InpatientEpisode)
+        else:
+            error_msg = "we were unable to find an inpatient episode for {}"
+            logging.error(error_msg.format(hospital_number))
+
 
 class InpatientSpellDelete(MessageType):
-    # currently untested and incomplete
-    # pending us being given an example message
     message_type = "ADT"
     trigger_event = "A07"
 
@@ -159,6 +199,32 @@ class InpatientSpellDelete(MessageType):
     @property
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
+
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+
+        if is_subscribed(hospital_number, session):
+            query = InpatientEpisode.query_from_identifier(
+                hospital_number,
+                issuing_source="uclh",
+                session=session
+            )
+            query = query.filter(
+                InpatientEpisode.visit_number == self.pid.patient_account_number
+            )
+            inpatient_result = query.one_or_none()
+
+            if inpatient_result:
+                # we should always have an inpatient result, but for now
+                # we'll just log
+                inpatient_episode = inpatient_result[0]
+                inpatient_episode.ward_code = self.pv1.ward_code
+                inpatient_episode.room_code = self.pv1.room_code
+                inpatient_episode.bed_code = self.pv1.bed_code
+                session.add(inpatient_episode)
+            else:
+                error_msg = "we were unable to find an inpatient episode for {}"
+                logging.error(error_msg.format(hospital_number))
 
 
 class InpatientCancelDischarge(MessageType):

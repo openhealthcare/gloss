@@ -7,16 +7,20 @@ from test_messages import (
     RESULTS_CANCELLATION_MESSAGE, URINE_CULTURE_RESULT_MESSAGE,
     INPATIENT_DISCHARGE, INPATIENT_CANCEL_DISCHARGE,
     read_message, ALLERGY, NO_ALLERGY, PATIENT_DEATH, PATIENT_MERGE,
-    PATIENT_UPDATE,
+    PATIENT_UPDATE, INPATIENT_TRANSFER, INPATIENT_SPELL_DELETE
 )
 
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
     InpatientDischarge, InpatientCancelDischarge,
-    Allergy, PatientUpdate, PatientMerge,
+    Allergy, PatientUpdate, PatientMerge, InpatientTransfer,
+    InpatientSpellDelete
 )
 
-from gloss.models import get_gloss_id, InpatientEpisode
+from gloss.models import (
+    get_gloss_reference, InpatientEpisode, save_identifier,
+    subscribe
+)
 from gloss.tests.core import GlossTestCase
 
 
@@ -48,6 +52,12 @@ class MessageProcessorTestCase(TestCase):
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
         assert(result == InpatientDischarge)
+
+    def test_inpatient_transfer(self):
+        msg = read_message(INPATIENT_TRANSFER)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientTransfer)
 
     def test_cancel_inpatient_discharge(self):
         msg = read_message(INPATIENT_CANCEL_DISCHARGE)
@@ -163,23 +173,90 @@ class InpatientAdmitTestCase(GlossTestCase):
         )
         self.assertEqual("BBNU", message.pv1.ward_code)
         self.assertEqual("BCOT", message.pv1.room_code)
-        self.assertEqual("BCOT- 02B", message.pv1.bed_code)
+        self.assertEqual("BCOT-02B", message.pv1.bed_code)
+
 
     def test_process_message(self):
         with patch("gloss.process_message.fetch_demographics") as p:
-            message = self.results_message
+            with patch("gloss.notification.notify") as n:
+                subscribe('50099878', self.session, 'uclh')
+                message = self.results_message
+                message.process_message(self.session)
+                gloss_reference = get_gloss_reference('50099878', self.session)
+                self.assertTrue(gloss_reference is not None)
+                admission = InpatientEpisode.get_from_gloss_reference(
+                    gloss_reference, self.session
+                )
+                self.assertEqual("BBNU", admission.ward_code)
+                self.assertEqual("BCOT", admission.room_code)
+                self.assertEqual("BCOT-02B", admission.bed_code)
+                self.assertEqual(
+                    datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
+                )
+                self.assertTrue(n.called)
+
+
+class InpatientTransferTestCase(GlossTestCase):
+    @property
+    def results_message(self):
+        raw = read_message(INPATIENT_TRANSFER)
+        message = InpatientTransfer(raw)
+        return message
+
+    def test_pid(self):
+        pid = self.results_message.pid
+        self.assertEqual("50009026", pid.hospital_number)
+        self.assertEqual("POWELL", pid.surname)
+        self.assertEqual("DEMONSTRATION", pid.forename)
+        self.assertEqual(date(1968, 5, 12), pid.date_of_birth)
+        self.assertEqual('M', pid.gender)
+        self.assertEqual('930375', pid.patient_account_number)
+
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
+        self.assertEqual(
+            datetime(2012, 6, 28, 13, 31), message.pv1.datetime_of_admission
+        )
+        self.assertEqual("T06", message.pv1.ward_code)
+        self.assertEqual("T06A", message.pv1.room_code)
+        self.assertEqual("T06-04", message.pv1.bed_code)
+
+    def test_process_message(self):
+        inpatient_episode = self.get_inpatient_admission("50009026", "uclh")
+        inpatient_episode.visit_number = "930375"
+        self.session.add(inpatient_episode)
+        message = self.results_message
+
+        with patch("gloss.notification.notify") as n:
             message.process_message(self.session)
-            gloss_id = get_gloss_id('50099878', self.session)
-            self.assertTrue(gloss_id is not None)
-            admission = InpatientEpisode.get_from_gloss_id(
-                gloss_id, self.session
-            )
-            self.assertEqual("BBNU", admission.ward_code)
-            self.assertEqual("BCOT", admission.room_code)
-            self.assertEqual("BCOT- 02B", admission.bed_code)
-            self.assertEqual(
-                datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
-            )
+            self.assertTrue(n.called)
+
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual("T06", result.ward_code)
+        self.assertEqual("T06A", result.room_code)
+        self.assertEqual("T06-04", result.bed_code)
+        self.assertEqual(
+            inpatient_episode.datetime_of_admission,
+            result.datetime_of_admission
+        )
+
+
+class InpatientDeleteSpellTestCase(GlossTestCase):
+    @property
+    def results_message(self):
+        raw = read_message(INPATIENT_SPELL_DELETE)
+        message = InpatientSpellDelete(raw)
+        return message
+
+    def test_discharge_pid(self):
+        pid = self.results_message.pid
+        self.assertEqual("50099886", pid.hospital_number)
+        self.assertEqual("TOMLINSON", pid.surname)
+        self.assertEqual("ELIZABETH", pid.forename)
+        self.assertEqual(date(1935, 8, 4), pid.date_of_birth)
+        self.assertEqual('F', pid.gender)
+        self.assertEqual('940347', pid.patient_account_number)
 
 
 class InpatientDischargeTestCase(GlossTestCase):
@@ -198,6 +275,7 @@ class InpatientDischargeTestCase(GlossTestCase):
         self.assertEqual('F', pid.gender)
         self.assertEqual('940347', pid.patient_account_number)
 
+
     def test_inpatient_pv1(self):
         message = self.results_message
         self.assertEqual("INPATIENT", message.pv1.episode_type)
@@ -212,13 +290,7 @@ class InpatientDischargeTestCase(GlossTestCase):
         self.assertEqual("F3SR-36", message.pv1.bed_code)
 
     def test_update_with_inpatient_session(self):
-        inpatient_episode = self.create_subrecord_with_id(
-            InpatientEpisode, "50099886"
-        )
-        inpatient_episode.visit_number = "940347"
-        inpatient_episode.datetime_of_admission = datetime(
-            2012, 10, 10, 17, 12
-        )
+        inpatient_episode = self.get_inpatient_admission("50099886", "uclh")
         self.session.add(inpatient_episode)
         message = self.results_message
         message.process_message(self.session)

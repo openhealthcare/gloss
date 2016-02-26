@@ -154,14 +154,14 @@ class PV1(Segment):
         self.room_code = segment[3][0][1][0]
         self.bed_code = segment[3][0][2][0]
         self.datetime_of_admission = datetime.strptime(
-            segment[44][0], DATETIME_FORMAT
+            segment[44][0][:12], DATETIME_FORMAT
         )
 
         self.episode_type = self.EPISODE_TYPES[segment[2][0]]
 
-        if len(segment) > 44 and len(segment[45][0]):
+        if len(segment) > 45 and segment[45] and segment[45][0]:
             self.datetime_of_discharge = datetime.strptime(
-                segment[45][0], DATETIME_FORMAT
+                segment[45][0][:12], DATETIME_FORMAT
             )
 
 
