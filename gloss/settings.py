@@ -2,6 +2,7 @@
 Gloss settings
 """
 import sys
+sys.path.append('.')
 
 if getattr(sys, '_called_from_test', None):
     DATABASE_STRING = 'sqlite:///:memory:'

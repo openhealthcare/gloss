@@ -283,6 +283,7 @@ class WinPathResults(MessageType):
         # We're assuming this will definitely change in the future.
         # This basically only handles the case whereby we simply pass through
         # without hitting the database.
+        logging.error('Hitting Notify for a Winpath Message')
         notification.notify(self.msh.sending_application, models.WinPathMessage(self))
 
 
@@ -309,6 +310,7 @@ class MessageProcessor(object):
 
     def process_message(self, msg):
         message_type = self.get_message_type(msg)
+        logging.error('Processing {0}'.format(message_type))
         if not message_type:
             # not necessarily an error, we ignore messages such
             # as results orders
