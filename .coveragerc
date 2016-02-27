@@ -1,0 +1,4 @@
+[report]
+omit =
+     gloss/tests/*
+     gloss/settings.py

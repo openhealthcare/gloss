@@ -20,6 +20,23 @@ from gloss.models import Session, get_gloss_id, InpatientEpisode
 from gloss.tests.core import GlossTestCase
 
 
+class MessageTypeTestCase(TestCase):
+    def test_pid_segment_nhs_number_single(self):
+        raw = read_message(RESULTS_CANCELLATION_MESSAGE)
+        message = WinPathResults(raw)
+        self.assertEqual('0918111222', message.pid.nhs_number)
+
+    def test_pid_segment_nhs_number_multiple(self):
+        raw = read_message(RESULTS_MESSAGE)
+        message = WinPathResults(raw)
+        self.assertEqual('1234567890', message.pid.nhs_number)
+
+    def test_msh(self):
+        raw = read_message(RESULTS_MESSAGE)
+        message = WinPathResults(raw)
+        self.assertEqual('UCLH', message.msh.sending_facility)
+
+
 class MessageProcessorTestCase(TestCase):
     def test_get_msh_for_message(self):
         msg = read_message(PATIENT_DEATH)
@@ -84,18 +101,6 @@ class MessageProcessorTestCase(TestCase):
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
         assert(result == PatientUpdate)
-
-
-class MessageTypeTestCase(TestCase):
-    def test_pid_segment_nhs_number_single(self):
-        raw = read_message(RESULTS_CANCELLATION_MESSAGE)
-        message = WinPathResults(raw)
-        self.assertEqual('0918111222', message.pid.nhs_number)
-
-    def test_pid_segment_nhs_number_multiple(self):
-        raw = read_message(RESULTS_MESSAGE)
-        message = WinPathResults(raw)
-        self.assertEqual('1234567890', message.pid.nhs_number)
 
 
 class AllergyTestCase(TestCase):
@@ -187,7 +192,7 @@ class InpatientDischargeTestCase(TestCase):
     @property
     def results_message(self):
         raw = read_message(INPATIENT_DISCHARGE)
-        message = InpatientAdmit(raw)
+        message = InpatientDischarge(raw)
         return message
 
     def test_discharge_pid(self):
@@ -211,6 +216,10 @@ class InpatientDischargeTestCase(TestCase):
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed_code)
+
+    def test_evn(self):
+        message = self.results_message
+        self.assertEqual('DISCH', message.evn.event_description)
 
 
 class InpatientCancelDischargeTestCase(TestCase):
@@ -238,6 +247,10 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed_code)
+
+    def test_evn(self):
+        message = self.results_message
+        self.assertEqual('CDIS', message.evn.event_description)
 
 
 class PatientDeathTestCase(TestCase):
