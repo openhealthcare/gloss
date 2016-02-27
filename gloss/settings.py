@@ -8,6 +8,8 @@ if getattr(sys, '_called_from_test'):
 else:
     DATABASE_STRING = 'sqlite:///mllpHandler.db'
 
+PASSTHROUGH_SUBSCRIPTIONS = {}
+
 try:
     from local_settings import *
 except:

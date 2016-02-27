@@ -150,14 +150,28 @@ class PV1(Segment):
     }
 
     def __init__(self, segment):
-        self.ward_code = segment[3][0][0][0]
-        self.room_code = segment[3][0][1][0]
-        self.bed_code = segment[3][0][2][0]
+        try:
+            self.ward_code = segment[3][0][0][0]
+        except IndexError:
+            self.ward_code = None
+        try:
+            self.room_code = segment[3][0][1][0]
+        except IndexError:
+            self.room_code = None
+
+        try:
+            self.bed_code = segment[3][0][2][0]
+        except IndexError:
+            self.bed_code = None
+
         self.datetime_of_admission = datetime.strptime(
             segment[44][0][:12], DATETIME_FORMAT
         )
 
-        self.episode_type = self.EPISODE_TYPES[segment[2][0]]
+        try:
+            self.episode_type = self.EPISODE_TYPES[segment[2][0]]
+        except:
+            self.episode_types = None
 
         if len(segment) > 45 and segment[45] and segment[45][0]:
             self.datetime_of_discharge = datetime.strptime(

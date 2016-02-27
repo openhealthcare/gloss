@@ -14,6 +14,7 @@ from test_messages import (
 )
 
 import gloss
+from gloss import process_message, message_segments
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
     InpatientDischarge, InpatientCancelDischarge,
@@ -26,6 +27,12 @@ from gloss.models import (
     subscribe
 )
 from gloss.tests.core import GlossTestCase
+
+class TestProcessDemographics(GlossTestCase):
+    @patch('gloss.process_message.save_identifier')
+    def test_process(self, save):
+        process_message.process_demographics('PID', None)
+        save.assert_called_once_with('PID', None)
 
 
 class MessageTypeTestCase(TestCase):
@@ -184,6 +191,22 @@ class InpatientTransferTestCase(GlossTestCase):
             result.datetime_of_admission
         )
 
+    def test_process_message_no_episode(self):
+        message = self.results_message
+
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual("T06", result.ward_code)
+        self.assertEqual("T06A", result.room_code)
+        self.assertEqual("T06-04", result.bed_code)
+        self.assertEqual(
+            datetime(2012, 6, 28, 13, 31),
+            result.datetime_of_admission
+        )
+
 
 class InpatientDeleteSpellTestCase(GlossTestCase):
     @property
@@ -207,6 +230,9 @@ class InpatientDeleteSpellTestCase(GlossTestCase):
             datetime(2013, 3, 14, 11, 8),
             evn.recorded_datetime
         )
+
+    def test_pv1(self):
+        self.assertIsInstance(self.results_message.pv1, message_segments.PV1)
 
     def test_process_message(self):
         message = self.results_message
@@ -501,6 +527,12 @@ class WinPathResultsTestCase(TestCase):
         self.assertEqual('STATUS', message.obx[2].test_name)
         self.assertEqual('COMPLETE: 21/08/13', message.obx[2].observation_value)
         self.assertEqual('FINAL', message.obx[2].result_status)
+
+    @patch('gloss.process_message.notification.notify')
+    def test_process_message(self, notify):
+        message = WinPathResults(read_message(URINE_CULTURE_RESULT_MESSAGE))
+        message.process_message(None)
+        self.assertTrue(notify.called)
 
 
 class MessageProcessorTestCase(TestCase):

@@ -182,3 +182,17 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
         return gloss_reference
     else:
         return save_identifier(hospital_number, session, issuing_source="uclh")
+
+
+
+class WinpathMessage(object):
+    """
+    We don't expect this to be a long term strategy.
+    It's a placeholder class to simply pass through
+    winpath stuff to an OPAL instance.
+    """
+    def __init__(self, msg):
+        self.msg = msg
+
+    def to_OPAL(self):
+        return {}

@@ -2,7 +2,9 @@ from gloss.message_segments import *
 from gloss import notification
 import logging
 
-from models import (
+
+from gloss import models
+from gloss.models import (
     session_scope, save_identifier, InpatientEpisode,
     get_or_create_identifier
 )
@@ -103,7 +105,7 @@ class InpatientAdmit(MessageType):
             self.pid, self.pv1, session
         )
         session.add(inpatient_episode)
-        notification.notify("elcid", InpatientEpisode)
+        notification.notify(self.msh.sending_application, InpatientEpisode)
 
 
 class InpatientDischarge(MessageType):
@@ -144,7 +146,7 @@ class InpatientDischarge(MessageType):
             )
             inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
             session.add(inpatient_episode)
-        notification.notify("elcid", InpatientEpisode)
+        notification.notify(self.msh.sending_application, InpatientEpisode)
 
 
 class InpatientTransfer(MessageType):
@@ -187,7 +189,7 @@ class InpatientTransfer(MessageType):
             )
             session.add(inpatient_episode)
 
-        notification.notify("elcid", inpatient_episode)
+        notification.notify(self.msh.sending_application, inpatient_episode)
 
 
 class InpatientSpellDelete(MessageType):
@@ -223,7 +225,7 @@ class InpatientSpellDelete(MessageType):
             inpatient_episode = inpatient_result[0]
             inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
             session.add(inpatient_episode)
-            notification.notify("elcid", inpatient_episode)
+            notification.notify(self.msh.sending_application, inpatient_episode)
 
 
 
@@ -277,7 +279,11 @@ class WinPathResults(MessageType):
     def nte(self):
         return NTE(self.raw_msg.segments("NTE"))
 
-    def process_message(self, session): pass
+    def process_message(self, session):
+        # We're assuming this will definitely change in the future.
+        # This basically only handles the case whereby we simply pass through
+        # without hitting the database.
+        notification.notify(self.msh.sending_application, models.WinpathMessage(self))
 
 
 class MessageProcessor(object):
