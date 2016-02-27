@@ -53,3 +53,15 @@ You can configure Gloss using the file ./gloss/settings.py
 Our load test script will fire 1200 messages at it and calculate the time it took.
 
     python tests/test_messages.py
+
+## Licence
+
+Gloss is released under the GNU Affero GPLv3
+
+## Communications
+
+hello@openhealthcare.org.uk
+
+http://www.openhealthcare.org.uk
+
+https://twitter.com/ohcuk
