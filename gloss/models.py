@@ -1,8 +1,9 @@
 """
 Models for our Gloss Application
 """
-import datetime
 from contextlib import contextmanager
+import datetime
+
 from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy import (
@@ -185,7 +186,7 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
 
 
 
-class WinpathMessage(object):
+class WinPathMessage(object):
     """
     We don't expect this to be a long term strategy.
     It's a placeholder class to simply pass through
@@ -195,4 +196,26 @@ class WinpathMessage(object):
         self.msg = msg
 
     def to_OPAL(self):
-        return {}
+        return dict(
+                identifier=self.msg.pid.hospital_number,
+                data=dict(
+                    lab_number=self.msg.obr.lab_number,
+                    profile_code=self.msg.obr.profile_code,
+                    profile_description=self.msg.obr.profile_description,
+                    request_datetime=self.msg.obr.request_datetime.strftime('%Y/%m/%d %H:%M'),
+                    observation_datetime=self.msg.obr.observation_datetime.strftime('%Y/%m/%d %H:%M'),
+                    last_edited=self.msg.obr.last_edited.strftime('%Y/%m/%d %H:%M'),
+                    result_status=self.msg.obr.result_status,
+                    observations=[
+                        dict(
+                            value_type=obx.value_type,
+                            test_code=obx.test_code,
+                            test_name=obx.test_name,
+                            observation_value=obx.observation_value,
+                            units=obx.units,
+                            reference_range=obx.reference_range,
+                            result_status=obx.result_status
+                        ) for obx in self.msg.obx
+                    ]
+                )
+            )

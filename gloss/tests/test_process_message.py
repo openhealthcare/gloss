@@ -452,6 +452,7 @@ class WinPathResultsTestCase(TestCase):
 
     def test_get_obx_test(self):
         message = self.results_message
+        self.assertEqual('NM', message.obx[0].value_type)
         self.assertEqual('NA', message.obx[0].test_code)
         self.assertEqual('CREA', message.obx[3].test_code)
         self.assertEqual('Sodium', message.obx[0].test_name)

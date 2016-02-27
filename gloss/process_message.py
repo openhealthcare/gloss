@@ -283,7 +283,7 @@ class WinPathResults(MessageType):
         # We're assuming this will definitely change in the future.
         # This basically only handles the case whereby we simply pass through
         # without hitting the database.
-        notification.notify(self.msh.sending_application, models.WinpathMessage(self))
+        notification.notify(self.msh.sending_application, models.WinPathMessage(self))
 
 
 class MessageProcessor(object):

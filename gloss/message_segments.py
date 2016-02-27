@@ -124,6 +124,7 @@ class OBX(Segment):
     }
 
     def __init__(self, segment):
+        self.value_type = segment[2][0]
         self.test_code = segment[3][0][0][0]
         self.test_name = segment[3][0][1][0]
         self.observation_value = segment[5][0]

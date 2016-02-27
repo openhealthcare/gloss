@@ -4,6 +4,8 @@ Unittests for gloss.models
 from mock import patch
 
 from gloss.tests.core import GlossTestCase
+
+from gloss import models
 from ..models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
     is_subscribed, get_gloss_reference, session_scope
@@ -82,3 +84,73 @@ class GetGlossIdTestCase(GlossTestCase):
 
     def test_return_none(self):
         self.assertTrue(get_gloss_reference("2342334", self.session) is None)
+
+
+class WinPathMessageTestCase(GlossTestCase):
+    def test_to_OPAL(self):
+        from gloss import process_message
+        from gloss.tests import test_messages
+        message  = test_messages.read_message(test_messages.RESULTS_MESSAGE)
+        results = process_message.WinPathResults(message)
+
+        as_dict = {
+            'identifier': u'12345678',
+            'data': {
+                'lab_number': u'10U111970',
+                'profile_code': u'ELU',
+                'profile_description': u'RENAL PROFILE',
+                'request_datetime': '2014/01/17 20:45',
+                'observation_datetime': '2014/01/17 17:00',
+                'last_edited': '2014/01/17 22:58',
+                'result_status': 'FINAL',
+                'observations': [
+                    {
+                        'value_type': u'NM',
+                        'test_code': u'NA',
+                        'test_name': u'Sodium',
+                        'observation_value': u'143',
+                        'units': u'mmol/L',
+                        'reference_range': u'135-145',
+                        'result_status': 'FINAL'
+                    },
+                    {
+                        'value_type': u'NM',
+                        'test_code': u'K',
+                        'test_name': u'Potassium',
+                        'observation_value': u'3.9',
+                        'units': u'mmol/L',
+                        'reference_range': u'3.5-5.1',
+                        'result_status': 'FINAL'
+                    },
+                    {
+                        'value_type': u'NM',
+                        'test_code': u'UREA',
+                        'test_name': u'Urea',
+                        'observation_value': u'3.9',
+                        'units': u'mmol/L',
+                        'reference_range': u'1.7-8.3',
+                        'result_status': 'FINAL'
+                    },
+                    {
+                        'value_type': u'NM',
+                        'test_code': u'CREA',
+                        'test_name': u'Creatinine',
+                        'observation_value': u'61',
+                        'units': u'umol/L',
+                        'reference_range': u'49-92',
+                        'result_status': 'FINAL'
+                    },
+                    {
+                        'value_type': u'NM',
+                        'test_code': u'GFR',
+                        'test_name': u'Estimated GFR',
+                        'observation_value': u'>90',
+                        'units': u'.',
+                        'reference_range': u'',
+                        'result_status': 'FINAL'
+                    }
+                ]
+            }
+        }
+        expected = as_dict
+        self.assertEqual(expected, models.WinPathMessage(results).to_OPAL())
