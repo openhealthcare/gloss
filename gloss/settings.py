@@ -1,7 +1,14 @@
-from sqlalchemy import create_engine
+"""
+Gloss settings
+"""
 import sys
 
 if getattr(sys, '_called_from_test'):
-    engine = create_engine('sqlite:///:memory:')
+    DATABASE_STRING = 'sqlite:///:memory:'
 else:
-    engine = create_engine('sqlite:///mllpHandler.db')
+    DATABASE_STRING = 'sqlite:///mllpHandler.db'
+
+try:
+    from local_settings import *
+except:
+    pass

@@ -1,3 +1,6 @@
+"""
+Models for our Gloss Application
+"""
 import datetime
 from contextlib import contextmanager
 
@@ -7,7 +10,11 @@ from sqlalchemy import (
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
-from settings import engine
+from sqlalchemy import create_engine
+
+from gloss.settings import DATABASE_STRING
+
+engine = create_engine(DATABASE_STRING)
 
 
 def get_plural_name(cls):
