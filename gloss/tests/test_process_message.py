@@ -249,14 +249,38 @@ class InpatientDeleteSpellTestCase(GlossTestCase):
         message = InpatientSpellDelete(raw)
         return message
 
-    def test_discharge_pid(self):
+    def test_pid(self):
         pid = self.results_message.pid
-        self.assertEqual("50099886", pid.hospital_number)
-        self.assertEqual("TOMLINSON", pid.surname)
-        self.assertEqual("ELIZABETH", pid.forename)
-        self.assertEqual(date(1935, 8, 4), pid.date_of_birth)
-        self.assertEqual('F', pid.gender)
-        self.assertEqual('940347', pid.patient_account_number)
+        self.assertEqual("40716752", pid.hospital_number)
+        self.assertEqual("WALKER", pid.surname)
+        self.assertEqual("DARREN", pid.forename)
+        self.assertEqual(date(1986, 3, 2), pid.date_of_birth)
+        self.assertEqual('M', pid.gender)
+        self.assertEqual('4449234', pid.patient_account_number)
+
+    def test_evn(self):
+        evn = self.results_message.evn
+        self.assertEqual(
+            datetime(2013, 3, 14, 11, 8),
+            evn.recorded_datetime
+        )
+
+    def test_process_message(self):
+        message = self.results_message
+        inpatient_episode = self.get_inpatient_admission("40716752", "uclh")
+        inpatient_episode.visit_number = "4449234"
+        self.session.add(inpatient_episode)
+
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            datetime(2013, 3, 14, 11, 8),
+            result.datetime_of_deletion
+        )
+
 
 
 class InpatientDischargeTestCase(GlossTestCase):
@@ -274,6 +298,19 @@ class InpatientDischargeTestCase(GlossTestCase):
         self.assertEqual(date(1935, 8, 4), pid.date_of_birth)
         self.assertEqual('F', pid.gender)
         self.assertEqual('940347', pid.patient_account_number)
+
+    def test_inpatient_pv1(self):
+        message = self.results_message
+        self.assertEqual("INPATIENT", message.pv1.episode_type)
+        self.assertEqual(
+            datetime(2015, 11, 18, 12, 17), message.pv1.datetime_of_admission
+        )
+        self.assertEqual(
+            datetime(2015, 11, 18, 16, 15), message.pv1.datetime_of_discharge
+        )
+        self.assertEqual("F3NU", message.pv1.ward_code)
+        self.assertEqual("F3SR", message.pv1.room_code)
+        self.assertEqual("F3SR-36", message.pv1.bed_code)
 
 
     def test_inpatient_pv1(self):
@@ -319,10 +356,11 @@ class InpatientDischargeTestCase(GlossTestCase):
         self.session.add(inpatient_episode)
         message = self.results_message
         message.process_message(self.session)
-        result = self.session.query(InpatientEpisode).all()
-        self.assertEqual(len(result), 1)
+        result = self.session.query(InpatientEpisode).filter(
+            InpatientEpisode.visit_number == "1231223"
+        ).one()
         self.assertEqual(
-            result[0].datetime_of_discharge, None
+            result.datetime_of_discharge, None
         )
 
 

@@ -80,6 +80,7 @@ class Patient(Base, GlossSubrecord):
 class InpatientEpisode(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
+    datetime_of_deletion = Column(DateTime)
     ward_code = Column(String(250))
     room_code = Column(String(250))
     bed_code = Column(String(250))
@@ -166,3 +167,11 @@ def save_identifier(hospital_number, session, issuing_source="uclh"):
     )
     session.add(hospital_identifier)
     return glossolalia_reference
+
+def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
+    gloss_reference = get_gloss_reference(hospital_number, session, issuing_source="uclh")
+
+    if gloss_reference:
+        return gloss_reference
+    else:
+        return save_identifier(hospital_number, session, issuing_source="uclh")
