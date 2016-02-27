@@ -1,5 +1,8 @@
+"""
+Unittests for gloss.process_message
+"""
 from unittest import TestCase
-from mock import patch
+from mock import patch, MagicMock
 
 from datetime import date, datetime
 from test_messages import (
@@ -10,6 +13,7 @@ from test_messages import (
     PATIENT_UPDATE,
 )
 
+import gloss
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
     InpatientDischarge, InpatientCancelDischarge,
@@ -35,72 +39,6 @@ class MessageTypeTestCase(TestCase):
         raw = read_message(RESULTS_MESSAGE)
         message = WinPathResults(raw)
         self.assertEqual('UCLH', message.msh.sending_facility)
-
-
-class MessageProcessorTestCase(TestCase):
-    def test_get_msh_for_message(self):
-        msg = read_message(PATIENT_DEATH)
-        message_processor = MessageProcessor()
-        msh = message_processor.get_msh_for_message(msg)
-        self.assertEqual(msh.trigger_event, "A31")
-        self.assertEqual(msh.message_type, "ADT")
-        self.assertEqual(msh.sending_application, "CARECAST")
-        self.assertEqual(msh.sending_facility, "UCLH")
-
-
-    def test_inpatient_admission(self):
-        msg = read_message(INPATIENT_ADMISSION)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientAdmit)
-
-    def test_winpath_results(self):
-        msg = read_message(RESULTS_MESSAGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == WinPathResults)
-
-    def test_inpatient_discharge(self):
-        msg = read_message(INPATIENT_DISCHARGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientDischarge)
-
-    def test_cancel_inpatient_discharge(self):
-        msg = read_message(INPATIENT_CANCEL_DISCHARGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientCancelDischarge)
-
-    def test_inpatient_allergy(self):
-        msg = read_message(ALLERGY)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == Allergy)
-
-    def test_inpatient_no_allergy(self):
-        msg = read_message(NO_ALLERGY)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == Allergy)
-
-    def test_patient_merge(self):
-        msg = read_message(PATIENT_MERGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == PatientMerge)
-
-    def test_patient_death(self):
-        msg = read_message(PATIENT_DEATH)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == PatientUpdate)
-
-    def test_patient_update(self):
-        msg = read_message(PATIENT_UPDATE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == PatientUpdate)
 
 
 class AllergyTestCase(TestCase):
@@ -133,6 +71,12 @@ class AllergyTestCase(TestCase):
         self.assertEqual(u'Active', message.al1.status_description)
         self.assertEqual(datetime(2015, 11, 19, 9, 16), message.al1.diagnosis_datetime)
         self.assertEqual(datetime(2015, 11, 19, 12, 00), message.al1.allergy_start_datetime)
+
+    def test_allergies_no_al1(self):
+        message = Allergy(read_message(NO_ALLERGY))
+        # This is testing our suppression of the exception thrown by the underlying
+        # HL7 library more than anything else.
+        self.assertEqual(None, message.al1)
 
 
 class InpatientAdmitTestCase(GlossTestCase):
@@ -412,3 +356,77 @@ class WinPathResultsTestCase(TestCase):
         self.assertEqual('STATUS', message.obx[2].test_name)
         self.assertEqual('COMPLETE: 21/08/13', message.obx[2].observation_value)
         self.assertEqual('FINAL', message.obx[2].result_status)
+
+
+class MessageProcessorTestCase(TestCase):
+    def test_get_msh_for_message(self):
+        msg = read_message(PATIENT_DEATH)
+        message_processor = MessageProcessor()
+        msh = message_processor.get_msh_for_message(msg)
+        self.assertEqual(msh.trigger_event, "A31")
+        self.assertEqual(msh.message_type, "ADT")
+        self.assertEqual(msh.sending_application, "CARECAST")
+        self.assertEqual(msh.sending_facility, "UCLH")
+
+    def test_inpatient_admission(self):
+        msg = read_message(INPATIENT_ADMISSION)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientAdmit)
+
+    def test_winpath_results(self):
+        msg = read_message(RESULTS_MESSAGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == WinPathResults)
+
+    def test_inpatient_discharge(self):
+        msg = read_message(INPATIENT_DISCHARGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientDischarge)
+
+    def test_cancel_inpatient_discharge(self):
+        msg = read_message(INPATIENT_CANCEL_DISCHARGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientCancelDischarge)
+
+    def test_inpatient_allergy(self):
+        msg = read_message(ALLERGY)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == Allergy)
+
+    def test_inpatient_no_allergy(self):
+        msg = read_message(NO_ALLERGY)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == Allergy)
+
+    def test_patient_merge(self):
+        msg = read_message(PATIENT_MERGE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == PatientMerge)
+
+    def test_patient_death(self):
+        msg = read_message(PATIENT_DEATH)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == PatientUpdate)
+
+    def test_patient_update(self):
+        msg = read_message(PATIENT_UPDATE)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == PatientUpdate)
+
+    def test_process_message_no_message_type(self):
+        msg = MagicMock(name='mock_message')
+        processor = MessageProcessor()
+        with patch.object(gloss.process_message.logging, 'info') as info:
+            with patch.object(processor,'get_message_type') as getter:
+                getter.return_value = None
+                processor.process_message(msg)
+                info.assert_called_once_with('unable to find message type for None')

@@ -14,3 +14,6 @@ class TestOhcReceiverTestCase(TestCase):
         msh = MSH(hl7.parse(ack).segment("MSH"))
         self.assertEqual(msh.sending_application, "ELCID")
         self.assertEqual(msh.sending_facility, "UCLH")
+
+    def test_get_codec(self):
+        self.assertEqual('cp1252', OhcReceiver().getCodec())

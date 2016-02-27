@@ -197,9 +197,7 @@ class WinPathResults(MessageType):
     def nte(self):
         return NTE(self.raw_msg.segments("NTE"))
 
-    def process_message(self, session):
-        logging.debug('Processing WinPath Results Message')
-        pass
+    def process_message(self, session): pass
 
 
 class MessageProcessor(object):
@@ -231,4 +229,5 @@ class MessageProcessor(object):
             logging.info(
                 "unable to find message type for {}".format(message_type)
             )
+            return
         message_type(msg).process()
