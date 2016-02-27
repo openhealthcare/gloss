@@ -1,12 +1,20 @@
 from gloss.message_segments import *
+from gloss import notification
 import logging
 
-from models import session_scope, get_gloss_id, save_identifier, InpatientEpisode
+from models import (
+    session_scope, save_identifier, InpatientEpisode,
+    get_or_create_identifier
+)
 
 
-def get_inpatient_episode(gloss_id, pid, pv1):
+def get_inpatient_episode(pid, pv1, session):
+    gloss_reference = get_or_create_identifier(
+        pid.hospital_number, session, issuing_source="uclh"
+    )
+
     return InpatientEpisode(
-        gloss_reference_id=gloss_id,
+        gloss_reference=gloss_reference,
         datetime_of_admission=pv1.datetime_of_admission,
         datetime_of_discharge=pv1.datetime_of_admission,
         ward_code=pv1.ward_code,
@@ -20,8 +28,8 @@ def process_demographics(pid, session):
     """ saves a gloss id to hospital number and then goes and fetches demogrphics
     """
     # save a reference to the pid and the hospital id in the db, then go fetch demographics
-    save_identifier(pid, session)
     fetch_demographics(pid)
+    return save_identifier(pid, session)
 
 
 # stubbed method that will make the async call to the demographics query
@@ -91,14 +99,11 @@ class InpatientAdmit(MessageType):
         return PV1(self.raw_msg.segment("PV1"))
 
     def process_message(self, session):
-        hospital_number = self.pid.hospital_number
-        gloss_id = get_gloss_id(hospital_number, session=session)
-
-        if gloss_id is None:
-            gloss_id = process_demographics(self.pid.hospital_number, session)
-
-        inpatient_episode = get_inpatient_episode(gloss_id, self.pid, self.pv1)
+        inpatient_episode = get_inpatient_episode(
+            self.pid, self.pv1, session
+        )
         session.add(inpatient_episode)
+        notification.notify("elcid", InpatientEpisode)
 
 
 class InpatientDischarge(MessageType):
@@ -117,6 +122,30 @@ class InpatientDischarge(MessageType):
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
 
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_result = query.one_or_none()
+
+        if inpatient_result:
+            inpatient_episode = inpatient_result[0]
+            inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
+            session.add(inpatient_episode)
+        else:
+            inpatient_episode = get_inpatient_episode(
+                self.pid, self.pv1, session
+            )
+            inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
+            session.add(inpatient_episode)
+        notification.notify("elcid", InpatientEpisode)
+
 
 class InpatientTransfer(MessageType):
     # currently untested and incomplete
@@ -124,27 +153,78 @@ class InpatientTransfer(MessageType):
     message_type = "ADT"
     trigger_event = "A02"
 
+    @property
+    def pid(self):
+        return InpatientPID(self.raw_msg.segment("PID"))
+
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
+
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_result = query.one_or_none()
+
+        if inpatient_result:
+            inpatient_episode = inpatient_result[0]
+            inpatient_episode.ward_code = self.pv1.ward_code
+            inpatient_episode.room_code = self.pv1.room_code
+            inpatient_episode.bed_code = self.pv1.bed_code
+            session.add(inpatient_episode)
+        else:
+            # we should always have an inpatient result, but lets
+            # be resiliant and save it just in case
+            inpatient_episode = get_inpatient_episode(
+                self.pid, self.pv1, session
+            )
+            session.add(inpatient_episode)
+
+        notification.notify("elcid", inpatient_episode)
+
 
 class InpatientSpellDelete(MessageType):
-    # currently untested and incomplete
-    # pending us being given an example message
     message_type = "ADT"
     trigger_event = "A07"
 
-    # We know it will have these segments, but we can't
-    # really test them yet - see above.
+    @property
+    def pid(self):
+        return InpatientPID(self.raw_msg.segment("PID"))
 
-    # @property
-    # def pid(self):
-    #     return InpatientPID(self.raw_msg.segment("PID"))
+    @property
+    def evn(self):
+        return EVN(self.raw_msg.segment("EVN"))
 
-    # @property
-    # def evn(self):
-    #     return EVN(self.raw_msg.segment("EVN"))
+    @property
+    def pv1(self):
+        return PV1(self.raw_msg.segment("PV1"))
 
-    # @property
-    # def pv1(self):
-    #     return PV1(self.raw_msg.segment("PV1"))
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_result = query.one_or_none()
+        if inpatient_result:
+            # I think what we actually want to do is store a deleted field
+            # that way we can pass the object nicely down stream
+            inpatient_episode = inpatient_result[0]
+            inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
+            session.add(inpatient_episode)
+            notification.notify("elcid", inpatient_episode)
+
 
 
 class InpatientCancelDischarge(MessageType):
