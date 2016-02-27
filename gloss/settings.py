@@ -3,7 +3,7 @@ Gloss settings
 """
 import sys
 
-if getattr(sys, '_called_from_test'):
+if getattr(sys, '_called_from_test', None):
     DATABASE_STRING = 'sqlite:///:memory:'
 else:
     DATABASE_STRING = 'sqlite:///mllpHandler.db'

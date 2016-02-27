@@ -26,7 +26,7 @@ You will also need the python dependencies:
 
 To run the server locally
 
-    twistd --nodaemon mllp --receiver ohc_receiver.OhcReceiver
+    twistd --nodaemon mllp --receiver gloss.ohc_receiver.OhcReceiver
 
 ## How Does Gloss work?
 
