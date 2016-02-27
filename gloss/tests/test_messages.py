@@ -174,11 +174,11 @@ HOST = "localhost"
 PORT = 2575
 
 
-def send_messages():
+def send_messages(messages):
     start_time = time.time()
     with MLLPClient(HOST, PORT) as client:
         for i in xrange(400):
-            for message in MESSAGES:
+            for message in messages:
                 ack = client.send_message(message)
                 print ack
 
@@ -194,4 +194,4 @@ def test_message_read():
 
 
 if __name__ == "__main__":
-    send_messages()
+    send_messages(MESSAGES)
