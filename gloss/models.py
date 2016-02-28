@@ -50,7 +50,7 @@ class GlossSubrecord(object):
 
     @classmethod
     def query_from_identifier(cls, identifier, issuing_source, session):
-        return session.query(cls, GlossolaliaReference, PatientIdentifier).\
+        return session.query(cls).\
         filter(cls.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.issuing_source == issuing_source).\
