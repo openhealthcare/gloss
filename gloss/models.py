@@ -3,6 +3,7 @@ Models for our Gloss Application
 """
 from contextlib import contextmanager
 import datetime
+import json
 
 from sqlalchemy.orm import sessionmaker
 
@@ -206,7 +207,7 @@ class WinPathMessage(object):
                     observation_datetime=self.msg.obr.observation_datetime.strftime('%Y/%m/%d %H:%M'),
                     last_edited=self.msg.obr.last_edited.strftime('%Y/%m/%d %H:%M'),
                     result_status=self.msg.obr.result_status,
-                    observations=[
+                    observations=json.dumps([
                         dict(
                             value_type=obx.value_type,
                             test_code=obx.test_code,
@@ -216,6 +217,6 @@ class WinPathMessage(object):
                             reference_range=obx.reference_range,
                             result_status=obx.result_status
                         ) for obx in self.msg.obx
-                    ]
+                    ])
                 )
             )
