@@ -1,10 +1,10 @@
 from unittest import TestCase
 from gloss.models import (
     engine, GlossolaliaReference, PatientIdentifier, InpatientEpisode,
-    Subscription
+    Subscription, Patient, Allergy
 )
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, date
 
 
 class GlossTestCase(TestCase):
@@ -46,7 +46,23 @@ class GlossTestCase(TestCase):
         inpatient_episode.datetime_of_admission = datetime(
             2012, 10, 10, 17, 12
         )
-        inpatient_episode.ward_code="F3NU"
-        inpatient_episode.room_code="F3SR"
-        inpatient_episode.bed_code="F3SR-36"
+        inpatient_episode.ward_code = "F3NU"
+        inpatient_episode.room_code = "F3SR"
+        inpatient_episode.bed_code = "F3SR-36"
         return inpatient_episode
+
+    def get_allergy(self, identifier, issuing_source):
+        allergy = self.create_subrecord_with_id(
+            Allergy, identifier, issuing_source
+        )
+        allergy.name = "penicillin"
+        return allergy
+
+    def create_patient(self, identifier, issuing_source):
+        patient = self.create_subrecord_with_id(
+            Patient, identifier, issuing_source
+        )
+        patient.first_name = "Jane"
+        patient.surname = "Smith"
+        patient.tite = "Ms"
+        patient.date_of_birth = date(1983, 12, 12)

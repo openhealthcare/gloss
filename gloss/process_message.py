@@ -4,7 +4,8 @@ import logging
 
 from models import (
     session_scope, save_identifier, InpatientEpisode,
-    get_or_create_identifier
+    get_or_create_identifier, PatientIdentifier, get_gloss_reference,
+    Allergy
 )
 
 
@@ -71,6 +72,21 @@ class PatientMerge(MessageType):
     def mrg(self):
         return MRG(self.raw_msg.segment("MRG"))
 
+    def process_message(self, session):
+        # find the identifier, mark it as inactive, send
+        # send it downstream to deal with if it exists
+        patient_identifier = PatientIdentifier.query_from_identifier(
+            self.mrg.duplicate_hospital_number,
+            issuing_source="uclh",
+            session=session
+        ).one_or_none()
+
+        if patient_identifier:
+            patient_identifier.merged_into_identifier = self.pid.hospital_number
+            patient_identifier.active = False
+            session.add(patient_identifier)
+            notification.notify("elcid", patient_identifier)
+
 
 class PatientUpdate(MessageType):
     message_type = u"ADT"
@@ -80,6 +96,17 @@ class PatientUpdate(MessageType):
     @property
     def pid(self):
         return InpatientPID(self.raw_msg.segment("PID"))
+
+    def process_message(self, session):
+        # if we have no gloss reference we won't be interested
+        # if we are, punt the gloss reference down stream
+        # and go and fetch the details
+        gloss_reference = get_gloss_reference(
+            self.pid.hospital_number, session, "uclh"
+        )
+
+        if gloss_reference:
+            notification.notify("elcid", gloss_reference)
 
 
 class InpatientAdmit(MessageType):
@@ -103,7 +130,7 @@ class InpatientAdmit(MessageType):
             self.pid, self.pv1, session
         )
         session.add(inpatient_episode)
-        notification.notify("elcid", InpatientEpisode)
+        notification.notify("elcid", inpatient_episode)
 
 
 class InpatientDischarge(MessageType):
@@ -260,8 +287,7 @@ class InpatientCancelDischarge(MessageType):
         notification.notify("elcid", inpatient_episode)
 
 
-
-class Allergy(MessageType):
+class AllergyMessage(MessageType):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
@@ -276,6 +302,30 @@ class Allergy(MessageType):
             return AL1(self.raw_msg.segment("AL1"))
         except KeyError:
             return None
+
+    def process_message(self, session):
+        allergies = Allergy.query_from_identifier(
+            self.pid.hospital_number,
+            "uclh",
+            session
+        ).all()
+
+        for allergy in allergies:
+            session.delete(allergy)
+
+        gloss_ref = get_or_create_identifier(
+            self.pid.hospital_number,
+            session,
+            issuing_source="uclh"
+        )
+        if self.al1:
+            # we need to handle allergies which we are not doing
+            Allergy(
+                name=self.al1.allergy_reference_name,
+                gloss_reference=gloss_ref
+            )
+
+        notification.notify("elcid", Allergy)
 
 
 class WinPathResults(MessageType):
