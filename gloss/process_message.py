@@ -32,10 +32,10 @@ def process_demographics(pid, session):
     return save_identifier(pid, session)
 
 
-def fetch_demographics(pid):
-    # stubbed method that will make the async call to the demographics query
-    # service
-    pass
+# stubbed method that will make the async call to the demographics query
+# service
+def fetch_demographics(pid): pass
+
 
 
 class MessageType(object):
@@ -132,10 +132,9 @@ class InpatientDischarge(MessageType):
         query = query.filter(
             InpatientEpisode.visit_number == self.pid.patient_account_number
         )
-        inpatient_result = query.one_or_none()
+        inpatient_episode = query.one_or_none()
 
-        if inpatient_result:
-            inpatient_episode = inpatient_result[0]
+        if inpatient_episode:
             inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
             session.add(inpatient_episode)
         else:
@@ -171,10 +170,9 @@ class InpatientTransfer(MessageType):
         query = query.filter(
             InpatientEpisode.visit_number == self.pid.patient_account_number
         )
-        inpatient_result = query.one_or_none()
+        inpatient_episode = query.one_or_none()
 
-        if inpatient_result:
-            inpatient_episode = inpatient_result[0]
+        if inpatient_episode:
             inpatient_episode.ward_code = self.pv1.ward_code
             inpatient_episode.room_code = self.pv1.room_code
             inpatient_episode.bed_code = self.pv1.bed_code
@@ -194,6 +192,9 @@ class InpatientSpellDelete(MessageType):
     message_type = "ADT"
     trigger_event = "A07"
 
+    # We know it will have these segments, but we can't
+    # really test them yet - see above.
+
     @property
     def pid(self):
         return InpatientPID(self.raw_msg.segment("PID"))
@@ -212,11 +213,10 @@ class InpatientSpellDelete(MessageType):
         query = query.filter(
             InpatientEpisode.visit_number == self.pid.patient_account_number
         )
-        inpatient_result = query.one_or_none()
-        if inpatient_result:
+        inpatient_episode = query.one_or_none()
+        if inpatient_episode:
             # I think what we actually want to do is store a deleted field
             # that way we can pass the object nicely down stream
-            inpatient_episode = inpatient_result[0]
             inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
             session.add(inpatient_episode)
             notification.notify("elcid", inpatient_episode)
@@ -231,12 +231,34 @@ class InpatientCancelDischarge(MessageType):
         return InpatientPID(self.raw_msg.segment("PID"))
 
     @property
-    def evn(self):
-        return EVN(self.raw_msg.segment("EVN"))
-
-    @property
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
+
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_episode = query.one_or_none()
+
+        if inpatient_episode:
+            inpatient_episode.datetime_of_discharge = None
+            session.add(inpatient_episode)
+        else:
+            # we should always have an inpatient result, but lets
+            # be resiliant and save it just in case
+            inpatient_episode = get_inpatient_episode(
+                self.pid, self.pv1, session
+            )
+            session.add(inpatient_episode)
+
+        notification.notify("elcid", inpatient_episode)
+
 
 
 class Allergy(MessageType):
@@ -272,9 +294,7 @@ class WinPathResults(MessageType):
     def nte(self):
         return NTE(self.raw_msg.segments("NTE"))
 
-    def process_message(self, session):
-        logging.debug('Processing WinPath Results Message')
-        pass
+    def process_message(self, session): pass
 
 
 class MessageProcessor(object):
@@ -306,4 +326,5 @@ class MessageProcessor(object):
             logging.info(
                 "unable to find message type for {}".format(message_type)
             )
+            return
         message_type(msg).process()
