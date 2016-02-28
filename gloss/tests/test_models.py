@@ -1,6 +1,7 @@
 """
 Unittests for gloss.models
 """
+import json
 from mock import patch
 
 from gloss.tests.core import GlossTestCase
@@ -94,8 +95,6 @@ class WinPathMessageTestCase(GlossTestCase):
         results = process_message.WinPathResults(message)
 
         as_dict = {
-            'identifier': u'12345678',
-            'data': {
                 'lab_number': u'10U111970',
                 'profile_code': u'ELU',
                 'profile_description': u'RENAL PROFILE',
@@ -151,6 +150,9 @@ class WinPathMessageTestCase(GlossTestCase):
                     }
                 ]
             }
-        }
-        expected = as_dict
-        self.assertEqual(expected, models.WinPathMessage(results).to_OPAL())
+
+        result = models.WinPathMessage(results).to_OPAL()
+        obs = result['data'].pop('observations')
+        self.assertEqual(as_dict['observations'], json.loads(obs))
+        for k in result['data']:
+            self.assertEqual(as_dict[k], result['data'][k])
