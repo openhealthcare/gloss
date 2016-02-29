@@ -8,7 +8,7 @@ import json
 from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Date, Boolean, ForeignKey
+    Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text
 )
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
@@ -107,11 +107,34 @@ class Subscription(Base, GlossSubrecord):
     system = Column(String(250))
     active = Column(Boolean, default=True)
 
+
 class Allergy(Base, GlossSubrecord):
     # ask the docs which fields they'd want
     # for the moment, lets just save allergy reference name
-    name = Column(String(250))
+    allergy_type = Column(String(250))
+    allergy_type_description = Column(String(250))
+    certainty_id = Column(String(250))
+    certainty_description = Column(String(250))
+    allergy_reference_name = Column(String(250))
+    allergy_description = Column(String(250))
+    allergen_reference_system = Column(String(250))
+    allergen_reference = Column(String(250))
+    status_id = Column(String(250))
+    status_description = Column(String(250))
+    diagnosis_datetime = Column(DateTime)
+    allergy_start_datetime = Column(DateTime)
+    no_allergies = Column(Boolean)
 
+class Result(Base, GlossSubrecord):
+    value_type = Column(String(250))
+    test_code = Column(String(250))
+    test_name = Column(String(250))
+    observation_value = Column(String(250))
+    units = Column(String(250))
+    reference_range = Column(String(250))
+    result_status = Column(String(250))
+    comments = Column(Text)
+    observation_datetime = Column(DateTime)
 
 class GlossolaliaReference(Base):
     pass
@@ -222,7 +245,7 @@ class WinPathMessage(object):
                             units=obx.units,
                             reference_range=obx.reference_range,
                             result_status=obx.result_status
-                        ) for obx in self.msg.obx
+                        ) for obx in self.msg.obxs
                     ])
                 )
             )

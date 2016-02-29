@@ -24,7 +24,7 @@ from gloss.process_message import (
 
 from gloss.models import (
     get_gloss_reference, InpatientEpisode, Allergy,
-    subscribe, Patient, PatientIdentifier
+    subscribe, Patient, PatientIdentifier, Result
 )
 from gloss.tests.core import GlossTestCase
 
@@ -91,20 +91,37 @@ class AllergyTestCase(GlossTestCase):
 
     def test_process_message(self):
         message = self.results_message
-        message.process_message(self.session)
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
         allergy = Allergy.query_from_identifier(
             "97995111", "uclh", self.session
         ).one()
-        self.assertEqual('CO-CODAMOL (Generic Manuf)', allergy.name)
-        pass
+        self.assertEqual('1', allergy.allergy_type)
+        self.assertEqual('Product Allergy', allergy.allergy_type_description)
+        self.assertEqual('CERT-1', allergy.certainty_id)
+        self.assertEqual('Definite', allergy.certainty_description)
+        self.assertEqual('CO-CODAMOL (Generic Manuf)', allergy.allergy_reference_name)
+        self.assertEqual('CO-CODAMOL (Generic Manuf) : ', allergy.allergy_description)
+        self.assertEqual(u'UDM', allergy.allergen_reference_system)
+        self.assertEqual('8f75c6d8-45b7-4b40-913f-8ca1f59b5350', allergy.allergen_reference)
+        self.assertEqual(u'1', allergy.status_id)
+        self.assertEqual(u'Active', allergy.status_description)
+        self.assertEqual(datetime(2015, 11, 19, 9, 16), allergy.diagnosis_datetime)
+        self.assertEqual(datetime(2015, 11, 19, 12, 00), allergy.allergy_start_datetime)
+        self.assertFalse(allergy.no_allergies)
 
     def test_process_message_no_allergies(self):
         allergy = self.get_allergy("97995000", "uclh")
         self.session.add(allergy)
         message = AllergyMessage(read_message(NO_ALLERGY))
-        message.process_message(self.session)
-        allergy_count = self.session.query(Allergy).count()
-        self.assertEqual(0, allergy_count)
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+        allergy = Allergy.query_from_identifier(
+            "97995000", "uclh", self.session
+        ).one()
+        self.assertTrue(allergy.no_allergies)
 
 
 class InpatientAdmitTestCase(GlossTestCase):
@@ -225,47 +242,6 @@ class InpatientTransferTestCase(GlossTestCase):
         )
 
 
-class InpatientDeleteSpellTestCase(GlossTestCase):
-    @property
-    def results_message(self):
-        raw = read_message(INPATIENT_SPELL_DELETE)
-        message = InpatientSpellDelete(raw)
-        return message
-
-    def test_pid(self):
-        pid = self.results_message.pid
-        self.assertEqual("40716752", pid.hospital_number)
-        self.assertEqual("WALKER", pid.surname)
-        self.assertEqual("DARREN", pid.forename)
-        self.assertEqual(date(1986, 3, 2), pid.date_of_birth)
-        self.assertEqual('M', pid.gender)
-        self.assertEqual('4449234', pid.patient_account_number)
-
-    def test_evn(self):
-        evn = self.results_message.evn
-        self.assertEqual(
-            datetime(2013, 3, 14, 11, 8),
-            evn.recorded_datetime
-        )
-
-    def test_process_message(self):
-        message = self.results_message
-        inpatient_episode = self.get_inpatient_admission("40716752", "uclh")
-        inpatient_episode.visit_number = "4449234"
-        self.session.add(inpatient_episode)
-
-        with patch("gloss.notification.notify") as n:
-            message.process_message(self.session)
-            self.assertTrue(n.called)
-
-        result = self.session.query(InpatientEpisode).one()
-        self.assertEqual(
-            datetime(2013, 3, 14, 11, 8),
-            result.datetime_of_deletion
-        )
-
-
-
 class InpatientDischargeTestCase(GlossTestCase):
     @property
     def results_message(self):
@@ -294,11 +270,6 @@ class InpatientDischargeTestCase(GlossTestCase):
         self.assertEqual("F3NU", message.pv1.ward_code)
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed_code)
-
-    def test_evn(self):
-        message = self.results_message
-        self.assertEqual('DISCH', message.evn.event_description)
-
 
     def test_inpatient_pv1(self):
         message = self.results_message
@@ -401,6 +372,46 @@ class InpatientCancelDischargeTestCase(GlossTestCase):
         )
 
 
+class InpatientDeleteSpellTestCase(GlossTestCase):
+    @property
+    def results_message(self):
+        raw = read_message(INPATIENT_SPELL_DELETE)
+        message = InpatientSpellDelete(raw)
+        return message
+
+    def test_pid(self):
+        pid = self.results_message.pid
+        self.assertEqual("40716752", pid.hospital_number)
+        self.assertEqual("WALKER", pid.surname)
+        self.assertEqual("DARREN", pid.forename)
+        self.assertEqual(date(1986, 3, 2), pid.date_of_birth)
+        self.assertEqual('M', pid.gender)
+        self.assertEqual('4449234', pid.patient_account_number)
+
+    def test_evn(self):
+        evn = self.results_message.evn
+        self.assertEqual(
+            datetime(2013, 3, 14, 11, 8),
+            evn.recorded_datetime
+        )
+
+    def test_process_message(self):
+        message = self.results_message
+        inpatient_episode = self.get_inpatient_admission("40716752", "uclh")
+        inpatient_episode.visit_number = "4449234"
+        self.session.add(inpatient_episode)
+
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            datetime(2013, 3, 14, 11, 8),
+            result.datetime_of_deletion
+        )
+
+
 class PatientDeathTestCase(GlossTestCase):
     @property
     def results_message(self):
@@ -493,7 +504,7 @@ class PatientUpdateTestCase(TestCase):
         self.assertEqual(date(2014, 11, 1), message.pid.date_of_death)
 
 
-class WinPathResultsTestCase(TestCase):
+class WinPathResultsTestCase(GlossTestCase):
 
     @property
     def results_message(self):
@@ -521,34 +532,34 @@ class WinPathResultsTestCase(TestCase):
 
     def test_get_obx_test(self):
         message = self.results_message
-        self.assertEqual('NM', message.obx[0].value_type)
-        self.assertEqual('NA', message.obx[0].test_code)
-        self.assertEqual('CREA', message.obx[3].test_code)
-        self.assertEqual('Sodium', message.obx[0].test_name)
-        self.assertEqual('Creatinine', message.obx[3].test_name)
+        self.assertEqual('NM', message.obxs[0].value_type)
+        self.assertEqual('NA', message.obxs[0].test_code)
+        self.assertEqual('CREA', message.obxs[3].test_code)
+        self.assertEqual('Sodium', message.obxs[0].test_name)
+        self.assertEqual('Creatinine', message.obxs[3].test_name)
 
     def test_get_obx_observation(self):
         message = self.results_message
-        self.assertEqual('143', message.obx[0].observation_value)
-        self.assertEqual('mmol/L', message.obx[0].units)
-        self.assertEqual('135-145', message.obx[0].reference_range)
+        self.assertEqual('143', message.obxs[0].observation_value)
+        self.assertEqual('mmol/L', message.obxs[0].units)
+        self.assertEqual('135-145', message.obxs[0].reference_range)
 
-        self.assertEqual('61', message.obx[3].observation_value)
-        self.assertEqual('umol/L', message.obx[3].units)
-        self.assertEqual('49-92', message.obx[3].reference_range)
+        self.assertEqual('61', message.obxs[3].observation_value)
+        self.assertEqual('umol/L', message.obxs[3].units)
+        self.assertEqual('49-92', message.obxs[3].reference_range)
 
     def test_get_obx_result_status(self):
         message = self.results_message
-        self.assertEqual('FINAL', message.obx[0].result_status)
+        self.assertEqual('FINAL', message.obxs[0].result_status)
 
     def test_get_nte_note(self):
-        note = "\n".join(["Units: mL/min/1.73sqm",
+        note = " ".join(["Units: mL/min/1.73sqm",
                           "Multiply eGFR by 1.21 for people of African",
                           "Caribbean origin. Interpret with regard to",
                           "UK CKD guidelines: www.renal.org/CKDguide/ckd.html",
                           "Use with caution for adjusting drug dosages -",
                           "contact clinical pharmacist for advice."])
-        self.assertEqual(note, self.results_message.nte.comments)
+        self.assertEqual(note, self.results_message.ntes[0].comments)
 
     def test_urine_culture_result(self):
         #
@@ -583,28 +594,63 @@ class WinPathResultsTestCase(TestCase):
         message = WinPathResults(read_message(URINE_CULTURE_RESULT_MESSAGE))
 
         # Values
-        self.assertEqual('URNC', message.obx[0].test_code)
-        self.assertEqual('URINE CULTURE', message.obx[0].test_name)
-        self.assertEqual('URINE CULTURE REPORT', message.obx[0].observation_value)
-        self.assertEqual('FINAL', message.obx[0].result_status)
+        self.assertEqual('URNC', message.obxs[0].test_code)
+        self.assertEqual('URINE CULTURE', message.obxs[0].test_name)
+        self.assertEqual('URINE CULTURE REPORT', message.obxs[0].observation_value)
+        self.assertEqual('FINAL', message.obxs[0].result_status)
 
-        self.assertEqual('UPRE', message.obx[1].test_code)
-        self.assertEqual('Culture', message.obx[1].test_name)
-        self.assertEqual('Screening culture negative.', message.obx[1].observation_value)
-        self.assertEqual('FINAL', message.obx[1].result_status)
+        self.assertEqual('UPRE', message.obxs[1].test_code)
+        self.assertEqual('Culture', message.obxs[1].test_name)
+        self.assertEqual('Screening culture negative.', message.obxs[1].observation_value)
+        self.assertEqual('FINAL', message.obxs[1].result_status)
 
-        self.assertEqual('URST', message.obx[2].test_code)
-        self.assertEqual('STATUS', message.obx[2].test_name)
-        self.assertEqual('COMPLETE: 21/08/13', message.obx[2].observation_value)
-        self.assertEqual('FINAL', message.obx[2].result_status)
+        self.assertEqual('URST', message.obxs[2].test_code)
+        self.assertEqual('STATUS', message.obxs[2].test_name)
+        self.assertEqual('COMPLETE: 21/08/13', message.obxs[2].observation_value)
+        self.assertEqual('FINAL', message.obxs[2].result_status)
 
     @patch('gloss.process_message.notification.notify')
-    def test_process_message(self, notify):
+    def test_process_urine_culture_message(self, notify):
         message = WinPathResults(read_message(URINE_CULTURE_RESULT_MESSAGE))
-        message.process_message(None)
+        message.process_message(self.session)
+        results = self.session.query(Result).all()
+        self.assertEqual(len(results), 3)
+        result_0 = results[0]
+
+        self.assertEqual(result_0.value_type, "FT")
+        self.assertEqual(result_0.test_code, "URNC")
+        self.assertEqual(result_0.observation_value, 'URINE CULTURE REPORT')
+        self.assertEqual(result_0.units, None)
+        self.assertEqual(result_0.reference_range, None)
+        self.assertEqual(result_0.result_status, None)
+        self.assertEqual(result_0.comments, None)
         self.assertTrue(notify.called)
 
 
+    @patch('gloss.process_message.notification.notify')
+    def test_process_message(self, notify):
+        message = self.results_message
+        message.process_message(self.session)
+        results = self.session.query(Result).all()
+        self.assertEqual(len(results), 5)
+        result_0 = results[0]
+
+        comment = " ".join([
+            "Units: mL/min/1.73sqm",
+            "Multiply eGFR by 1.21 for people of African",
+            "Caribbean origin. Interpret with regard to",
+            "UK CKD guidelines: www.renal.org/CKDguide/ckd.html",
+            "Use with caution for adjusting drug dosages -",
+            "contact clinical pharmacist for advice."
+        ])
+        self.assertEqual(result_0.value_type, "NM")
+        self.assertEqual(result_0.test_code, "NA")
+        self.assertEqual(result_0.observation_value, '143')
+        self.assertEqual(result_0.units, 'mmol/L')
+        self.assertEqual(result_0.reference_range, '135-145')
+        self.assertEqual(result_0.result_status, None)
+        self.assertEqual(result_0.comments, comment)
+        self.assertTrue(notify.called)
 
 
 class MessageProcessorTestCase(TestCase):

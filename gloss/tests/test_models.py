@@ -92,7 +92,7 @@ class WinPathMessageTestCase(GlossTestCase):
     def test_to_OPAL(self):
         from gloss import process_message
         from gloss.tests import test_messages
-        message  = test_messages.read_message(test_messages.RESULTS_MESSAGE)
+        message = test_messages.read_message(test_messages.RESULTS_MESSAGE)
         results = process_message.WinPathResults(message)
 
         as_dict = {
@@ -146,7 +146,7 @@ class WinPathMessageTestCase(GlossTestCase):
                         'test_name': u'Estimated GFR',
                         'observation_value': u'>90',
                         'units': u'.',
-                        'reference_range': u'',
+                        'reference_range': None,
                         'result_status': 'FINAL'
                     }
                 ]
