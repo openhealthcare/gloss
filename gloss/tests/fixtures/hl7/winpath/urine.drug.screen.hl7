@@ -1,0 +1,12 @@
+MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201411261546||ORU^R01|1126154614U700105|P|2.3
+PID||^^NHS|50089275^^HOSP||TEST^BECKY||19530910|F||||||||||105
+PV1|||MMF^MORTIMER MKT - FEMALE CLINIC^^^^^^^GUM||||||AJR^ROBINSON, DR. A. J.
+ORC|RE|14U700105|14U700105||CM||||201411261546
+OBR|1|14U700105|14U700105|CADS^C\T\I URINE DRUG SCREEN^WinPath||201411251149|201411251100|||||||||AJR^ROBINSON, DR. A. J.||||||201411251155||CC|F
+OBX|1|NM|UCR2^Urine creatinine (mM)^Winpath||5.00|mmol/L|||||F
+OBX|2|FT|COKE^Urine cocaine^Winpath||Negative||||||F
+OBX|3|FT|TAMP^Urine amphetamines^Winpath||Negative||||||F
+OBX|4|FT|METD^Urine methadone^Winpath||Negative||||||F
+OBX|5|FT|OPIA^Urine opiates^Winpath||POSITIVE|||A|||F
+OBX|6|FT|BENS^Urine benzodiazepines^Winpath||Negative||||||F
+OBX|7|FT|COM3^Comment^Winpath||Results are for clinical use only. Not for social \.br\ or legal purposes.||||||F
