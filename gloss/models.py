@@ -59,7 +59,7 @@ class GlossSubrecord(object):
 
     @classmethod
     def query_from_identifier(cls, identifier, issuing_source, session):
-        return session.query(cls, GlossolaliaReference, PatientIdentifier).\
+        return session.query(cls).\
         filter(cls.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.issuing_source == issuing_source).\
@@ -82,7 +82,7 @@ class Patient(Base, GlossSubrecord):
     # however it comes as a seperate field in the feed and
     # therefore might be useful for data validation purposes
     # (also might give us an indicator and the max time of death)
-    death = Column(Boolean, default=False)
+    death_indicator = Column(Boolean, default=False)
     birth_place = Column(String)
 
 
@@ -100,11 +100,17 @@ class PatientIdentifier(Base, GlossSubrecord):
     identifier = Column(String(250))
     issuing_source = Column(String(250))
     active = Column(Boolean, default=True)
+    merged_into_identifier = Column(String(250))
 
 
 class Subscription(Base, GlossSubrecord):
     system = Column(String(250))
     active = Column(Boolean, default=True)
+
+class Allergy(Base, GlossSubrecord):
+    # ask the docs which fields they'd want
+    # for the moment, lets just save allergy reference name
+    name = Column(String(250))
 
 
 class GlossolaliaReference(Base):

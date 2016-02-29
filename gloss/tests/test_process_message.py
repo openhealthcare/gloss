@@ -18,13 +18,13 @@ from gloss import process_message, message_segments
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
     InpatientDischarge, InpatientCancelDischarge,
-    Allergy, PatientUpdate, PatientMerge, InpatientTransfer,
+    AllergyMessage, PatientUpdate, PatientMerge, InpatientTransfer,
     InpatientSpellDelete
 )
 
 from gloss.models import (
-    get_gloss_reference, InpatientEpisode, save_identifier,
-    subscribe
+    get_gloss_reference, InpatientEpisode, Allergy,
+    subscribe, Patient, PatientIdentifier
 )
 from gloss.tests.core import GlossTestCase
 
@@ -52,11 +52,11 @@ class MessageTypeTestCase(TestCase):
         self.assertEqual('UCLH', message.msh.sending_facility)
 
 
-class AllergyTestCase(TestCase):
+class AllergyTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(ALLERGY)
-        message = Allergy(raw)
+        message = AllergyMessage(raw)
         return message
 
     def test_allergies_pid(self):
@@ -84,10 +84,27 @@ class AllergyTestCase(TestCase):
         self.assertEqual(datetime(2015, 11, 19, 12, 00), message.al1.allergy_start_datetime)
 
     def test_allergies_no_al1(self):
-        message = Allergy(read_message(NO_ALLERGY))
+        message = AllergyMessage(read_message(NO_ALLERGY))
         # This is testing our suppression of the exception thrown by the underlying
         # HL7 library more than anything else.
         self.assertEqual(None, message.al1)
+
+    def test_process_message(self):
+        message = self.results_message
+        message.process_message(self.session)
+        allergy = Allergy.query_from_identifier(
+            "97995111", "uclh", self.session
+        ).one()
+        self.assertEqual('CO-CODAMOL (Generic Manuf)', allergy.name)
+        pass
+
+    def test_process_message_no_allergies(self):
+        allergy = self.get_allergy("97995000", "uclh")
+        self.session.add(allergy)
+        message = AllergyMessage(read_message(NO_ALLERGY))
+        message.process_message(self.session)
+        allergy_count = self.session.query(Allergy).count()
+        self.assertEqual(0, allergy_count)
 
 
 class InpatientAdmitTestCase(GlossTestCase):
@@ -231,9 +248,6 @@ class InpatientDeleteSpellTestCase(GlossTestCase):
             evn.recorded_datetime
         )
 
-    def test_pv1(self):
-        self.assertIsInstance(self.results_message.pv1, message_segments.PV1)
-
     def test_process_message(self):
         message = self.results_message
         inpatient_episode = self.get_inpatient_admission("40716752", "uclh")
@@ -337,7 +351,7 @@ class InpatientDischargeTestCase(GlossTestCase):
         )
 
 
-class InpatientCancelDischargeTestCase(TestCase):
+class InpatientCancelDischargeTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(INPATIENT_CANCEL_DISCHARGE)
@@ -363,12 +377,31 @@ class InpatientCancelDischargeTestCase(TestCase):
         self.assertEqual("F3SR", message.pv1.room_code)
         self.assertEqual("F3SR-36", message.pv1.bed_code)
 
-    def test_evn(self):
+    def test_process_message(self):
+        inpatient_episode = self.get_inpatient_admission("50099886", "uclh")
+        inpatient_episode.visit_number = '940347'
+        inpatient_episode.datetime_of_discharge = datetime.now()
+        self.session.add(inpatient_episode)
         message = self.results_message
-        self.assertEqual('CDIS', message.evn.event_description)
+        message.process_message(self.session)
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            result.datetime_of_discharge, None
+        )
+
+    def teset_process_message_with_inpatient_admission(self):
+        message = self.results_message
+        message.process_message(self.session)
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            result.datetime_of_discharge, None
+        )
+        self.assertEqual(
+            result.visit_number, '940347'
+        )
 
 
-class PatientDeathTestCase(TestCase):
+class PatientDeathTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(PATIENT_DEATH)
@@ -385,8 +418,23 @@ class PatientDeathTestCase(TestCase):
         self.assertEqual('Y', message.pid.death_indicator)
         self.assertEqual(date(2014, 11, 01), message.pid.date_of_death)
 
+    def test_process_message_if_no_patient(self):
+        message = self.results_message
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertFalse(n.called)
+        patient_count = self.session.query(Patient).count()
+        self.assertEqual(0, patient_count)
 
-class PatientMergeTestCase(TestCase):
+    def test_process_message(self):
+        message = self.results_message
+        self.create_patient("50092915", issuing_source="uclh")
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+
+
+class PatientMergeTestCase(GlossTestCase):
     @property
     def results_message(self):
         raw = read_message(PATIENT_MERGE)
@@ -404,6 +452,27 @@ class PatientMergeTestCase(TestCase):
     def test_mrg(self):
         mrg = self.results_message.mrg
         self.assertEqual(mrg.duplicate_hospital_number, "50028000")
+
+    def test_process_message_if_no_patient(self):
+        message = self.results_message
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertFalse(n.called)
+        patient_count = self.session.query(Patient).count()
+        self.assertEqual(0, patient_count)
+
+    def test_process_message(self):
+        message = self.results_message
+        self.create_patient("50028000", issuing_source="uclh")
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+            q = self.session.query(PatientIdentifier)
+            q = q.filter(PatientIdentifier.identifier == "50028000")
+            q = q.filter(PatientIdentifier.issuing_source == "uclh")
+            q = q.filter(PatientIdentifier.active == False)
+            q = q.filter(PatientIdentifier.merged_into_identifier == "MV 19823")
+            self.assertEqual(1, q.count())
 
 
 class PatientUpdateTestCase(TestCase):
@@ -536,6 +605,8 @@ class WinPathResultsTestCase(TestCase):
         self.assertTrue(notify.called)
 
 
+
+
 class MessageProcessorTestCase(TestCase):
     def test_get_msh_for_message(self):
         msg = read_message(PATIENT_DEATH)
@@ -580,13 +651,13 @@ class MessageProcessorTestCase(TestCase):
         msg = read_message(ALLERGY)
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
-        assert(result == Allergy)
+        assert(result == AllergyMessage)
 
     def test_inpatient_no_allergy(self):
         msg = read_message(NO_ALLERGY)
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
-        assert(result == Allergy)
+        assert(result == AllergyMessage)
 
     def test_patient_merge(self):
         msg = read_message(PATIENT_MERGE)

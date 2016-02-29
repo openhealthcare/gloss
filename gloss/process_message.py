@@ -6,7 +6,8 @@ import logging
 from gloss import models
 from gloss.models import (
     session_scope, save_identifier, InpatientEpisode,
-    get_or_create_identifier
+    get_or_create_identifier, PatientIdentifier, get_gloss_reference,
+    Allergy
 )
 
 
@@ -73,6 +74,21 @@ class PatientMerge(MessageType):
     def mrg(self):
         return MRG(self.raw_msg.segment("MRG"))
 
+    def process_message(self, session):
+        # find the identifier, mark it as inactive, send
+        # send it downstream to deal with if it exists
+        patient_identifier = PatientIdentifier.query_from_identifier(
+            self.mrg.duplicate_hospital_number,
+            issuing_source="uclh",
+            session=session
+        ).one_or_none()
+
+        if patient_identifier:
+            patient_identifier.merged_into_identifier = self.pid.hospital_number
+            patient_identifier.active = False
+            session.add(patient_identifier)
+            notification.notify("elcid", patient_identifier)
+
 
 class PatientUpdate(MessageType):
     message_type = u"ADT"
@@ -82,6 +98,17 @@ class PatientUpdate(MessageType):
     @property
     def pid(self):
         return InpatientPID(self.raw_msg.segment("PID"))
+
+    def process_message(self, session):
+        # if we have no gloss reference we won't be interested
+        # if we are, punt the gloss reference down stream
+        # and go and fetch the details
+        gloss_reference = get_gloss_reference(
+            self.pid.hospital_number, session, "uclh"
+        )
+
+        if gloss_reference:
+            notification.notify("elcid", gloss_reference)
 
 
 class InpatientAdmit(MessageType):
@@ -105,7 +132,7 @@ class InpatientAdmit(MessageType):
             self.pid, self.pv1, session
         )
         session.add(inpatient_episode)
-        notification.notify(self.msh.sending_application, InpatientEpisode)
+        notification.notify(self.msh.sending_application, inpatient_episode)
 
 
 class InpatientDischarge(MessageType):
@@ -134,10 +161,9 @@ class InpatientDischarge(MessageType):
         query = query.filter(
             InpatientEpisode.visit_number == self.pid.patient_account_number
         )
-        inpatient_result = query.one_or_none()
+        inpatient_episode = query.one_or_none()
 
-        if inpatient_result:
-            inpatient_episode = inpatient_result[0]
+        if inpatient_episode:
             inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
             session.add(inpatient_episode)
         else:
@@ -173,10 +199,9 @@ class InpatientTransfer(MessageType):
         query = query.filter(
             InpatientEpisode.visit_number == self.pid.patient_account_number
         )
-        inpatient_result = query.one_or_none()
+        inpatient_episode = query.one_or_none()
 
-        if inpatient_result:
-            inpatient_episode = inpatient_result[0]
+        if inpatient_episode:
             inpatient_episode.ward_code = self.pv1.ward_code
             inpatient_episode.room_code = self.pv1.room_code
             inpatient_episode.bed_code = self.pv1.bed_code
@@ -204,6 +229,33 @@ class InpatientSpellDelete(MessageType):
     def evn(self):
         return EVN(self.raw_msg.segment("EVN"))
 
+    def process_message(self, session):
+        hospital_number = self.pid.hospital_number
+        query = InpatientEpisode.query_from_identifier(
+            hospital_number,
+            issuing_source="uclh",
+            session=session
+        )
+        query = query.filter(
+            InpatientEpisode.visit_number == self.pid.patient_account_number
+        )
+        inpatient_episode = query.one_or_none()
+        if inpatient_episode:
+            # I think what we actually want to do is store a deleted field
+            # that way we can pass the object nicely down stream
+            inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
+            session.add(inpatient_episode)
+            notification.notify(self.msh.sending_application, inpatient_episode)
+
+
+class InpatientCancelDischarge(MessageType):
+    message_type = "ADT"
+    trigger_event = "A13"
+
+    @property
+    def pid(self):
+        return InpatientPID(self.raw_msg.segment("PID"))
+
     @property
     def pv1(self):
         return PV1(self.raw_msg.segment("PV1"))
@@ -218,35 +270,23 @@ class InpatientSpellDelete(MessageType):
         query = query.filter(
             InpatientEpisode.visit_number == self.pid.patient_account_number
         )
-        inpatient_result = query.one_or_none()
-        if inpatient_result:
-            # I think what we actually want to do is store a deleted field
-            # that way we can pass the object nicely down stream
-            inpatient_episode = inpatient_result[0]
-            inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
+        inpatient_episode = query.one_or_none()
+
+        if inpatient_episode:
+            inpatient_episode.datetime_of_discharge = None
             session.add(inpatient_episode)
-            notification.notify(self.msh.sending_application, inpatient_episode)
+        else:
+            # we should always have an inpatient result, but lets
+            # be resiliant and save it just in case
+            inpatient_episode = get_inpatient_episode(
+                self.pid, self.pv1, session
+            )
+            session.add(inpatient_episode)
+
+        notification.notify("elcid", inpatient_episode)
 
 
-
-class InpatientCancelDischarge(MessageType):
-    message_type = "ADT"
-    trigger_event = "A13"
-
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
-
-    @property
-    def evn(self):
-        return EVN(self.raw_msg.segment("EVN"))
-
-    @property
-    def pv1(self):
-        return PV1(self.raw_msg.segment("PV1"))
-
-
-class Allergy(MessageType):
+class AllergyMessage(MessageType):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
@@ -261,6 +301,30 @@ class Allergy(MessageType):
             return AL1(self.raw_msg.segment("AL1"))
         except KeyError:
             return None
+
+    def process_message(self, session):
+        allergies = Allergy.query_from_identifier(
+            self.pid.hospital_number,
+            "uclh",
+            session
+        ).all()
+
+        for allergy in allergies:
+            session.delete(allergy)
+
+        gloss_ref = get_or_create_identifier(
+            self.pid.hospital_number,
+            session,
+            issuing_source="uclh"
+        )
+        if self.al1:
+            # we need to handle allergies which we are not doing
+            Allergy(
+                name=self.al1.allergy_reference_name,
+                gloss_reference=gloss_ref
+            )
+
+        notification.notify("elcid", Allergy)
 
 
 class WinPathResults(MessageType):

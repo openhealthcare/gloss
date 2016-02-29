@@ -12,6 +12,7 @@ from ..models import (
     is_subscribed, get_gloss_reference, session_scope
 )
 
+
 class SessionScopeTestCase(GlossTestCase):
 
     @patch('gloss.models.Session')
