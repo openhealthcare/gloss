@@ -2,7 +2,9 @@ from gloss.message_segments import *
 from gloss import notification
 import logging
 
-from models import (
+
+from gloss import models
+from gloss.models import (
     session_scope, save_identifier, InpatientEpisode,
     get_or_create_identifier, PatientIdentifier, get_gloss_reference,
     Allergy
@@ -130,7 +132,7 @@ class InpatientAdmit(MessageType):
             self.pid, self.pv1, session
         )
         session.add(inpatient_episode)
-        notification.notify("elcid", inpatient_episode)
+        notification.notify(self.msh.sending_application, inpatient_episode)
 
 
 class InpatientDischarge(MessageType):
@@ -170,7 +172,7 @@ class InpatientDischarge(MessageType):
             )
             inpatient_episode.datetime_of_discharge = self.pv1.datetime_of_discharge
             session.add(inpatient_episode)
-        notification.notify("elcid", InpatientEpisode)
+        notification.notify(self.msh.sending_application, InpatientEpisode)
 
 
 class InpatientTransfer(MessageType):
@@ -212,15 +214,12 @@ class InpatientTransfer(MessageType):
             )
             session.add(inpatient_episode)
 
-        notification.notify("elcid", inpatient_episode)
+        notification.notify(self.msh.sending_application, inpatient_episode)
 
 
 class InpatientSpellDelete(MessageType):
     message_type = "ADT"
     trigger_event = "A07"
-
-    # We know it will have these segments, but we can't
-    # really test them yet - see above.
 
     @property
     def pid(self):
@@ -246,7 +245,7 @@ class InpatientSpellDelete(MessageType):
             # that way we can pass the object nicely down stream
             inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
             session.add(inpatient_episode)
-            notification.notify("elcid", inpatient_episode)
+            notification.notify(self.msh.sending_application, inpatient_episode)
 
 
 class InpatientCancelDischarge(MessageType):
@@ -344,7 +343,12 @@ class WinPathResults(MessageType):
     def nte(self):
         return NTE(self.raw_msg.segments("NTE"))
 
-    def process_message(self, session): pass
+    def process_message(self, session):
+        # We're assuming this will definitely change in the future.
+        # This basically only handles the case whereby we simply pass through
+        # without hitting the database.
+        logging.error('Hitting Notify for a Winpath Message')
+        notification.notify(self.msh.sending_application, models.WinPathMessage(self))
 
 
 class MessageProcessor(object):
@@ -370,6 +374,7 @@ class MessageProcessor(object):
 
     def process_message(self, msg):
         message_type = self.get_message_type(msg)
+        logging.error('Processing {0}'.format(message_type))
         if not message_type:
             # not necessarily an error, we ignore messages such
             # as results orders

@@ -26,3 +26,5 @@ traitlets==4.1.0
 txHL7==0.3.0
 wsgiref==0.1.2
 zope.interface==4.1.3
+requests==2.9.1
+ffs==0.0.8.1

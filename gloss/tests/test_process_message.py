@@ -14,6 +14,7 @@ from test_messages import (
 )
 
 import gloss
+from gloss import process_message, message_segments
 from gloss.process_message import (
     MessageProcessor, InpatientAdmit, WinPathResults,
     InpatientDischarge, InpatientCancelDischarge,
@@ -27,77 +28,11 @@ from gloss.models import (
 )
 from gloss.tests.core import GlossTestCase
 
-
-class MessageProcessorTestCase(TestCase):
-    def test_get_msh_for_message(self):
-        msg = read_message(PATIENT_DEATH)
-        message_processor = MessageProcessor()
-        msh = message_processor.get_msh_for_message(msg)
-        self.assertEqual(msh.trigger_event, "A31")
-        self.assertEqual(msh.message_type, "ADT")
-        self.assertEqual(msh.sending_application, "CARECAST")
-        self.assertEqual(msh.sending_facility, "UCLH")
-
-
-    def test_inpatient_admission(self):
-        msg = read_message(INPATIENT_ADMISSION)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientAdmit)
-
-    def test_winpath_results(self):
-        msg = read_message(RESULTS_MESSAGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == WinPathResults)
-
-    def test_inpatient_discharge(self):
-        msg = read_message(INPATIENT_DISCHARGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientDischarge)
-
-    def test_inpatient_transfer(self):
-        msg = read_message(INPATIENT_TRANSFER)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientTransfer)
-
-    def test_cancel_inpatient_discharge(self):
-        msg = read_message(INPATIENT_CANCEL_DISCHARGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == InpatientCancelDischarge)
-
-    def test_inpatient_allergy(self):
-        msg = read_message(ALLERGY)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == AllergyMessage)
-
-    def test_inpatient_no_allergy(self):
-        msg = read_message(NO_ALLERGY)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == AllergyMessage)
-
-    def test_patient_merge(self):
-        msg = read_message(PATIENT_MERGE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == PatientMerge)
-
-    def test_patient_death(self):
-        msg = read_message(PATIENT_DEATH)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == PatientUpdate)
-
-    def test_patient_update(self):
-        msg = read_message(PATIENT_UPDATE)
-        message_processor = MessageProcessor()
-        result = message_processor.get_message_type(msg)
-        assert(result == PatientUpdate)
+class TestProcessDemographics(GlossTestCase):
+    @patch('gloss.process_message.save_identifier')
+    def test_process(self, save):
+        process_message.process_demographics('PID', None)
+        save.assert_called_once_with('PID', None)
 
 
 class MessageTypeTestCase(TestCase):
@@ -270,6 +205,22 @@ class InpatientTransferTestCase(GlossTestCase):
         self.assertEqual("T06-04", result.bed_code)
         self.assertEqual(
             inpatient_episode.datetime_of_admission,
+            result.datetime_of_admission
+        )
+
+    def test_process_message_no_episode(self):
+        message = self.results_message
+
+        with patch("gloss.notification.notify") as n:
+            message.process_message(self.session)
+            self.assertTrue(n.called)
+
+        result = self.session.query(InpatientEpisode).one()
+        self.assertEqual("T06", result.ward_code)
+        self.assertEqual("T06A", result.room_code)
+        self.assertEqual("T06-04", result.bed_code)
+        self.assertEqual(
+            datetime(2012, 6, 28, 13, 31),
             result.datetime_of_admission
         )
 
@@ -570,6 +521,7 @@ class WinPathResultsTestCase(TestCase):
 
     def test_get_obx_test(self):
         message = self.results_message
+        self.assertEqual('NM', message.obx[0].value_type)
         self.assertEqual('NA', message.obx[0].test_code)
         self.assertEqual('CREA', message.obx[3].test_code)
         self.assertEqual('Sodium', message.obx[0].test_name)
@@ -646,6 +598,14 @@ class WinPathResultsTestCase(TestCase):
         self.assertEqual('COMPLETE: 21/08/13', message.obx[2].observation_value)
         self.assertEqual('FINAL', message.obx[2].result_status)
 
+    @patch('gloss.process_message.notification.notify')
+    def test_process_message(self, notify):
+        message = WinPathResults(read_message(URINE_CULTURE_RESULT_MESSAGE))
+        message.process_message(None)
+        self.assertTrue(notify.called)
+
+
+
 
 class MessageProcessorTestCase(TestCase):
     def test_get_msh_for_message(self):
@@ -674,6 +634,12 @@ class MessageProcessorTestCase(TestCase):
         message_processor = MessageProcessor()
         result = message_processor.get_message_type(msg)
         assert(result == InpatientDischarge)
+
+    def test_inpatient_transfer(self):
+        msg = read_message(INPATIENT_TRANSFER)
+        message_processor = MessageProcessor()
+        result = message_processor.get_message_type(msg)
+        assert(result == InpatientTransfer)
 
     def test_cancel_inpatient_discharge(self):
         msg = read_message(INPATIENT_CANCEL_DISCHARGE)
