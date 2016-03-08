@@ -207,7 +207,7 @@ class InpatientTransferTestCase(GlossTestCase):
         self.assertEqual("T06-04", message.pv1.bed_code)
 
     def test_process_message(self):
-        inpatient_episode = self.get_inpatient_admission("50009026", "uclh")
+        inpatient_episode = self.get_inpatient_episode("50009026", "uclh")
         inpatient_episode.visit_number = "930375"
         self.session.add(inpatient_episode)
         message = self.results_message
@@ -285,7 +285,7 @@ class InpatientDischargeTestCase(GlossTestCase):
         self.assertEqual("F3SR-36", message.pv1.bed_code)
 
     def test_update_with_inpatient_session(self):
-        inpatient_episode = self.get_inpatient_admission("50099886", "uclh")
+        inpatient_episode = self.get_inpatient_episode("50099886", "uclh")
         self.session.add(inpatient_episode)
         message = self.results_message
         message.process_message(self.session)
@@ -349,7 +349,7 @@ class InpatientCancelDischargeTestCase(GlossTestCase):
         self.assertEqual("F3SR-36", message.pv1.bed_code)
 
     def test_process_message(self):
-        inpatient_episode = self.get_inpatient_admission("50099886", "uclh")
+        inpatient_episode = self.get_inpatient_episode("50099886", "uclh")
         inpatient_episode.visit_number = '940347'
         inpatient_episode.datetime_of_discharge = datetime.now()
         self.session.add(inpatient_episode)
@@ -397,7 +397,7 @@ class InpatientDeleteSpellTestCase(GlossTestCase):
 
     def test_process_message(self):
         message = self.results_message
-        inpatient_episode = self.get_inpatient_admission("40716752", "uclh")
+        inpatient_episode = self.get_inpatient_episode("40716752", "uclh")
         inpatient_episode.visit_number = "4449234"
         self.session.add(inpatient_episode)
 
