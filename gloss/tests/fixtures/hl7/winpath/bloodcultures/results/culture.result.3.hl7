@@ -1,0 +1,8 @@
+MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201603011720||ORU^R01|0301172098V160003|P|2.3
+PID||^^NHS|50010115^^HOSP||WINPATH^IFIT||19950214|F|||^^^^W1T 7DN
+PV1|||AE^A\T\E Secretariat, New UCLH^^^^^^^AE||||||SLB^BLOOM DR SL
+ORC|RE|98V160003|98V160003||CM||||201603011720
+OBR|1|98V160003|98V160003|BC^BLOOD CULTURE^WinPath||201603011713|201603010000||||||||BLD^Blood|SLB^BLOOM DR SL||||||201603011719||MC|F
+OBX|1|FT|BC^BLOOD CULTURES^Winpath||BLOOD CULTURE REPORT||||||F
+OBX|2|FT|BISO^Isolate(s)^Winpath||1) Escherichia coli \.br\ \.br\                      1) \.br\ Amoxycillin           R \.br\ Amoxy/Clav.acid       S \.br\ Cefotaxime            S \.br\ Ciprofloxacin         S \.br\ Gentamicin            S \.br\ Meropenem             S \.br\ Pip/Tazobactam        S \.br\  \.br\ |||A|||F
+OBX|3|FT|BCST^STATUS^Winpath||COMPLETE: 01/03/16||||||F
