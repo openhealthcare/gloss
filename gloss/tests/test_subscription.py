@@ -11,27 +11,27 @@ from mock import patch
 from datetime import datetime
 
 
-class TestInpatientAdmissionFlow(GlossTestCase):
-    @patch("gloss.models.get_session")
-    def test_flow(self, get_session):
-        get_session.return_value = self.session
-        subscribe('50099878', self.session, "uclh")
-        message_processor = MessageProcessor()
-        message_processor.process_message(read_message(INPATIENT_ADMISSION))
-        gloss_reference = get_gloss_reference('50099878', self.session)
-        self.assertTrue(gloss_reference is not None)
-        admission = InpatientEpisode.get_from_gloss_reference(
-            gloss_reference, self.session
-        )
-        self.assertEqual(
-            datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
-        )
-        location = self.session.query(InpatientLocation).one()
-        self.assertEqual(location.inpatient_episode, admission)
-        self.assertEqual(location.ward_code, "BBNU")
-        self.assertEqual(location.room_code, "BCOT")
-        self.assertEqual(location.bed_code, "BCOT-02B")
-        self.assertIsNone(location.datetime_of_transfer)
+# class TestInpatientAdmissionFlow(GlossTestCase):
+#     @patch("gloss.models.get_session")
+#     def test_flow(self, get_session):
+#         get_session.return_value = self.session
+#         subscribe('50099878', self.session, "uclh")
+#         message_processor = MessageProcessor()
+#         message_processor.process_message(read_message(INPATIENT_ADMISSION))
+#         gloss_reference = get_gloss_reference('50099878', self.session)
+#         self.assertTrue(gloss_reference is not None)
+#         admission = InpatientEpisode.get_from_gloss_reference(
+#             gloss_reference, self.session
+#         )
+#         self.assertEqual(
+#             datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
+#         )
+#         location = self.session.query(InpatientLocation).one()
+#         self.assertEqual(location.inpatient_episode, admission)
+#         self.assertEqual(location.ward_code, "BBNU")
+#         self.assertEqual(location.room_code, "BCOT")
+#         self.assertEqual(location.bed_code, "BCOT-02B")
+#         self.assertIsNone(location.datetime_of_transfer)
 
 
 class TestInpatientDischarge(GlossTestCase):

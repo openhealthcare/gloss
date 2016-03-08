@@ -105,15 +105,18 @@ class InpatientAdmit(MessageImporter):
 
 
 class InpatientDischarge(InpatientAdmit):
-    pass
+    message_type = u"ADT"
+    trigger_event = "A03"
 
 
 class InpatientAmend(InpatientAdmit):
-    pass
+    message_type = "ADT"
+    trigger_event = "A08"
 
 
 class InpatientCancelDischarge(InpatientAdmit):
-    pass
+    message_type = "ADT"
+    trigger_event = "A13"
 
 
 class InpatientTransfer(MessageImporter):
@@ -166,7 +169,7 @@ class AllergyMessage(MessageImporter):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
-    segments = (PID, AL1,)
+    segments = (AllergiesPID, AL1,)
 
     def process_message(self):
         if self.al1:
