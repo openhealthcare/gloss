@@ -233,9 +233,8 @@ class UclhInpatientEpisodeDeleteSubscription(Subscription, OpalSerialiser):
     def notify(self, messages, session=None, gloss_ref=None):
         for message in messages:
             session.query(InpatientEpisode).filter(
-                InpatientEpisode.visit_number==message.visit_number
+                InpatientEpisode.visit_number == message.visit_number
             ).delete()
-
 
 
 class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):

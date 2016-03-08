@@ -5,7 +5,7 @@ class MessageType(object):
     def __init__(self, hospital_number=None, issuing_source=None, **kwargs):
         if not hospital_number or not issuing_source:
             raise ValueError(
-                "hospital number or issuing source need to be implements"
+                "hospital number or issuing source need to be implemented"
             )
         self.hospital_number = hospital_number
         self.issuing_source = issuing_source
@@ -78,13 +78,14 @@ class InpatientEpisodeTransferMessage(InpatientEpisodeMessage):
         super(InpatientEpisodeTransferMessage, self).__init__(**kwargs)
 
 
-class InpatientEpisodeDeleteMessage(InpatientEpisodeMessage):
+class InpatientEpisodeDeleteMessage(MessageType):
     def __init__(
         self,
         **kwargs
     ):
         self.visit_number = kwargs.pop("visit_number")
-        super(InpatientEpisodeTransferMessage, self).__init__(**kwargs)
+        self.datetime_of_deletion = kwargs.pop("datetime_of_deletion")
+        super(InpatientEpisodeDeleteMessage, self).__init__(**kwargs)
 
 
 class PatientIdentifierMessage(MessageType):

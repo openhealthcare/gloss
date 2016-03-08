@@ -2,7 +2,8 @@ from gloss.process_message import MessageProcessor, InpatientAdmit
 from gloss.tests.core import GlossTestCase
 from gloss.tests.test_messages import (
     INPATIENT_ADMISSION, read_message, PATIENT_MERGE, COMPLEX_WINPATH_RESULT,
-    RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE
+    RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE, INPATIENT_AMEND,
+    INPATIENT_SPELL_DELETE, INPATIENT_CANCEL_DISCHARGE
 )
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
@@ -98,6 +99,170 @@ class TestInpatientDischarge(GlossTestCase):
         self.assertEqual(inpatient_location.ward_code, "F3NU")
         self.assertEqual(inpatient_location.room_code, "F3SR")
         self.assertEqual(inpatient_location.bed_code, "F3SR-36")
+
+
+class TestInpatientAmend(GlossTestCase):
+    hospital_number = "50030204"
+    visit_number = "930882"
+
+    def setUp(self):
+        self.message = read_message(INPATIENT_AMEND)
+        self.message_processor = MessageProcessor()
+        super(TestInpatientAmend, self).setUp()
+
+    @patch("gloss.models.get_session")
+    def test_with_existing_inpatient_episode(self, get_session):
+        get_session.return_value = self.session
+        self.inpatient_episode = self.get_inpatient_episode(
+            self.hospital_number, "uclh"
+        )
+        self.inpatient_episode.datetime_of_admission = datetime(
+            2012, 10, 10, 10, 10
+        )
+        self.inpatient_episode.datetime_of_discharge = datetime(
+            2013, 10, 10, 10, 10
+        )
+        self.inpatient_episode.visit_number = self.visit_number
+        self.inpatient_location = self.get_inpatient_location(
+            self.inpatient_episode
+        )
+        self.inpatient_location.ward_code = "A03"
+        self.inpatient_location.room_code = "A03"
+        self.inpatient_location.bed_code = "A03"
+        self.session.add(self.inpatient_episode)
+        self.session.add(self.inpatient_location)
+        self.message_processor.process_message(self.message)
+        inpatient_episode = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            inpatient_episode.datetime_of_admission,
+            datetime(2012, 9, 19, 18, 22)
+        )
+        self.assertEqual(
+            inpatient_episode.datetime_of_discharge,
+            datetime(2012, 12, 8, 14, 30)
+        )
+        inpatient_location = self.session.query(InpatientLocation).one()
+        self.assertEqual(
+            inpatient_episode, inpatient_location.inpatient_episode
+        )
+        self.assertEqual(inpatient_location.ward_code, "T03")
+        self.assertEqual(inpatient_location.room_code, "T03A")
+        self.assertEqual(inpatient_location.bed_code, "T03-14")
+
+    @patch("gloss.models.get_session")
+    def test_without_existing_inpatient_episode(self, get_session):
+        get_session.return_value = self.session
+        self.message_processor.process_message(self.message)
+        inpatient_episode = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            inpatient_episode.datetime_of_admission,
+            datetime(2012, 9, 19, 18, 22)
+        )
+        self.assertEqual(
+            inpatient_episode.datetime_of_discharge,
+            datetime(2012, 12, 8, 14, 30)
+        )
+        inpatient_location = self.session.query(InpatientLocation).one()
+        self.assertEqual(
+            inpatient_episode, inpatient_location.inpatient_episode
+        )
+        self.assertEqual(inpatient_location.ward_code, "T03")
+        self.assertEqual(inpatient_location.room_code, "T03A")
+        self.assertEqual(inpatient_location.bed_code, "T03-14")
+
+
+class TestInpatientCancelDischarge(GlossTestCase):
+    hospital_number = "40716752"
+    visit_number = "4449234"
+
+    def setUp(self):
+        self.message = read_message(INPATIENT_CANCEL_DISCHARGE)
+        self.message_processor = MessageProcessor()
+        super(TestInpatientCancelDischarge, self).setUp()
+
+    @patch("gloss.models.get_session")
+    def test_with_existing_inpatient_episode(self, get_session):
+        get_session.return_value = self.session
+        self.inpatient_episode = self.get_inpatient_episode(
+            self.hospital_number, "uclh"
+        )
+        self.inpatient_episode.datetime_of_admission = datetime(
+            2012, 10, 10, 10, 10
+        )
+        self.inpatient_episode.datetime_of_discharge = datetime(
+            2013, 10, 10, 10, 10
+        )
+        self.inpatient_location = self.get_inpatient_location(
+            self.inpatient_episode
+        )
+        self.inpatient_location.ward_code = "A03"
+        self.inpatient_location.room_code = "A03"
+        self.inpatient_location.bed_code = "A03"
+        self.session.add(self.inpatient_episode)
+        self.session.add(self.inpatient_location)
+        self.message_processor.process_message(self.message)
+        inpatient_episode = self.session.query(InpatientEpisode).one()
+        self.assertEqual(
+            inpatient_episode.datetime_of_admission,
+            datetime(2015, 11, 18, 12, 17)
+        )
+        self.assertIsNone(
+            inpatient_episode.datetime_of_discharge,
+        )
+        inpatient_location = self.session.query(InpatientLocation).one()
+        self.assertEqual(
+            inpatient_episode, inpatient_location.inpatient_episode
+        )
+        self.assertEqual(inpatient_location.ward_code, "F3NU")
+        self.assertEqual(inpatient_location.room_code, "F3SR")
+        self.assertEqual(inpatient_location.bed_code, "F3SR-36")
+
+
+class TestInpatientDeleteSpell(GlossTestCase):
+    hospital_number = "40716752"
+    visit_number = "4449234"
+
+    def setUp(self):
+        self.message = read_message(INPATIENT_SPELL_DELETE)
+        self.message_processor = MessageProcessor()
+        super(TestInpatientDeleteSpell, self).setUp()
+
+    @patch("gloss.models.get_session")
+    def test_without_existing_inpatient_episode(self, get_session):
+        get_session.return_value = self.session
+        self.inpatient_episode = self.get_inpatient_episode(
+            self.hospital_number, "uclh"
+        )
+        self.inpatient_episode.datetime_of_admission = datetime(
+            2012, 10, 10, 10, 10
+        )
+        self.inpatient_episode.datetime_of_discharge = datetime(
+            2013, 10, 10, 10, 10
+        )
+        self.inpatient_episode.visit_number = self.visit_number
+        self.inpatient_location = self.get_inpatient_location(
+            self.inpatient_episode
+        )
+        self.inpatient_location.ward_code = "A03"
+        self.inpatient_location.room_code = "A03"
+        self.inpatient_location.bed_code = "A03"
+        self.session.add(self.inpatient_episode)
+        self.session.add(self.inpatient_location)
+        self.message_processor.process_message(self.message)
+        num_inpatients = self.session.query(InpatientEpisode).count()
+        self.assertEqual(num_inpatients, 0)
+        num_locations = self.session.query(InpatientEpisode).count()
+        self.assertEqual(num_locations, 0)
+
+
+    @patch("gloss.models.get_session")
+    def test_with(self, get_session):
+        get_session.return_value = self.session
+        self.message_processor.process_message(self.message)
+        num_inpatients = self.session.query(InpatientEpisode).count()
+        self.assertEqual(num_inpatients, 0)
+        num_locations = self.session.query(InpatientEpisode).count()
+        self.assertEqual(num_locations, 0)
 
 
 class TestInpatientTransfer(GlossTestCase):

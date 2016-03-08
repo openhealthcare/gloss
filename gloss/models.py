@@ -110,7 +110,6 @@ class Patient(Base, GlossSubrecord):
 class InpatientEpisode(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
-    datetime_of_deletion = Column(DateTime)
     visit_number = Column(String(250), nullable=False)
 
 

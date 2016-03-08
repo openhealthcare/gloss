@@ -194,7 +194,7 @@ class EVN(Segment):
 
         if planned_datetime:
             self.planned_datetime = datetime.strptime(
-                planned_datetime, DATETIME_FORMAT
+                planned_datetime[:12], DATETIME_FORMAT
             )
 
         self.event_description = segment[4][0]
