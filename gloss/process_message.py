@@ -42,7 +42,7 @@ def process_demographics(pid, session):
 def fetch_demographics(pid): pass
 
 
-class MessageImporter(object):
+class MessageImporter(HL7Message):
     def process(self):
         msgs = self.process_message()
         notification.notify(msgs)
@@ -51,7 +51,7 @@ class MessageImporter(object):
         pass
 
 
-class PatientMerge(MessageImporter, HL7Message):
+class PatientMerge(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A34"
 
@@ -71,10 +71,7 @@ class PatientUpdate(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A31"
     sending_application = "CARECAST"
-
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
+    segments = (InpatientPID,)
 
     def process_message(self, session):
         # if we have no gloss reference we won't be interested
@@ -89,7 +86,7 @@ class PatientUpdate(MessageImporter):
             # notification.notify(gloss_reference, SubscriptionTypes.PATIENT_IDENTIFIER)
 
 
-class InpatientAdmit(MessageImporter, HL7Message):
+class InpatientAdmit(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A01"
     segments = (EVN, InpatientPID, PV1,)
@@ -108,21 +105,18 @@ class InpatientAdmit(MessageImporter, HL7Message):
 
 
 class InpatientDischarge(InpatientAdmit):
-    message_type = u"ADT"
-    trigger_event = "A03"
+    pass
 
 
 class InpatientAmend(InpatientAdmit):
-    message_type = "ADT"
-    trigger_event = "A08"
+    pass
 
 
 class InpatientCancelDischarge(InpatientAdmit):
-    message_type = "ADT"
-    trigger_event = "A13"
+    pass
 
 
-class InpatientTransfer(MessageImporter, HL7Message):
+class InpatientTransfer(MessageImporter):
     # currently untested and incomplete
     # pending us being given an example message
     message_type = "ADT"
@@ -144,7 +138,7 @@ class InpatientTransfer(MessageImporter, HL7Message):
         return [message]
 
 
-class InpatientSpellDelete(MessageImporter, HL7Message):
+class InpatientSpellDelete(MessageImporter):
     message_type = "ADT"
     trigger_event = "A07"
     segments = (EVN, InpatientPID, PV1,)
@@ -172,17 +166,7 @@ class AllergyMessage(MessageImporter):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
-
-    @property
-    def pid(self):
-        return AllergiesPID(self.raw_msg.segment("PID"))
-
-    @property
-    def al1(self):
-        try:
-            return AL1(self.raw_msg.segment("AL1"))
-        except KeyError:
-            return None
+    segments = (PID, AL1,)
 
     def process_message(self):
         if self.al1:
@@ -206,7 +190,7 @@ class AllergyMessage(MessageImporter):
             )
 
 
-class WinPathResults(MessageImporter, HL7Message):
+class WinPathResults(MessageImporter):
     message_type = u"ORU"
     trigger_event = u"R01"
 
