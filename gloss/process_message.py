@@ -1,36 +1,32 @@
 from gloss.message_segments import *
 from gloss import notification
+from utils import itersubclasses
+from message_type import (
+    InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
+    InpatientEpisodeTransferMessage
+)
 import logging
+from collections import defaultdict
 
 
 from gloss.models import (
-    session_scope, save_identifier, InpatientEpisode,
+    save_identifier, InpatientEpisode,
     get_or_create_identifier, PatientIdentifier, get_gloss_reference,
     Allergy, Result
 )
 
 
-def get_inpatient_episode(pid, pv1, session, base=None):
-    if base:
-        gloss_reference = base.gloss_reference
-    else:
-        gloss_reference = get_or_create_identifier(
-            pid.hospital_number, session, issuing_source="uclh"
-        )
-    if not base:
-        inpatient = InpatientEpisode()
-    else:
-        inpatient = base
-
-    inpatient.gloss_reference = gloss_reference
-    inpatient.datetime_of_admission = pv1.datetime_of_admission
-    inpatient.datetime_of_discharge = pv1.datetime_of_admission
-    inpatient.ward_code = pv1.ward_code
-    inpatient.room_code = pv1.room_code
-    inpatient.bed_code = pv1.bed_code
-    inpatient.visit_number = pid.patient_account_number
-    inpatient.datetime_of_discharge = pv1.datetime_of_discharge
-    return inpatient
+def get_inpatient_message(pid, pv1):
+    return InpatientEpisodeMessage(
+        pv1.datetime_of_admission,
+        pv1.ward_code,
+        pv1.room_code,
+        pv1.bed_code,
+        pid.patient_account_number,
+        hospital_identifier=pid.hospital_number,
+        issuing_source="uclh",
+        datetime_of_discharge=pv1.datetime_of_discharge,
+    )
 
 
 def process_demographics(pid, session):
@@ -46,57 +42,32 @@ def process_demographics(pid, session):
 def fetch_demographics(pid): pass
 
 
-
-class MessageType(object):
-
-    def __init__(self, msg):
-        self.raw_msg = msg
-
+class MessageImporter(object):
     def process(self):
-        with session_scope() as session:
-            self.process_message(session)
+        msgs = self.process_message()
+        notification.notify(msgs)
 
-    @property
-    def pid(self):
-        return ResultsPID(self.raw_msg.segment("PID"))
-
-    @property
-    def msh(self):
-        return MSH(self.raw_msg.segment("MSH"))
-
-    def process_message(self, session):
+    def process_message(self, session=None):
         pass
 
 
-class PatientMerge(MessageType):
+class PatientMerge(MessageImporter, HL7Message):
     message_type = u"ADT"
     trigger_event = u"A34"
 
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
+    segments = (
+        MSH, InpatientPID, MRG
+    )
 
-    @property
-    def mrg(self):
-        return MRG(self.raw_msg.segment("MRG"))
-
-    def process_message(self, session):
-        # find the identifier, mark it as inactive, send
-        # send it downstream to deal with if it exists
-        patient_identifier = PatientIdentifier.query_from_identifier(
-            self.mrg.duplicate_hospital_number,
-            issuing_source="uclh",
-            session=session
-        ).one_or_none()
-
-        if patient_identifier:
-            patient_identifier.merged_into_identifier = self.pid.hospital_number
-            patient_identifier.active = False
-            session.add(patient_identifier)
-            notification.notify("elcid", patient_identifier)
+    def process_message(self, session=None):
+        return [PatientMergeMessage(
+            old_id=self.mrg.duplicate_hospital_number,
+            hospital_number=self.pid.hospital_number,
+            issuing_source="uclh"
+        )]
 
 
-class PatientUpdate(MessageType):
+class PatientUpdate(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A31"
     sending_application = "CARECAST"
@@ -114,91 +85,69 @@ class PatientUpdate(MessageType):
         )
 
         if gloss_reference:
-            notification.notify("elcid", gloss_reference)
+            pass
+            # notification.notify(gloss_reference, SubscriptionTypes.PATIENT_IDENTIFIER)
 
 
-class InpatientAdmit(MessageType):
+class InpatientAdmit(MessageImporter, HL7Message):
     message_type = u"ADT"
     trigger_event = u"A01"
+    segments = (EVN, InpatientPID, PV1,)
 
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
-
-    @property
-    def evn(self):
-        return EVN(self.raw_msg.segment("EVN"))
-
-    @property
-    def pv1(self):
-        return PV1(self.raw_msg.segment("PV1"))
-
-    def process_message(self, session):
-        inpatient_episode = get_inpatient_episode(
-            self.pid, self.pv1, session
-        )
-        session.add(inpatient_episode)
-        notification.notify(self.msh.sending_application, inpatient_episode)
-
-
-class InpatientAmend(MessageType):
-    message_type = "ADT"
-    trigger_event = "A08"
-
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
-
-    @property
-    def pv1(self):
-        return PV1(self.raw_msg.segment("PV1"))
-
-    def process_message(self, session):
-        hospital_number = self.pid.hospital_number
-        query = InpatientEpisode.query_from_identifier(
-            hospital_number,
+    def process_message(self):
+        return [InpatientEpisodeMessage(
+            datetime_of_admission=self.pv1.datetime_of_admission,
+            ward_code=self.pv1.ward_code,
+            room_code=self.pv1.room_code,
+            bed_code=self.pv1.bed_code,
+            visit_number=self.pid.patient_account_number,
+            hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
-            session=session
-        )
-        query = query.filter(
-            InpatientEpisode.visit_number == self.pid.patient_account_number
-        )
-        possible_episode = query.one_or_none()
-        inpatient_episode = get_inpatient_episode(
-            self.pid, self.pv1, session, possible_episode
-        )
-        session.add(inpatient_episode)
-        notification.notify(self.msh.sending_application, inpatient_episode)
+            datetime_of_discharge=self.pv1.datetime_of_discharge,
+        )]
 
 
-class InpatientDischarge(InpatientAmend):
+class InpatientDischarge(InpatientAdmit):
     message_type = u"ADT"
     trigger_event = "A03"
 
 
-class InpatientTransfer(InpatientAmend):
-    # currently untested and incomplete
-    # pending us being given an example message
+class InpatientAmend(InpatientAdmit):
     message_type = "ADT"
-    trigger_event = "A02"
+    trigger_event = "A08"
 
 
-class InpatientCancelDischarge(InpatientAmend):
+class InpatientCancelDischarge(InpatientAdmit):
     message_type = "ADT"
     trigger_event = "A13"
 
 
-class InpatientSpellDelete(MessageType):
+class InpatientTransfer(MessageImporter, HL7Message):
+    # currently untested and incomplete
+    # pending us being given an example message
+    message_type = "ADT"
+    trigger_event = "A02"
+    segments = (EVN, InpatientPID, PV1,)
+
+    def process_message(self):
+        message = InpatientEpisodeTransferMessage(
+            datetime_of_admission=self.pv1.datetime_of_admission,
+            ward_code=self.pv1.ward_code,
+            room_code=self.pv1.room_code,
+            bed_code=self.pv1.bed_code,
+            visit_number=self.pid.patient_account_number,
+            hospital_number=self.pid.hospital_number,
+            issuing_source="uclh",
+            datetime_of_discharge=self.pv1.datetime_of_discharge,
+            datetime_of_transfer=self.evn.planned_datetime,
+        )
+        return [message]
+
+
+class InpatientSpellDelete(MessageImporter, HL7Message):
     message_type = "ADT"
     trigger_event = "A07"
-
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
-
-    @property
-    def evn(self):
-        return EVN(self.raw_msg.segment("EVN"))
+    segments = (EVN, InpatientPID, PV1,)
 
     def process_message(self, session):
         hospital_number = self.pid.hospital_number
@@ -216,10 +165,10 @@ class InpatientSpellDelete(MessageType):
             # that way we can pass the object nicely down stream
             inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
             session.add(inpatient_episode)
-            notification.notify(self.msh.sending_application, inpatient_episode)
+            # notification.notify(self.msh.sending_application, inpatient_episode)
 
 
-class AllergyMessage(MessageType):
+class AllergyMessage(MessageImporter):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
@@ -235,26 +184,9 @@ class AllergyMessage(MessageType):
         except KeyError:
             return None
 
-    def process_message(self, session):
-        allergies = Allergy.query_from_identifier(
-            self.pid.hospital_number,
-            "uclh",
-            session
-        ).all()
-
-        for allergy in allergies:
-            session.delete(allergy)
-
-        gloss_ref = get_or_create_identifier(
-            self.pid.hospital_number,
-            session,
-            issuing_source="uclh"
-        )
+    def process_message(self):
         if self.al1:
-            # we need to handle allergies which we are not doing
-
             Allergy(
-                gloss_reference=gloss_ref,
                 allergy_type=self.al1.allergy_type,
                 allergy_type_description=self.al1.allergy_type_description,
                 certainty_id=self.al1.certainty_id,
@@ -270,89 +202,67 @@ class AllergyMessage(MessageType):
             )
         else:
             Allergy(
-                gloss_reference=gloss_ref,
                 no_allergies=True
             )
 
-        notification.notify("elcid", Allergy)
 
-
-class WinPathResults(MessageType):
+class WinPathResults(MessageImporter, HL7Message):
     message_type = u"ORU"
     trigger_event = u"R01"
 
-    @property
-    def obr(self):
-        return OBR(self.raw_msg.segment('OBR'))
+    segments = (
+        MSH, ResultsPID, ResultsPV1, ORC, RepeatingField(
+            OBR,
+            RepeatingField(OBX, section_name="obxs"),
+            RepeatingField(NTE, section_name="ntes"),
+            section_name="results"
+            )
+    )
 
-    @property
-    def obxs(self):
-        return OBX.get_segments(self.raw_msg.segments('OBX'))
-
-    @property
-    def ntes(self):
-        try:
-            return NTE.get_segments(self.raw_msg.segments("NTE"))
-        except KeyError:
-            return []
-
-    def process_message(self, session):
-        # We're assuming this will definitely change in the future.
-        # This basically only handles the case whereby we simply pass through
-        # without hitting the database.
-
-        gloss_ref = get_or_create_identifier(
-            self.pid.hospital_number,
-            session,
-            issuing_source="uclh"
-        )
-
-        results = []
-        set_id_to_nte = {i.set_id: i for i in self.ntes}
-
-        for obx in self.obxs:
-            nte = set_id_to_nte.get(obx.set_id, None)
-            comments = None
-
-            if nte:
-                comments = nte.comments
-
-            result = Result(
-                gloss_reference=gloss_ref,
-                value_type=obx.value_type,
-                test_code=obx.test_code,
-                test_name=obx.test_name,
-                observation_value=obx.observation_value,
-                units=obx.units,
-                reference_range=obx.reference_range,
-                observation_datetime=self.obr.observation_datetime,
-                comments=comments
+    def process_message(self):
+        # we still need to add NTEs to this
+        def get_obx_dict(obxs, comments):
+            return dict(
+                value_type=obxs.obx.value_type,
+                test_code=obxs.obx.test_code,
+                test_name=obxs.obx.test_name,
+                observation_value=obxs.obx.observation_value,
+                units=obxs.obx.units,
+                reference_range=obxs.obx.reference_range,
+                result_status=obxs.obx.result_status,
+                comments=comments.get(obxs.obx.set_id, None)
             )
 
-            results.append(result)
+        def get_comments(ntes):
+            set_id_to_comment = defaultdict(list)
+            for nte_package in ntes:
+                set_id_to_comment[nte_package.nte.set_id].append(
+                    nte_package.nte.comments
+                )
 
-        session.add(result)
-        notification.notify(self.msh.sending_application, result)
+            return {
+                set_id: " ".join(comments) for set_id, comments in set_id_to_comment.iteritems()
+            }
 
+        messages = []
 
-def itersubclasses(cls, _seen=None):
-    """
-    Recursively iterate through subclasses
-    """
-    if not isinstance(cls, type):
-        raise TypeError('itersubclasses must be called with '
-                        'new-style classes, not %.100r' % cls)
-    if _seen is None: _seen = set()
-    try:
-        subs = cls.__subclasses__()
-    except TypeError: # fails only when cls is type
-        subs = cls.__subclasses__(cls)
-    for sub in subs:
-        if sub not in _seen:
-            _seen.add(sub)
-            yield sub
-            for sub in itersubclasses(sub, _seen):
-                yield sub
+        for result in self.results:
+            set_id_to_comments = get_comments(result.ntes)
+            messages.append(
+                ResultMessage(
+                    hospital_number=self.pid.hospital_number,
+                    issuing_source="uclh",
+                    lab_number=result.obr.lab_number,
+                    profile_code=result.obr.profile_code,
+                    request_datetime=result.obr.request_datetime,
+                    observation_datetime=result.obr.observation_datetime,
+                    last_edited=result.obr.last_edited,
+                    result_status=result.obr.result_status,
+                    observations=[get_obx_dict(i, set_id_to_comments) for i in result.obxs],
+                )
+            )
+        return messages
+
 
 class MessageProcessor(object):
     def get_msh_for_message(self, msg):
@@ -365,7 +275,7 @@ class MessageProcessor(object):
     def get_message_type(self, msg):
         msh = self.get_msh_for_message(msg)
 
-        for message_type in itersubclasses(MessageType):
+        for message_type in itersubclasses(MessageImporter):
             if msh.message_type == message_type.message_type:
                 if msh.trigger_event == message_type.trigger_event:
                     if hasattr(message_type, "sending_application"):
@@ -377,7 +287,6 @@ class MessageProcessor(object):
 
     def process_message(self, msg):
         message_type = self.get_message_type(msg)
-        logging.error('Processing {0}'.format(message_type))
         if not message_type:
             # not necessarily an error, we ignore messages such
             # as results orders

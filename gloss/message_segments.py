@@ -1,11 +1,27 @@
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, namedtuple
+from copy import copy
+import hl7
 
 DATETIME_FORMAT = "%Y%m%d%H%M"
 DATE_FORMAT = "%Y%m%d"
 
+
+def get_field_name(message_row):
+    return message_row[0][0].upper()
+
+
+def clean_until(message, field):
+    for index, row in enumerate(message):
+        if get_field_name(row) == field:
+            return message[index+1:]
+
+
 class Segment(object):
-    pass
+    @classmethod
+    def name(cls):
+        return cls.__name__.upper()
+
 
 class MSH(Segment):
     def __init__(self, segment):
@@ -23,10 +39,20 @@ class MRG(Segment):
         self.duplicate_hospital_number = segment[1][0][0][0]
 
 
+class ORC(Segment):
+    def __init__(self, segment):
+        pass
+
+
+
 class ResultsPID(Segment):
     """
         the pid definition used by the WINPATH systems
     """
+    @classmethod
+    def name(cls):
+        return "PID"
+
     def __init__(self, segment):
         self.nhs_number = segment[2][0]
         if isinstance(self.nhs_number, list):
@@ -39,11 +65,14 @@ class ResultsPID(Segment):
         ).date()
         self.gender = segment[8][0]
 
-
 class InpatientPID(Segment):
     """
         the pid definition used by CARECAST systems
     """
+    @classmethod
+    def name(cls):
+        return "PID"
+
     def __init__(self, segment):
 
         self.hospital_number = segment[3][0][0][0]
@@ -77,6 +106,9 @@ class AllergiesPID(Segment):
     """
         the pid definition used by allergies
     """
+    @classmethod
+    def name(cls):
+        return "PID"
 
     def __init__(self, segment):
         self.hospital_number = segment[3][0][0][0]
@@ -127,25 +159,29 @@ class OBX(Segment):
     def __init__(self, segment):
         self.value_type = segment[2][0]
         self.set_id = segment[1][0]
-        self.test_code = segment[3][0][0][0]
+        self.test_code = segment[3][0][0][0].replace("\\S\\", "^")
         self.test_name = segment[3][0][1][0]
         self.observation_value = segment[5][0]
-        units = None
-        reference_range = None
 
         if segment[6][0]:
-            units = segment[6][0]
+            self.units = segment[6][0]
+        else:
+            self.units = None
 
-        if segment[7][0]:
+        if len(segment) > 8 and segment[7][0]:
             reference_range = segment[7][0]
+            self.reference_range = reference_range
+        else:
+            self.reference_range = None
 
-        self.units = units
-        self.reference_range = reference_range
-        self.result_status = OBX.STATUSES[segment[11][0]]
+        if len(segment) > 12 and segment[11][0]:
+            self.result_status = OBX.STATUSES[segment[11][0]]
+        else:
+            self.result_status = None
 
     @classmethod
-    def get_segments(cls, segements):
-        return [cls(segment) for segment in segements]
+    def get_segments(cls, segments):
+        return [cls(segment) for segment in segments]
 
 
 class EVN(Segment):
@@ -154,8 +190,23 @@ class EVN(Segment):
         self.recorded_datetime = datetime.strptime(
             segment[2][0][:12], DATETIME_FORMAT
         )
+        planned_datetime = segment[3][0]
+
+        if planned_datetime:
+            self.planned_datetime = datetime.strptime(
+                planned_datetime, DATETIME_FORMAT
+            )
 
         self.event_description = segment[4][0]
+
+
+class ResultsPV1(Segment):
+    @classmethod
+    def name(cls):
+        return "PV1"
+
+    def __init__(self, segment):
+        pass
 
 
 class PV1(Segment):
@@ -198,25 +249,9 @@ class PV1(Segment):
 
 
 class NTE(Segment):
-    def __init__(self, segments):
-        if segments:
-            self.comments = " ".join(
-                s[3][0] for s in segments
-            )
-            self.set_id = segments[0][1][0]
-
-    @classmethod
-    def get_segments(cls, segments):
-        grouped_by_index = defaultdict(list)
-
-        for segment in segments:
-            grouped_by_index[segment[1][0]].append(segment)
-
-        result = []
-        for grouped in grouped_by_index.itervalues():
-            result.append(cls(grouped))
-
-        return result
+    def __init__(self, segment):
+        self.comments = segment[3][0]
+        self.set_id = segment[1][0]
 
 
 class AL1(Segment):
@@ -240,3 +275,92 @@ class AL1(Segment):
         self.allergy_start_datetime = datetime.strptime(
             segments[6][0], DATETIME_FORMAT
         )
+
+
+class HL7Base(object):
+    def get_method_for_field(self, field):
+        for i in self.segments:
+            if not i.__class__ == RepeatingField:
+                if i.name() == field:
+                    return i
+        raise ValueError("unable to find a setter for {}".format(field))
+
+
+class RepeatingField(HL7Base):
+    def __init__(self, *segments, **kwargs):
+        self.segments = segments
+        self.section_name = kwargs.pop("section_name")
+        self.repeated_class = namedtuple(
+            self.section_name, self.get_segment_names()
+        )
+        self.required = kwargs.pop("required", True)
+
+    def get_segment_names(self):
+        result = []
+        for segment in self.segments:
+            if segment.__class__.__name__ == "RepeatingField":
+                result.append(segment.section_name)
+            else:
+                result.append(segment.name().lower())
+        return result
+
+    def get(self, passed_message):
+        found_repeaters = []
+        kwargs = {}
+        message = copy(passed_message)
+        found = True
+
+        while len(message) and found:
+            for index, segment in enumerate(self.segments):
+                if segment.__class__.__name__ == "RepeatingField":
+                    matched, repeated_fields, stripped_message = segment.get(
+                        message
+                    )
+
+                    message = stripped_message
+                    kwargs[segment.section_name] = repeated_fields
+                else:
+                    msg_segment = message[0]
+                    if get_field_name(msg_segment) == segment.name():
+                        mthd = self.get_method_for_field(segment.name())
+                        kwargs[segment.name().lower()] = mthd(msg_segment)
+                        message = clean_until(message, segment.name())
+
+                if index == len(self.segments) - 1:
+                    if len(kwargs):
+                        found_repeaters.append(self.repeated_class(**kwargs))
+                        kwargs = {}
+                    else:
+                        found = False
+
+        if found_repeaters:
+            return (True, found_repeaters, message,)
+        else:
+            return (False, found_repeaters, passed_message)
+
+
+class HL7Message(HL7Base):
+    def __init__(self, raw_message):
+        message = copy(raw_message)
+
+        for field in self.segments:
+            if field.__class__ == RepeatingField:
+                matched, found_repeaters, message = field.get(message)
+
+                if not matched:
+                    raise ValueError("unable to match {}".format(field.section_name))
+                setattr(self, field.section_name, found_repeaters)
+            else:
+                mthd = self.get_method_for_field(field.name())
+                setattr(self, field.name().lower(), mthd(message.segment(field.name())))
+                message = clean_until(message, field.name())
+
+
+class WinpathResult(HL7Message):
+    segments = (
+        MSH, ResultsPID, ResultsPV1, ORC, RepeatingField(
+            OBR,
+            RepeatingField(OBX, section_name="obxs"),
+            section_name="results"
+            )
+    )
