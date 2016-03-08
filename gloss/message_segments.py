@@ -1,4 +1,5 @@
 from datetime import datetime
+from collections import defaultdict
 
 DATETIME_FORMAT = "%Y%m%d%H%M"
 DATE_FORMAT = "%Y%m%d"
@@ -125,12 +126,26 @@ class OBX(Segment):
 
     def __init__(self, segment):
         self.value_type = segment[2][0]
+        self.set_id = segment[1][0]
         self.test_code = segment[3][0][0][0]
         self.test_name = segment[3][0][1][0]
         self.observation_value = segment[5][0]
-        self.units = segment[6][0]
-        self.reference_range = segment[7][0]
+        units = None
+        reference_range = None
+
+        if segment[6][0]:
+            units = segment[6][0]
+
+        if segment[7][0]:
+            reference_range = segment[7][0]
+
+        self.units = units
+        self.reference_range = reference_range
         self.result_status = OBX.STATUSES[segment[11][0]]
+
+    @classmethod
+    def get_segments(cls, segements):
+        return [cls(segment) for segment in segements]
 
 
 class EVN(Segment):
@@ -178,13 +193,30 @@ class PV1(Segment):
             self.datetime_of_discharge = datetime.strptime(
                 segment[45][0][:12], DATETIME_FORMAT
             )
+        else:
+            self.datetime_of_discharge = None
 
 
 class NTE(Segment):
     def __init__(self, segments):
-        self.comments = "\n".join(
-            s[3][0] for s in segments
-        )
+        if segments:
+            self.comments = " ".join(
+                s[3][0] for s in segments
+            )
+            self.set_id = segments[0][1][0]
+
+    @classmethod
+    def get_segments(cls, segments):
+        grouped_by_index = defaultdict(list)
+
+        for segment in segments:
+            grouped_by_index[segment[1][0]].append(segment)
+
+        result = []
+        for grouped in grouped_by_index.itervalues():
+            result.append(cls(grouped))
+
+        return result
 
 
 class AL1(Segment):

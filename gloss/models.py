@@ -8,7 +8,7 @@ import json
 from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Date, Boolean, ForeignKey
+    Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text
 )
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
@@ -59,7 +59,7 @@ class GlossSubrecord(object):
 
     @classmethod
     def query_from_identifier(cls, identifier, issuing_source, session):
-        return session.query(cls, GlossolaliaReference, PatientIdentifier).\
+        return session.query(cls).\
         filter(cls.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.gloss_reference_id == GlossolaliaReference.id).\
         filter(PatientIdentifier.issuing_source == issuing_source).\
@@ -82,7 +82,7 @@ class Patient(Base, GlossSubrecord):
     # however it comes as a seperate field in the feed and
     # therefore might be useful for data validation purposes
     # (also might give us an indicator and the max time of death)
-    death = Column(Boolean, default=False)
+    death_indicator = Column(Boolean, default=False)
     birth_place = Column(String)
 
 
@@ -100,12 +100,41 @@ class PatientIdentifier(Base, GlossSubrecord):
     identifier = Column(String(250))
     issuing_source = Column(String(250))
     active = Column(Boolean, default=True)
+    merged_into_identifier = Column(String(250))
 
 
 class Subscription(Base, GlossSubrecord):
     system = Column(String(250))
     active = Column(Boolean, default=True)
 
+
+class Allergy(Base, GlossSubrecord):
+    # ask the docs which fields they'd want
+    # for the moment, lets just save allergy reference name
+    allergy_type = Column(String(250))
+    allergy_type_description = Column(String(250))
+    certainty_id = Column(String(250))
+    certainty_description = Column(String(250))
+    allergy_reference_name = Column(String(250))
+    allergy_description = Column(String(250))
+    allergen_reference_system = Column(String(250))
+    allergen_reference = Column(String(250))
+    status_id = Column(String(250))
+    status_description = Column(String(250))
+    diagnosis_datetime = Column(DateTime)
+    allergy_start_datetime = Column(DateTime)
+    no_allergies = Column(Boolean)
+
+class Result(Base, GlossSubrecord):
+    value_type = Column(String(250))
+    test_code = Column(String(250))
+    test_name = Column(String(250))
+    observation_value = Column(String(250))
+    units = Column(String(250))
+    reference_range = Column(String(250))
+    result_status = Column(String(250))
+    comments = Column(Text)
+    observation_datetime = Column(DateTime)
 
 class GlossolaliaReference(Base):
     pass
@@ -216,7 +245,7 @@ class WinPathMessage(object):
                             units=obx.units,
                             reference_range=obx.reference_range,
                             result_status=obx.result_status
-                        ) for obx in self.msg.obx
+                        ) for obx in self.msg.obxs
                     ])
                 )
             )
