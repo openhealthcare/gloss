@@ -274,5 +274,5 @@ class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
     message_type = ResultMessage
 
     @db_message_processor
-    def notify(self, message, session=None, gloss_ref=None):
+    def notify(self, messages, session=None, gloss_ref=None):
         pass
