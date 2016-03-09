@@ -3,7 +3,8 @@ import datetime
 
 from gloss.models import (
     InpatientEpisode, PatientIdentifier, Merge,
-    session_scope, get_gloss_reference, InpatientLocation
+    session_scope, get_gloss_reference, InpatientLocation, Allergy,
+    Result
 )
 from gloss import settings
 from models import atomic_method, get_or_create_identifier
@@ -14,13 +15,18 @@ from gloss.message_type import (
 
 
 def db_message_processor(some_fun):
-    def add_gloss_ref(self, messages, session=None, **kwargs):
+    def add_gloss_ref(self, message_container, session=None):
         gloss_ref = get_or_create_identifier(
-            messages[0].hospital_number,
+            message_container.hospital_number,
             session,
-            issuing_source="uclh"
+            issuing_source=message_container.issuing_source
         )
-        return some_fun(self, messages, session=session, gloss_ref=gloss_ref, **kwargs)
+        return some_fun(
+            self,
+            message_container,
+            session=session,
+            gloss_ref=gloss_ref,
+        )
     return atomic_method(add_gloss_ref)
 
 
@@ -45,8 +51,8 @@ class OpalJSONSerializer(json.JSONEncoder):
 
 class Subscription(object):
     @classmethod
-    def cares_about(self, message_type):
-        if message_type in cls.subscribtion_types:
+    def cares_about(self, message_container):
+        if message_container.gloss_message_type in cls.subscribtion_types:
             return True
         return False
 
@@ -94,33 +100,30 @@ class OpalSerialiser(object):
 class UclhAllergySubscription(Subscription, OpalSerialiser):
     message_type = AllergyMessage
 
-    def __init__(self, message):
-        pass
-
     @db_message_processor
-    def notify(self, message, session=None, gloss_ref=None):
-        if message.allergies:
-            for i in message.allergies:
-                pass
-                # save allergies
-        elif message.no_allergies:
-            pass
-            # save no allergies
+    def notify(self, message_container, session=None, gloss_ref=None):
+        messages = message_container.messages
+        session.query(Allergy).filter(
+            Allergy.gloss_reference == gloss_ref
+        ).delete()
 
-        # post downstream
+        if messages:
+            for message in messages:
+                allergy = Allergy(**vars(message))
+                allergy.gloss_reference = gloss_ref
+                session.add(allergy)
+        else:
+            allergy = Allergy(no_allergies=True, gloss_reference=gloss_ref)
+            session.add(allergy)
 
 
 class UclhMergeSubscription(Subscription, OpalSerialiser):
     # TODO we should repoint all gloss subrecords
     message_type = PatientMergeMessage
 
-    def post_downstream(self, message):
-        import logging
-        logging.critical("this is working then")
-        print "is this working"
-
     @db_message_processor
-    def notify(self, messages, session=None, gloss_ref=None):
+    def notify(self, message_container, session=None, gloss_ref=None):
+        messages = message_container.messages
         for message in messages:
             old_gloss_ref = get_gloss_reference(
                 message.old_id,
@@ -131,8 +134,6 @@ class UclhMergeSubscription(Subscription, OpalSerialiser):
             if old_gloss_ref:
                 mrg = Merge(old_reference=old_gloss_ref, gloss_reference=gloss_ref)
                 session.add(mrg)
-
-            self.post_downstream(message)
 
 
 def create_or_update_inpatient_episode(message, gloss_ref, base=None):
@@ -199,7 +200,8 @@ class UclhInpatientSubscription(Subscription, OpalSerialiser):
         self.session.query()
 
     @db_message_processor
-    def notify(self, messages, session=None, gloss_ref=None):
+    def notify(self, message_container, session=None, gloss_ref=None):
+        messages = message_container.messages
         for message in messages:
             inpatient_episode, created = get_or_create_episode(
                 message, gloss_ref, session
@@ -230,7 +232,8 @@ class UclhInpatientEpisodeDeleteSubscription(Subscription, OpalSerialiser):
     message_type = InpatientEpisodeDeleteMessage
 
     @db_message_processor
-    def notify(self, messages, session=None, gloss_ref=None):
+    def notify(self, message_container, session=None, gloss_ref=None):
+        messages = message_container.messages
         for message in messages:
             session.query(InpatientEpisode).filter(
                 InpatientEpisode.visit_number == message.visit_number
@@ -241,7 +244,8 @@ class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):
     message_type = InpatientEpisodeTransferMessage
 
     @db_message_processor
-    def notify(self, messages, session=None, gloss_ref=None):
+    def notify(self, message_container, session=None, gloss_ref=None):
+        messages = message_container.messages
         for message in messages:
             inpatient_episode, created = get_or_create_episode(
                 message, gloss_ref, session
@@ -268,10 +272,15 @@ class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):
                 session.add(inpatient_location)
 
 
-
 class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
     message_type = ResultMessage
 
     @db_message_processor
-    def notify(self, messages, session=None, gloss_ref=None):
-        pass
+    def notify(self, message_container, session=None, gloss_ref=None):
+        messages = message_container.messages
+        for message in messages:
+            model_kwargs = vars(message)
+            model_kwargs["observations"] = json.dumps(message.observations)
+            result = Result(**model_kwargs)
+            result.gloss_reference = gloss_ref
+            session.add(result)

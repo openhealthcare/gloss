@@ -313,7 +313,7 @@ class RepeatingField(HL7Base):
         while len(message) and found:
             for index, segment in enumerate(self.segments):
                 if segment.__class__.__name__ == "RepeatingField":
-                    matched, repeated_fields, stripped_message = segment.get(
+                    repeated_fields, stripped_message = segment.get(
                         message
                     )
 
@@ -334,9 +334,9 @@ class RepeatingField(HL7Base):
                         found = False
 
         if found_repeaters:
-            return (True, found_repeaters, message,)
+            return (found_repeaters, message,)
         else:
-            return (False, found_repeaters, passed_message)
+            return (found_repeaters, passed_message,)
 
 
 class HL7Message(HL7Base):
@@ -345,10 +345,7 @@ class HL7Message(HL7Base):
 
         for field in self.segments:
             if field.__class__ == RepeatingField:
-                matched, found_repeaters, message = field.get(message)
-
-                if not matched:
-                    raise ValueError("unable to match {}".format(field.section_name))
+                found_repeaters, message = field.get(message)
                 setattr(self, field.section_name, found_repeaters)
             else:
                 mthd = self.get_method_for_field(field.name())

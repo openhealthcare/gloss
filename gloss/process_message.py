@@ -3,8 +3,8 @@ from gloss import notification
 from utils import itersubclasses
 from message_type import (
     InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
-    InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage
-)
+    InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage,
+    AllergyMessage, MessageContainer)
 import logging
 from collections import defaultdict
 
@@ -36,9 +36,19 @@ def fetch_demographics(pid): pass
 
 
 class MessageImporter(HL7Message):
+    @property
+    def gloss_message_type(self):
+        raise NotImplementedError("we need a gloss message type")
+
     def process(self):
         msgs = self.process_message()
-        notification.notify(msgs)
+        message_container = MessageContainer(
+            messages=msgs,
+            hospital_number=self.pid.hospital_number,
+            issuing_source="uclh",
+            message_type=self.gloss_message_type
+        )
+        notification.notify(message_container)
 
     def process_message(self, session=None):
         pass
@@ -47,13 +57,14 @@ class MessageImporter(HL7Message):
 class PatientMerge(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A34"
+    gloss_message_type = PatientMergeMessage
 
     segments = (
         MSH, InpatientPID, MRG
     )
 
     def process_message(self, session=None):
-        return [PatientMergeMessage(
+        return [self.gloss_message_type(
             old_id=self.mrg.duplicate_hospital_number,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh"
@@ -83,9 +94,10 @@ class InpatientAdmit(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A01"
     segments = (EVN, InpatientPID, PV1,)
+    gloss_message_type = InpatientEpisodeMessage
 
     def process_message(self):
-        return [InpatientEpisodeMessage(
+        return [self.gloss_message_type(
             datetime_of_admission=self.pv1.datetime_of_admission,
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
@@ -118,9 +130,10 @@ class InpatientTransfer(MessageImporter):
     message_type = "ADT"
     trigger_event = "A02"
     segments = (EVN, InpatientPID, PV1,)
+    gloss_message_type = InpatientEpisodeTransferMessage
 
     def process_message(self):
-        message = InpatientEpisodeTransferMessage(
+        message = self.gloss_message_type(
             datetime_of_admission=self.pv1.datetime_of_admission,
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
@@ -138,9 +151,10 @@ class InpatientSpellDelete(MessageImporter):
     message_type = "ADT"
     trigger_event = "A07"
     segments = (EVN, InpatientPID, PV1,)
+    gloss_message_type = InpatientEpisodeDeleteMessage
 
     def process_message(self):
-        return [InpatientEpisodeDeleteMessage(
+        return [self.gloss_message_type(
             visit_number=self.pid.patient_account_number,
             datetime_of_deletion=self.evn.recorded_datetime,
             hospital_number=self.pid.hospital_number,
@@ -152,33 +166,36 @@ class AllergyMessage(MessageImporter):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
-    segments = (AllergiesPID, AL1,)
+    segments = (AllergiesPID, RepeatingField(AL1, section_name="allergies"),)
+    gloss_message_type = AllergyMessage
 
     def process_message(self):
-        if self.al1:
-            Allergy(
-                allergy_type=self.al1.allergy_type,
-                allergy_type_description=self.al1.allergy_type_description,
-                certainty_id=self.al1.certainty_id,
-                certainty_description=self.al1.certainty_description,
-                allergy_reference_name=self.al1.allergy_reference_name,
-                allergy_description=self.al1.allergy_description,
-                allergen_reference_system=self.al1.allergen_reference_system,
-                allergen_reference=self.al1.allergen_reference,
-                status_id=self.al1.status_id,
-                status_description=self.al1.status_description,
-                diagnosis_datetime=self.al1.diagnosis_datetime,
-                allergy_start_datetime=self.al1.allergy_start_datetime
-            )
-        else:
-            Allergy(
-                no_allergies=True
-            )
+        all_allergies = []
+        for allergy in self.allergies:
+            all_allergies.append(self.gloss_message_type(
+                allergy_type=allergy.al1.allergy_type,
+                allergy_type_description=allergy.al1.allergy_type_description,
+                certainty_id=allergy.al1.certainty_id,
+                certainty_description=allergy.al1.certainty_description,
+                allergy_reference_name=allergy.al1.allergy_reference_name,
+                allergy_description=allergy.al1.allergy_description,
+                allergen_reference_system=allergy.al1.allergen_reference_system,
+                allergen_reference=allergy.al1.allergen_reference,
+                status_id=allergy.al1.status_id,
+                status_description=allergy.al1.status_description,
+                diagnosis_datetime=allergy.al1.diagnosis_datetime,
+                allergy_start_datetime=allergy.al1.allergy_start_datetime,
+                hospital_number=self.pid.hospital_number,
+                issuing_source="uclh"
+            ))
+        return all_allergies
+
 
 
 class WinPathResults(MessageImporter):
     message_type = u"ORU"
     trigger_event = u"R01"
+    gloss_message_type = ResultMessage
 
     segments = (
         MSH, ResultsPID, ResultsPV1, ORC, RepeatingField(
@@ -197,7 +214,7 @@ class WinPathResults(MessageImporter):
                 test_code=obxs.obx.test_code,
                 test_name=obxs.obx.test_name,
                 observation_value=obxs.obx.observation_value,
-                units=obxs.obx.units,
+                units=obxs.obx.units.replace("\\S\\", "^"),
                 reference_range=obxs.obx.reference_range,
                 result_status=obxs.obx.result_status,
                 comments=comments.get(obxs.obx.set_id, None)
@@ -219,7 +236,7 @@ class WinPathResults(MessageImporter):
         for result in self.results:
             set_id_to_comments = get_comments(result.ntes)
             messages.append(
-                ResultMessage(
+                self.gloss_message_type(
                     hospital_number=self.pid.hospital_number,
                     issuing_source="uclh",
                     lab_number=result.obr.lab_number,

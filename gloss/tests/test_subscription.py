@@ -1,13 +1,15 @@
+import json
 from gloss.process_message import MessageProcessor, InpatientAdmit
 from gloss.tests.core import GlossTestCase
 from gloss.tests.test_messages import (
     INPATIENT_ADMISSION, read_message, PATIENT_MERGE, COMPLEX_WINPATH_RESULT,
     RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE, INPATIENT_AMEND,
-    INPATIENT_SPELL_DELETE, INPATIENT_CANCEL_DISCHARGE
+    INPATIENT_SPELL_DELETE, INPATIENT_CANCEL_DISCHARGE, ALLERGY, NO_ALLERGY,
+    COMPLEX_WINPATH_RESULT
 )
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
-    InpatientLocation, subscribe)
+    InpatientLocation, subscribe, Allergy, Result)
 from mock import patch
 from datetime import datetime
 
@@ -254,7 +256,6 @@ class TestInpatientDeleteSpell(GlossTestCase):
         num_locations = self.session.query(InpatientEpisode).count()
         self.assertEqual(num_locations, 0)
 
-
     @patch("gloss.models.get_session")
     def test_with(self, get_session):
         get_session.return_value = self.session
@@ -344,6 +345,49 @@ class TestMergeFlow(GlossTestCase):
         old_gloss_id = result.old_reference_id
         self.assertEqual(old_gloss_reference.id, old_gloss_id)
 
+class TestAllergyFlow(GlossTestCase):
+
+    def setUp(self):
+        super(TestAllergyFlow, self).setUp()
+        self.message_processor = MessageProcessor()
+
+    @patch("gloss.models.get_session")
+    def test_with_allergies(self, get_session):
+        get_session.return_value = self.session
+        allergy = self.get_allergy("97995111", issuing_source="uclh")
+        self.session.add(allergy)
+        self.message_processor.process_message(read_message(ALLERGY))
+        found_allergy = self.session.query(Allergy).one()
+        self.assertEqual('1', found_allergy.allergy_type)
+        self.assertEqual('Product Allergy', found_allergy.allergy_type_description)
+        self.assertEqual('CERT-1', found_allergy.certainty_id)
+        self.assertEqual('Definite', found_allergy.certainty_description)
+        self.assertEqual('CO-CODAMOL (Generic Manuf)', found_allergy.allergy_reference_name)
+        self.assertEqual('CO-CODAMOL (Generic Manuf) : ', found_allergy.allergy_description)
+        self.assertEqual(u'UDM', found_allergy.allergen_reference_system)
+        self.assertEqual('8f75c6d8-45b7-4b40-913f-8ca1f59b5350', found_allergy.allergen_reference)
+        self.assertEqual(u'1', found_allergy.status_id)
+        self.assertEqual(u'Active', found_allergy.status_description)
+        self.assertEqual(datetime(2015, 11, 19, 9, 16), found_allergy.diagnosis_datetime)
+        self.assertEqual(datetime(2015, 11, 19, 12, 00), found_allergy.allergy_start_datetime)
+        gloss_ref = get_gloss_reference(
+            "97995111", session=self.session, issuing_source="uclh"
+        )
+        self.assertEqual(gloss_ref, found_allergy.gloss_reference)
+
+    @patch("gloss.models.get_session")
+    def test_with_no_allergies(self, get_session):
+        get_session.return_value = self.session
+        allergy = self.get_allergy("97995000", issuing_source="uclh")
+        self.session.add(allergy)
+        self.message_processor.process_message(read_message(NO_ALLERGY))
+        found_allergy = self.session.query(Allergy).one()
+        self.assertTrue(found_allergy.no_allergies)
+        gloss_ref = get_gloss_reference(
+            "97995000", session=self.session, issuing_source="uclh"
+        )
+        self.assertEqual(gloss_ref, found_allergy.gloss_reference)
+
 
 class TestResultsFlow(GlossTestCase):
     """
@@ -351,13 +395,276 @@ class TestResultsFlow(GlossTestCase):
         from repeating fields
     """
     @patch("gloss.models.get_session")
-    def test_complex_message(self, get_session):
-        get_session.return_value = self.session
-        message_processor = MessageProcessor()
-        message_processor.process_message(read_message(COMPLEX_WINPATH_RESULT))
-
-    @patch("gloss.models.get_session")
     def test_message_with_notes(self, get_session):
         get_session.return_value = self.session
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(RESULTS_MESSAGE))
+        result = self.session.query(Result).one()
+        expected_comments = " ".join([
+            "Units: mL/min/1.73sqm Multiply eGFR by 1.21 for people of",
+            "African Caribbean origin. Interpret with regard to UK CKD",
+            "guidelines: www.renal.org/CKDguide/ckd.html Use with caution",
+            "for adjusting drug dosages - contact clinical pharmacist for",
+            "advice."
+        ])
+
+        expected_observations = [
+            {
+                "result_status": "FINAL",
+                "observation_value": "143",
+                "comments": expected_comments,
+                "test_code": "NA",
+                "value_type": "NM",
+                "test_name": "Sodium",
+                "units": "mmol/L",
+                "reference_range": "135-145"
+            },
+            {
+                "result_status": "FINAL",
+                "observation_value": "3.9",
+                "comments": None,
+                "test_code": "K",
+                "value_type": "NM",
+                "test_name": "Potassium",
+                "units": "mmol/L",
+                "reference_range": "3.5-5.1"
+            },
+            {
+                "result_status": "FINAL",
+                "observation_value": "3.9",
+                "comments": None,
+                "test_code": "UREA",
+                "value_type": "NM",
+                "test_name": "Urea",
+                "units": "mmol/L",
+                "reference_range": "1.7-8.3"
+            },
+            {
+                "result_status": "FINAL",
+                "observation_value": "61",
+                "comments": None,
+                "test_code": "CREA",
+                "value_type": "NM",
+                "test_name": "Creatinine",
+                "units": "umol/L",
+                "reference_range": "49-92"
+            },
+            {
+                "result_status": "FINAL",
+                "observation_value": ">90",
+                "comments": None,
+                "test_code": "GFR",
+                "value_type": "NM",
+                "test_name": "Estimated GFR",
+                "units": ".",
+                "reference_range": None
+            }
+        ]
+        self.assertEqual(
+            expected_observations, json.loads(result.observations)
+        )
+
+        self.assertEqual(
+            datetime(2014, 1, 17, 20, 45), result.request_datetime
+        )
+
+        self.assertEqual(
+            datetime(2014, 1, 17, 17, 0), result.observation_datetime
+        )
+
+        self.assertEqual('ELU', result.profile_code)
+        self.assertEqual('FINAL', result.result_status)
+
+    @patch("gloss.models.get_session")
+    def test_complex_message(self, get_session):
+        get_session.return_value = self.session
+        message_processor = MessageProcessor()
+        message_processor.process_message(read_message(COMPLEX_WINPATH_RESULT))
+        results = self.session.query(Result).all()
+        self.assertEqual(2, len(results))
+        result_1 = results[0]
+        expected_observations_1 = [
+            {
+                u'comments': None,
+                u'observation_value': u'8.00',
+                u'reference_range': u'3.0-10.0',
+                u'result_status': None,
+                u'test_code': u'WCC',
+                u'test_name': u'White cell count',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'3.20',
+                u'reference_range': u'4.4-5.8',
+                u'result_status': None,
+                u'test_code': u'RCC',
+                u'test_name': u'Red cell count',
+                u'units': u'x10^12/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'87',
+                u'reference_range': None,
+                u'result_status': None,
+                u'test_code': u'HBGL',
+                u'test_name': u'Haemoglobin (g/L)',
+                u'units': u'g/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'0.350',
+                u'reference_range': u'0.37-0.50',
+                u'result_status': None,
+                u'test_code': u'HCTU',
+                u'test_name': u'HCT',
+                u'units': u'L/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'78.0',
+                u'reference_range': u'80-99',
+                u'result_status': None,
+                u'test_code': u'MCVU',
+                u'test_name': u'MCV',
+                u'units': u'fL',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'28.0',
+                u'reference_range': u'27.0-33.5',
+                u'result_status': None,
+                u'test_code': u'MCHU',
+                u'test_name': u'MCH',
+                u'units': u'pg',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'300',
+                u'reference_range': None,
+                u'result_status': None,
+                u'test_code': u'MCGL',
+                u'test_name': u'MCHC (g/L)',
+                u'units': u'g/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'17.0',
+                u'reference_range': u'11.5-15.0',
+                u'result_status': None,
+                u'test_code': u'RDWU',
+                u'test_name': u'RDW',
+                u'units': u'%',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'250',
+                u'reference_range': u'150-400',
+                u'result_status': None,
+                u'test_code': u'PLT',
+                u'test_name': u'Platelet count',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'10.0',
+                u'reference_range': u'7-13',
+                u'result_status': None,
+                u'test_code': u'MPVU',
+                u'test_name': u'MPV',
+                u'units': u'fL',
+                u'value_type': u'NM'
+            }
+        ]
+
+        self.assertEqual(
+            expected_observations_1, json.loads(result_1.observations)
+        )
+
+        self.assertEqual('98U000057', result_1.lab_number)
+        self.assertEqual(
+            datetime(2014, 11, 12, 16, 0), result_1.observation_datetime
+        )
+        self.assertEqual(
+            datetime(2014, 11, 12, 16, 6), result_1.request_datetime
+        )
+        self.assertEqual("FINAL", result_1.result_status)
+        self.assertEqual("FBCY", result_1.profile_code)
+
+        result_2 = results[1]
+
+        expected_observations_2 = [
+            {
+                u'comments': None,
+                u'observation_value': u'55.0%  4.40',
+                u'reference_range': u'2.0-7.5',
+                u'result_status': None,
+                u'test_code': u'NE',
+                u'test_name': u'Neutrophils',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'25.0%  2.00',
+                u'reference_range': u'1.2-3.65',
+                u'result_status': None,
+                u'test_code': u'LY',
+                u'test_name': u'Lymphocytes',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'15.0%  1.20',
+                u'reference_range': u'0.2-1.0',
+                u'result_status': None,
+                u'test_code': u'MO',
+                u'test_name': u'Monocytes',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'3.0%  0.24',
+                u'reference_range': u'0.0-0.4',
+                u'result_status': None,
+                u'test_code': u'EO',
+                u'test_name': u'Eosinophils',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            },
+            {
+                u'comments': None,
+                u'observation_value': u'2.0%  0.16',
+                u'reference_range': u'0.0-0.1',
+                u'result_status': None,
+                u'test_code': u'BA',
+                u'test_name': u'Basophils',
+                u'units': u'x10^9/L',
+                u'value_type': u'NM'
+            }
+        ]
+
+        self.assertEqual(
+            expected_observations_2, json.loads(result_2.observations)
+        )
+
+        self.assertEqual('98U000057', result_2.lab_number)
+        self.assertEqual(
+            datetime(2014, 11, 12, 16, 0), result_2.observation_datetime
+        )
+        self.assertEqual(
+            datetime(2014, 11, 12, 16, 6), result_2.request_datetime
+        )
+        self.assertEqual("FINAL", result_2.result_status)
+        self.assertEqual("FBCZ", result_2.profile_code)

@@ -60,8 +60,20 @@ class GlossTestCase(TestCase):
         allergy = self.create_subrecord_with_id(
             Allergy, identifier, issuing_source
         )
-        allergy.name = "penicillin"
+        allergy.allergy_type = "1"
+        allergy.allergy_type_description = "Product Allergy"
+        allergy.certainty_id = "CERT-1"
+        allergy.certainty_description = "Definite"
+        allergy.allergy_reference_name = "Penecillin"
+        allergy.allergy_description = "Penecillin"
+        allergy.allergen_reference_system = "UDM"
+        allergy.allergen_reference = "8e75c6d8-45b7-4b40-913f-8ca1f59b5350"
+        allergy.status_id = "1"
+        allergy.status_description = "Active"
+        allergy.diagnosis_datetime = datetime(2015, 11, 19, 9, 15)
+        allergy.allergy_start_datetime = datetime(2015, 11, 19, 9, 14)
         return allergy
+
 
     def create_patient(self, identifier, issuing_source):
         patient = self.create_subrecord_with_id(

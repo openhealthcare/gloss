@@ -1,15 +1,17 @@
 from subscriptions import *
 
 
-class MessageType(object):
-    def __init__(self, hospital_number=None, issuing_source=None, **kwargs):
-        if not hospital_number or not issuing_source:
-            raise ValueError(
-                "hospital number or issuing source need to be implemented"
-            )
+class MessageContainer(object):
+    def __init__(
+        self, messages, hospital_number, issuing_source, message_type
+    ):
+        self.messages = messages
         self.hospital_number = hospital_number
         self.issuing_source = issuing_source
+        self.message_type = message_type
 
+
+class MessageType(object):
     def subscribers(self):
         for subscription_class in classes:
             if subscription_class.message_type == message_type.__class__:
@@ -27,20 +29,24 @@ class MessageType(object):
 class PatientMergeMessage(MessageType):
     def __init__(self, **kwargs):
         self.old_id = kwargs.pop("old_id")
-        super(PatientMergeMessage, self).__init__(**kwargs)
 
 
 class AllergyMessage(MessageType):
     def __init__(
-        self, allergies=None, no_allergies=False, **kwargs
+        self, **kwargs
     ):
-        if not allergies and not no_allergies:
-            raise ValueError(
-                "we either need allergies or a reference that there are no allergies"
-            )
-        self.allergies = allergies
-        self.no_allergies = no_allergies
-        super(self, **kwargs).__init__(**kwargs)
+        self.allergy_type = kwargs.pop("allergy_type")
+        self.allergy_type_description = kwargs.pop("allergy_type_description")
+        self.certainty_id = kwargs.pop("certainty_id")
+        self.certainty_description = kwargs.pop("certainty_description")
+        self.allergy_reference_name = kwargs.pop("allergy_reference_name")
+        self.allergy_description = kwargs.pop("allergy_description")
+        self.allergen_reference_system = kwargs.pop("allergen_reference_system")
+        self.allergen_reference = kwargs.pop("allergen_reference")
+        self.status_id = kwargs.pop("status_id")
+        self.status_description = kwargs.pop("status_description")
+        self.diagnosis_datetime = kwargs.pop("diagnosis_datetime")
+        self.allergy_start_datetime = kwargs.pop("allergy_start_datetime")
 
 
 class ResultMessage(MessageType):
@@ -52,7 +58,6 @@ class ResultMessage(MessageType):
         self.last_edited = kwargs.pop("last_edited")
         self.result_status = kwargs.pop("result_status")
         self.observations = kwargs.pop("observations")
-        super(ResultMessage, self).__init__(**kwargs)
 
 
 class InpatientEpisodeMessage(MessageType):
@@ -66,7 +71,6 @@ class InpatientEpisodeMessage(MessageType):
         self.visit_number = kwargs.pop("visit_number")
         self.datetime_of_admission = kwargs.pop("datetime_of_admission")
         self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
-        super(InpatientEpisodeMessage, self).__init__(**kwargs)
 
 
 class InpatientEpisodeTransferMessage(InpatientEpisodeMessage):
@@ -85,7 +89,6 @@ class InpatientEpisodeDeleteMessage(MessageType):
     ):
         self.visit_number = kwargs.pop("visit_number")
         self.datetime_of_deletion = kwargs.pop("datetime_of_deletion")
-        super(InpatientEpisodeDeleteMessage, self).__init__(**kwargs)
 
 
 class PatientIdentifierMessage(MessageType):

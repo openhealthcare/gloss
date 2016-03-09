@@ -183,19 +183,17 @@ class Allergy(Base, GlossSubrecord):
     status_description = Column(String(250))
     diagnosis_datetime = Column(DateTime)
     allergy_start_datetime = Column(DateTime)
-    no_allergies = Column(Boolean)
+    no_allergies = Column(Boolean, default=False)
 
 
 class Result(Base, GlossSubrecord):
-    value_type = Column(String(250))
-    test_code = Column(String(250))
-    test_name = Column(String(250))
-    observation_value = Column(String(250))
-    units = Column(String(250))
-    reference_range = Column(String(250))
-    result_status = Column(String(250))
-    comments = Column(Text)
+    lab_number = Column(String(250))
+    profile_code = Column(String(250))
+    request_datetime = Column(DateTime)
     observation_datetime = Column(DateTime)
+    last_edited = Column(DateTime)
+    result_status = Column(String(250))
+    observations = Column(Text)
 
 
 class GlossolaliaReference(Base):
