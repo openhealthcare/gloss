@@ -345,6 +345,7 @@ class TestMergeFlow(GlossTestCase):
         old_gloss_id = result.old_reference_id
         self.assertEqual(old_gloss_reference.id, old_gloss_id)
 
+
 class TestAllergyFlow(GlossTestCase):
 
     def setUp(self):

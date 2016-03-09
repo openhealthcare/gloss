@@ -12,18 +12,8 @@ class MessageContainer(object):
 
 
 class MessageType(object):
-    def subscribers(self):
-        for subscription_class in classes:
-            if subscription_class.message_type == message_type.__class__:
-                yield subscription_class
+    pass
 
-    def notify(self):
-        for subscription_class in self.subscribers:
-            subscription = subscription_class(message)
-            subscription.notify()
-
-    def to_dict(self):
-        pass
 
 
 class PatientMergeMessage(MessageType):
