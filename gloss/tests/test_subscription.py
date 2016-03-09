@@ -1,23 +1,22 @@
 import json
-from gloss.process_message import MessageProcessor, InpatientAdmit
+from datetime import datetime, date
+from gloss.process_message import MessageProcessor
 from gloss.tests.core import GlossTestCase
 from gloss.tests.test_messages import (
     INPATIENT_ADMISSION, read_message, PATIENT_MERGE, COMPLEX_WINPATH_RESULT,
     RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE, INPATIENT_AMEND,
     INPATIENT_SPELL_DELETE, INPATIENT_CANCEL_DISCHARGE, ALLERGY, NO_ALLERGY,
-    COMPLEX_WINPATH_RESULT
+    COMPLEX_WINPATH_RESULT, PATIENT_DEATH, PATIENT_UPDATE
 )
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
-    InpatientLocation, subscribe, Allergy, Result)
-from mock import patch
-from datetime import datetime
+    InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
+from gloss.subscriptions import UclhPatientUpdateSubscription
+from gloss.message_type import PatientUpdateMessage, MessageContainer
 
 
 class TestInpatientAdmissionFlow(GlossTestCase):
-    @patch("gloss.models.get_session")
-    def test_flow(self, get_session):
-        get_session.return_value = self.session
+    def test_flow(self):
         subscribe('50099878', self.session, "uclh")
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(INPATIENT_ADMISSION))
@@ -46,9 +45,7 @@ class TestInpatientDischarge(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientDischarge, self).setUp()
 
-    @patch("gloss.models.get_session")
-    def test_with_existing_inpatient_episode(self, get_session):
-        get_session.return_value = self.session
+    def test_with_existing_inpatient_episode(self):
         old_inpatient_episode = self.get_inpatient_episode(
             self.hospital_number, "uclh"
         )
@@ -81,9 +78,7 @@ class TestInpatientDischarge(GlossTestCase):
         self.assertEqual(inpatient_location.room_code, "F3SR")
         self.assertEqual(inpatient_location.bed_code, "F3SR-36")
 
-    @patch("gloss.models.get_session")
-    def test_without_existing_inpatient_episode(self, get_session):
-        get_session.return_value = self.session
+    def test_without_existing_inpatient_episode(self):
         self.message_processor.process_message(self.message)
         inpatient_episode = self.session.query(InpatientEpisode).one()
         self.assertEqual(
@@ -112,27 +107,25 @@ class TestInpatientAmend(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientAmend, self).setUp()
 
-    @patch("gloss.models.get_session")
-    def test_with_existing_inpatient_episode(self, get_session):
-        get_session.return_value = self.session
-        self.inpatient_episode = self.get_inpatient_episode(
+    def test_with_existing_inpatient_episode(self):
+        existing_inpatient_episode = self.get_inpatient_episode(
             self.hospital_number, "uclh"
         )
-        self.inpatient_episode.datetime_of_admission = datetime(
+        existing_inpatient_episode.datetime_of_admission = datetime(
             2012, 10, 10, 10, 10
         )
-        self.inpatient_episode.datetime_of_discharge = datetime(
+        existing_inpatient_episode.datetime_of_discharge = datetime(
             2013, 10, 10, 10, 10
         )
-        self.inpatient_episode.visit_number = self.visit_number
-        self.inpatient_location = self.get_inpatient_location(
-            self.inpatient_episode
+        existing_inpatient_episode.visit_number = self.visit_number
+        existing_inpatient_location = self.get_inpatient_location(
+            existing_inpatient_episode
         )
-        self.inpatient_location.ward_code = "A03"
-        self.inpatient_location.room_code = "A03"
-        self.inpatient_location.bed_code = "A03"
-        self.session.add(self.inpatient_episode)
-        self.session.add(self.inpatient_location)
+        existing_inpatient_location.ward_code = "A03"
+        existing_inpatient_location.room_code = "A03"
+        existing_inpatient_location.bed_code = "A03"
+        self.session.add(existing_inpatient_episode)
+        self.session.add(existing_inpatient_location)
         self.message_processor.process_message(self.message)
         inpatient_episode = self.session.query(InpatientEpisode).one()
         self.assertEqual(
@@ -145,15 +138,13 @@ class TestInpatientAmend(GlossTestCase):
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
-            inpatient_episode, inpatient_location.inpatient_episode
+            existing_inpatient_episode, inpatient_location.inpatient_episode
         )
         self.assertEqual(inpatient_location.ward_code, "T03")
         self.assertEqual(inpatient_location.room_code, "T03A")
         self.assertEqual(inpatient_location.bed_code, "T03-14")
 
-    @patch("gloss.models.get_session")
-    def test_without_existing_inpatient_episode(self, get_session):
-        get_session.return_value = self.session
+    def test_without_existing_inpatient_episode(self):
         self.message_processor.process_message(self.message)
         inpatient_episode = self.session.query(InpatientEpisode).one()
         self.assertEqual(
@@ -182,9 +173,7 @@ class TestInpatientCancelDischarge(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientCancelDischarge, self).setUp()
 
-    @patch("gloss.models.get_session")
-    def test_with_existing_inpatient_episode(self, get_session):
-        get_session.return_value = self.session
+    def test_with_existing_inpatient_episode(self):
         self.inpatient_episode = self.get_inpatient_episode(
             self.hospital_number, "uclh"
         )
@@ -229,9 +218,7 @@ class TestInpatientDeleteSpell(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientDeleteSpell, self).setUp()
 
-    @patch("gloss.models.get_session")
-    def test_without_existing_inpatient_episode(self, get_session):
-        get_session.return_value = self.session
+    def test_without_existing_inpatient_episode(self):
         self.inpatient_episode = self.get_inpatient_episode(
             self.hospital_number, "uclh"
         )
@@ -256,9 +243,7 @@ class TestInpatientDeleteSpell(GlossTestCase):
         num_locations = self.session.query(InpatientEpisode).count()
         self.assertEqual(num_locations, 0)
 
-    @patch("gloss.models.get_session")
-    def test_with(self, get_session):
-        get_session.return_value = self.session
+    def test_with(self):
         self.message_processor.process_message(self.message)
         num_inpatients = self.session.query(InpatientEpisode).count()
         self.assertEqual(num_inpatients, 0)
@@ -271,6 +256,13 @@ class TestInpatientTransfer(GlossTestCase):
 
     def setUp(self):
         super(TestInpatientTransfer, self).setUp()
+
+        self.message = read_message(INPATIENT_TRANSFER)
+        self.message_processor = MessageProcessor()
+
+    def test_flow_if_with_previous(self):
+        transfer_time = datetime(2012, 12, 14, 11, 0)
+
         self.inpatient_episode = self.get_inpatient_episode(
             self.hospital_number, "uclh"
         )
@@ -278,15 +270,11 @@ class TestInpatientTransfer(GlossTestCase):
         self.inpatient_location = self.get_inpatient_location(
             self.inpatient_episode
         )
-        self.message = read_message(INPATIENT_TRANSFER)
-        self.message_processor = MessageProcessor()
 
-    @patch("gloss.models.get_session")
-    def test_flow_if_with_previous(self, get_session):
-        get_session.return_value = self.session
-        transfer_time = datetime(2012, 12, 14, 11, 0)
         self.session.add(self.inpatient_episode)
         self.session.add(self.inpatient_location)
+        self.session.commit()
+
         self.message_processor.process_message(self.message)
 
         # make sure we're not creating multiple episodes
@@ -297,6 +285,7 @@ class TestInpatientTransfer(GlossTestCase):
 
         old_location = inpatient_locations[0]
         self.assertEqual(old_location.datetime_of_transfer, transfer_time)
+
         self.assertEqual(
             old_location.inpatient_episode, self.inpatient_episode
         )
@@ -316,9 +305,7 @@ class TestInpatientTransfer(GlossTestCase):
         self.assertEqual("T06A", new_location.room_code)
         self.assertEqual("T06-04", new_location.bed_code)
 
-    @patch("gloss.models.get_session")
-    def test_flow_if_no_previous(self, get_session):
-        get_session.return_value = self.session
+    def test_flow_if_no_previous(self):
         self.message_processor.process_message(self.message)
         self.session.query(InpatientEpisode).one()
         inpatient_location = self.session.query(InpatientLocation).one()
@@ -329,9 +316,7 @@ class TestInpatientTransfer(GlossTestCase):
 
 
 class TestMergeFlow(GlossTestCase):
-    @patch("gloss.models.get_session")
-    def test_complete_flow(self, get_session):
-        get_session.return_value = self.session
+    def test_complete_flow(self):
         old_hospital_id = "50028000"
         old_gloss_reference = get_or_create_identifier(
             hospital_number=old_hospital_id,
@@ -352,9 +337,7 @@ class TestAllergyFlow(GlossTestCase):
         super(TestAllergyFlow, self).setUp()
         self.message_processor = MessageProcessor()
 
-    @patch("gloss.models.get_session")
-    def test_with_allergies(self, get_session):
-        get_session.return_value = self.session
+    def test_with_allergies(self):
         allergy = self.get_allergy("97995111", issuing_source="uclh")
         self.session.add(allergy)
         self.message_processor.process_message(read_message(ALLERGY))
@@ -376,9 +359,7 @@ class TestAllergyFlow(GlossTestCase):
         )
         self.assertEqual(gloss_ref, found_allergy.gloss_reference)
 
-    @patch("gloss.models.get_session")
-    def test_with_no_allergies(self, get_session):
-        get_session.return_value = self.session
+    def test_with_no_allergies(self):
         allergy = self.get_allergy("97995000", issuing_source="uclh")
         self.session.add(allergy)
         self.message_processor.process_message(read_message(NO_ALLERGY))
@@ -395,9 +376,7 @@ class TestResultsFlow(GlossTestCase):
         currently a shell of a test that makes sure we get no errors
         from repeating fields
     """
-    @patch("gloss.models.get_session")
-    def test_message_with_notes(self, get_session):
-        get_session.return_value = self.session
+    def test_message_with_notes(self):
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(RESULTS_MESSAGE))
         result = self.session.query(Result).one()
@@ -476,9 +455,7 @@ class TestResultsFlow(GlossTestCase):
         self.assertEqual('ELU', result.profile_code)
         self.assertEqual('FINAL', result.result_status)
 
-    @patch("gloss.models.get_session")
-    def test_complex_message(self, get_session):
-        get_session.return_value = self.session
+    def test_complex_message(self):
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(COMPLEX_WINPATH_RESULT))
         results = self.session.query(Result).all()
@@ -669,3 +646,61 @@ class TestResultsFlow(GlossTestCase):
         )
         self.assertEqual("FINAL", result_2.result_status)
         self.assertEqual("FBCZ", result_2.profile_code)
+
+
+class TestPatientUpdate(GlossTestCase):
+    def setUp(self):
+        super(TestPatientUpdate, self).setUp()
+        self.message_processor = MessageProcessor()
+        self.patient = self.create_patient("50092915", "uclh")
+        self.session.add(self.patient)
+
+    def test_patient_update(self):
+        self.message_processor.process_message(read_message(PATIENT_UPDATE))
+        patient = self.session.query(Patient).one()
+        self.assertEqual("TESTING MEDCHART", patient.surname)
+        self.assertEqual("MEDHCART FIRSTNAME", patient.first_name)
+        self.assertEqual("MEDCHART JONES", patient.middle_name)
+        self.assertEqual("MR", patient.title)
+        self.assertIsNone(patient.date_of_death)
+
+    def test_patient_death(self):
+        self.message_processor.process_message(read_message(PATIENT_DEATH))
+        patient = self.session.query(Patient).one()
+        self.assertEqual("TESTING MEDCHART", patient.surname)
+        self.assertEqual("MEDHCART FIRSTNAME", patient.first_name)
+        self.assertEqual("MEDCHART JONES", patient.middle_name)
+        self.assertEqual("MR", patient.title)
+        self.assertEqual(date(2014, 11, 1), patient.date_of_death)
+
+    def test_patient_only_update_known_patients(self):
+        self.session.query(Subscription).delete()
+        self.message_processor.process_message(read_message(PATIENT_DEATH))
+        patient = self.session.query(Patient).one()
+        self.assertEqual("Smith", patient.surname)
+        self.assertEqual("Jane", patient.first_name)
+        self.assertEqual(None, patient.middle_name)
+        self.assertEqual("Ms", patient.title)
+        self.assertEqual(date(1983, 12, 12), patient.date_of_birth)
+
+
+    def test_only_update_with_existent_fields(self):
+        messages = [PatientUpdateMessage(
+            first_name="Mary"
+        )]
+        container = MessageContainer(
+            message_type=PatientUpdateMessage,
+            messages=messages,
+            hospital_number="50092915",
+            issuing_source="uclh"
+        )
+        subscription = UclhPatientUpdateSubscription()
+        subscription.notify(container)
+        patient = self.session.query(Patient).one()
+
+        # only update first name
+        self.assertEqual("Mary", patient.first_name)
+        self.assertEqual("Smith", patient.surname)
+        self.assertEqual(None, patient.middle_name)
+        self.assertEqual("Ms", patient.title)
+        self.assertEqual(date(1983, 12, 12), patient.date_of_birth)

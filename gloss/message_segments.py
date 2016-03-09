@@ -1,7 +1,10 @@
 from datetime import datetime
-from collections import defaultdict, namedtuple
+from collections import namedtuple
+from coded_values import (
+    RELIGION_MAPPINGS, SEX_MAPPING, MARITAL_STATUSES_MAPPING,
+    TEST_STATUS_MAPPING, EPISODE_TYPES, OBX_STATUSES
+)
 from copy import copy
-import hl7
 
 DATETIME_FORMAT = "%Y%m%d%H%M"
 DATE_FORMAT = "%Y%m%d"
@@ -59,7 +62,8 @@ class ResultsPID(Segment):
             self.nhs_number = self.nhs_number[0][0]
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
-        self.forename = segment[5][0][1][0]
+        self.first_name = segment[5][0][1][0]
+
         self.date_of_birth = datetime.strptime(
             segment[7][0][:8], DATE_FORMAT
         ).date()
@@ -69,6 +73,7 @@ class InpatientPID(Segment):
     """
         the pid definition used by CARECAST systems
     """
+
     @classmethod
     def name(cls):
         return "PID"
@@ -83,23 +88,37 @@ class InpatientPID(Segment):
             self.nhs_number = None
 
         self.surname = segment[5][0][0][0]
-        self.forename = segment[5][0][1][0]
+        self.first_name = segment[5][0][1][0]
+        self.middle_name = segment[5][0][2][0]
+        self.title = segment[5][0][4][0]
         self.date_of_birth = datetime.strptime(
             segment[7][0][:8], DATE_FORMAT
         ).date()
-        self.gender = segment[8][0]
+
+        self.sex = SEX_MAPPING.get(segment[8][0], None)
+
+        self.religion = RELIGION_MAPPINGS.get(segment[17][0], None)
 
         # this is used by spell delete
         # it seems similar to our episode id
         self.patient_account_number = segment[18][0]
+        self.marital_status = MARITAL_STATUSES_MAPPING.get(
+            segment[16][0], None
+        )
 
         if len(segment[29][0]):
             self.date_of_death = datetime.strptime(
                 segment[29][0], DATE_FORMAT
             ).date()
+        else:
+            self.date_of_death = None
 
+        self.death_indicator = None
         if len(segment[30][0]):
-            self.death_indicator = segment[30][0]
+            if segment[30][0] == "Y":
+                self.death_indicator = True
+            elif segment[30][0] == "N":
+                self.death_indicator = False
 
 
 class AllergiesPID(Segment):
@@ -113,7 +132,7 @@ class AllergiesPID(Segment):
     def __init__(self, segment):
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
-        self.forename = segment[5][0][1][0]
+        self.first_name = segment[5][0][1][0]
         self.date_of_birth = datetime.strptime(
             segment[7][0][:8], DATE_FORMAT
         ).date()
@@ -127,11 +146,7 @@ class AllergiesPID(Segment):
 
 
 class OBR(Segment):
-    STATUSES = {
-        'F': 'FINAL',
-        'I': 'INTERIM',
-        'A': 'SOME RESULTS AVAILABLE'
-    }
+
     def __init__(self, segment):
         self.lab_number = segment[3][0]
         self.profile_code = segment[4][0][0][0]
@@ -147,15 +162,11 @@ class OBR(Segment):
             segment[22][0], DATETIME_FORMAT
         )
 
-        self.result_status = OBR.STATUSES[segment[25][0]]
+        self.result_status = TEST_STATUS_MAPPING[segment[25][0]]
+
 
 
 class OBX(Segment):
-    STATUSES = {
-        'F': 'FINAL',
-        'I': 'INTERIM'
-    }
-
     def __init__(self, segment):
         self.value_type = segment[2][0]
         self.set_id = segment[1][0]
@@ -175,7 +186,7 @@ class OBX(Segment):
             self.reference_range = None
 
         if len(segment) > 12 and segment[11][0]:
-            self.result_status = OBX.STATUSES[segment[11][0]]
+            self.result_status = OBX_STATUSES[segment[11][0]]
         else:
             self.result_status = None
 
@@ -210,12 +221,6 @@ class ResultsPV1(Segment):
 
 
 class PV1(Segment):
-    EPISODE_TYPES = {
-        "A": "DAY CASE",
-        "I": "INPATIENT",
-        "E": "EMERGENCY",
-    }
-
     def __init__(self, segment):
         try:
             self.ward_code = segment[3][0][0][0]
@@ -236,7 +241,7 @@ class PV1(Segment):
         )
 
         try:
-            self.episode_type = self.EPISODE_TYPES[segment[2][0]]
+            self.episode_type = EPISODE_TYPES[segment[2][0]]
         except:
             self.episode_types = None
 

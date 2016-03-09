@@ -4,13 +4,14 @@ import datetime
 from gloss.models import (
     InpatientEpisode, PatientIdentifier, Merge,
     session_scope, get_gloss_reference, InpatientLocation, Allergy,
-    Result
+    Result, is_known, Patient
 )
 from gloss import settings
 from models import atomic_method, get_or_create_identifier
 from gloss.message_type import (
-    AllergyMessage, InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
-    InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage
+    AllergyMessage, InpatientEpisodeMessage, PatientMergeMessage,
+    ResultMessage, InpatientEpisodeTransferMessage,
+    InpatientEpisodeDeleteMessage, PatientUpdateMessage
 )
 
 
@@ -284,3 +285,27 @@ class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
             result = Result(**model_kwargs)
             result.gloss_reference = gloss_ref
             session.add(result)
+
+
+class UclhPatientUpdateSubscription(Subscription, OpalSerialiser):
+    message_type = PatientUpdateMessage
+
+    @db_message_processor
+    def notify(self, message_container, session=None, gloss_ref=None):
+        # theoretically we don't have to query for known here, if we don't know
+        # them, they won't be there so the update won't do anything
+        # let's be explicit for now
+        known = is_known(
+            message_container.hospital_number,
+            session,
+            message_container.issuing_source
+        )
+
+        if known:
+            for message in message_container.messages:
+                q = session.query(Patient).filter_by(
+                    gloss_reference=gloss_ref
+                )
+                q.update(
+                    vars(message)
+                )

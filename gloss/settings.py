@@ -6,10 +6,8 @@ sys.path.append('.')
 
 if getattr(sys, '_called_from_test', None):
     DATABASE_STRING = 'sqlite:///:memory:'
-    COMMIT = False
 else:
     DATABASE_STRING = 'sqlite:///mllpHandler.db'
-    COMMIT = True
 
 PASSTHROUGH_SUBSCRIPTIONS = {}
 

@@ -15,7 +15,7 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
-from gloss.settings import DATABASE_STRING, COMMIT
+from gloss.settings import DATABASE_STRING
 engine = create_engine(DATABASE_STRING)
 
 
@@ -214,14 +214,12 @@ def session_scope():
     session = get_session()
     try:
         yield session
-        if COMMIT:
-            session.commit()
+        session.commit()
     except:
         session.rollback()
         raise
     finally:
-        if COMMIT:
-            session.close()
+        session.close()
 
 def atomic_method(some_fun):
     def wrap_method(*args, **kwargs):
@@ -239,6 +237,12 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
         hospital_number, issuing_source, session
     )
     return subscription.filter(Subscription.active == True).count()
+
+
+def is_known(hospital_number, session=None, issuing_source="uclh"):
+    return Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    ).count()
 
 
 def subscribe(hospital_number, session, issuing_source):

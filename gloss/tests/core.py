@@ -1,19 +1,31 @@
 from unittest import TestCase
 from gloss.models import (
     engine, GlossolaliaReference, PatientIdentifier, InpatientEpisode,
-    Subscription, Patient, Allergy, InpatientLocation
+    Subscription, Patient, Allergy, InpatientLocation, Base
 )
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
+from mock import patch
 
 
 class GlossTestCase(TestCase):
     def setUp(self):
-        Session = sessionmaker(bind=engine)
+        Base.metadata.drop_all(engine)
+        Base.metadata.create_all(engine)
+        Session = sessionmaker(engine)
         self.session = Session()
+        self.patch_session = patch(
+            'gloss.models.get_session', return_value=self.session
+        )
+        self.patch_close = patch.object(self.session, 'close')
+        self.patch_session.start()
+        self.patch_close.start()
 
     def tearDown(self):
-        self.session.rollback()
+        self.patch_session.stop()
+        self.patch_close.stop()
+        self.session.close()
+        Base.metadata.drop_all(engine)
 
     def create_subrecord(self, some_class):
         gloss_ref = GlossolaliaReference()
@@ -81,5 +93,6 @@ class GlossTestCase(TestCase):
         )
         patient.first_name = "Jane"
         patient.surname = "Smith"
-        patient.tite = "Ms"
+        patient.title = "Ms"
         patient.date_of_birth = date(1983, 12, 12)
+        return patient

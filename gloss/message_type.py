@@ -15,10 +15,22 @@ class MessageType(object):
     pass
 
 
-
 class PatientMergeMessage(MessageType):
     def __init__(self, **kwargs):
         self.old_id = kwargs.pop("old_id")
+
+
+class PatientUpdateMessage(MessageType):
+    def __init__(self, **kwargs):
+        fields = [
+            "surname", "first_name", "middle_name", "title",
+            "date_of_birth", "sex", "marital_status", "religsion",
+            "date_of_death", "death_indicator"
+        ]
+
+        for field in fields:
+            if field in kwargs:
+                setattr(self, field, kwargs[field])
 
 
 class AllergyMessage(MessageType):
@@ -79,7 +91,3 @@ class InpatientEpisodeDeleteMessage(MessageType):
     ):
         self.visit_number = kwargs.pop("visit_number")
         self.datetime_of_deletion = kwargs.pop("datetime_of_deletion")
-
-
-class PatientIdentifierMessage(MessageType):
-    pass

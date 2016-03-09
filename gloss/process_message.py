@@ -4,7 +4,8 @@ from utils import itersubclasses
 from message_type import (
     InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
     InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage,
-    AllergyMessage, MessageContainer)
+    PatientUpdateMessage, AllergyMessage, MessageContainer
+)
 import logging
 from collections import defaultdict
 
@@ -76,18 +77,35 @@ class PatientUpdate(MessageImporter):
     trigger_event = u"A31"
     sending_application = "CARECAST"
     segments = (InpatientPID,)
+    gloss_message_type = PatientUpdateMessage
 
-    def process_message(self, session):
-        # if we have no gloss reference we won't be interested
-        # if we are, punt the gloss reference down stream
-        # and go and fetch the details
-        gloss_reference = get_gloss_reference(
-            self.pid.hospital_number, session, "uclh"
-        )
+    def process_message(self):
+        interesting_fields = [
+            "surname",
+            "first_name",
+            "middle_name",
+            "title",
+            "date_of_birth",
+            "sex",
+            "marital_status",
+            "religion",
+            "date_of_death",
+            "death_indicator"
+        ]
 
-        if gloss_reference:
-            pass
-            # notification.notify(gloss_reference, SubscriptionTypes.PATIENT_IDENTIFIER)
+        # if we get an empty field the way the message formatting is, we can
+        # ignore it, unless its if the patient death has turned to negative
+        # in which case we need to null out the date of death
+        kwargs = {
+            i: getattr(self.pid, i) for i in interesting_fields if getattr(self.pid, i)
+        }
+
+        if self.pid.death_indicator == False:
+            kwargs["date_of_death"] = None
+
+        return [
+            PatientUpdateMessage(**kwargs)
+        ]
 
 
 class InpatientAdmit(MessageImporter):
