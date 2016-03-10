@@ -1,4 +1,5 @@
 import json
+from mock import patch, MagicMock
 from datetime import datetime, date
 from gloss.process_message import MessageProcessor
 from gloss.tests.core import GlossTestCase
@@ -11,7 +12,7 @@ from gloss.tests.test_messages import (
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
     InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
-from gloss.subscriptions import UclhPatientUpdateSubscription
+from gloss.subscriptions import UclhPatientUpdateSubscription, OpalSerialiser
 from gloss.message_type import PatientUpdateMessage, MessageContainer
 
 
@@ -704,3 +705,32 @@ class TestPatientUpdate(GlossTestCase):
         self.assertEqual(None, patient.middle_name)
         self.assertEqual("Ms", patient.title)
         self.assertEqual(date(1983, 12, 12), patient.date_of_birth)
+
+
+@patch('gloss.subscriptions.settings')
+@patch("requests.post")
+class SendDownstreamTestCase(GlossTestCase):
+    def test_send_down_stream(self, post_mock, settings_mock):
+        settings_mock.PASSTHROUGH_SUBSCRIPTIONS = {'foo': 'http://fee.com'}
+        message_container = MagicMock()
+        message_container.issuing_source = "foo"
+        message_container.to_dict = MagicMock(return_value={"fee": "fo"})
+        opal_serialiser = OpalSerialiser()
+        opal_serialiser.send_to_opal(message_container)
+        self.assertTrue(message_container.to_dict.called)
+        post_mock.assert_called_once_with(
+            'http://fee.com', json='{"fee": "fo"}'
+        )
+
+    def test_error_thrown(self, post_mock, settings_mock):
+        settings_mock.PASSTHROUGH_SUBSCRIPTIONS = {'food': 'http://fee.com'}
+        message_container = MagicMock()
+        message_container.issuing_source = "foo"
+        message_container.to_dict = MagicMock(return_value={"fee": "fo"})
+        opal_serialiser = OpalSerialiser()
+
+
+        with self.assertRaises(ValueError):
+            opal_serialiser.send_to_opal(message_container)
+        self.assertFalse(post_mock.called)
+        self.assertFalse(message_container.to_dict.called)

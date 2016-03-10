@@ -1,6 +1,31 @@
 from subscriptions import *
 
 
+def to_dict(some_obj):
+    def to_dict_or_not_to_dict(child_obj):
+        if hasattr(child_obj, "__name__"):
+            return child_obj.__name__
+        if hasattr(child_obj, "to_dict"):
+            return child_obj.to_dict()
+        else:
+            return to_dict(child_obj)
+
+    if isinstance(some_obj, dict):
+        return {
+            field: to_dict_or_not_to_dict(value) for field, value in some_obj.iteritems()
+        }
+    if hasattr(some_obj, "__dict__"):
+        fields = vars(some_obj)
+        return {
+            field: to_dict_or_not_to_dict(value) for field, value in fields.iteritems()
+        }
+    if hasattr(some_obj, "__iter__"):
+        return [to_dict_or_not_to_dict(i) for i in some_obj]
+    else:
+        # presumably this is nothing complicated
+        return some_obj
+
+
 class MessageContainer(object):
     def __init__(
         self, messages, hospital_number, issuing_source, message_type
@@ -10,10 +35,13 @@ class MessageContainer(object):
         self.issuing_source = issuing_source
         self.message_type = message_type
 
+    def to_dict(self):
+        return to_dict(self)
+
 
 class MessageType(object):
-    pass
-
+    def to_dict(self):
+        return to_dict(self)
 
 class PatientMergeMessage(MessageType):
     def __init__(self, **kwargs):

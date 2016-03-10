@@ -10,38 +10,12 @@ import logging
 from collections import defaultdict
 
 
-def get_inpatient_message(pid, pv1):
-    return InpatientEpisodeMessage(
-        pv1.datetime_of_admission,
-        pv1.ward_code,
-        pv1.room_code,
-        pv1.bed_code,
-        pid.patient_account_number,
-        hospital_identifier=pid.hospital_number,
-        issuing_source="uclh",
-        datetime_of_discharge=pv1.datetime_of_discharge,
-    )
-
-
-def process_demographics(pid, session):
-    """ saves a gloss id to hospital number and then goes and fetches demogrphics
-    """
-    # save a reference to the pid and the hospital id in the db, then go fetch demographics
-    fetch_demographics(pid)
-    return save_identifier(pid, session)
-
-
-# stubbed method that will make the async call to the demographics query
-# service
-def fetch_demographics(pid): pass
-
-
 class MessageImporter(HL7Message):
     @property
     def gloss_message_type(self):
         raise NotImplementedError("we need a gloss message type")
 
-    def process(self):
+    def construct_container(self):
         msgs = self.process_message()
         message_container = MessageContainer(
             messages=msgs,
@@ -49,6 +23,10 @@ class MessageImporter(HL7Message):
             issuing_source="uclh",
             message_type=self.gloss_message_type
         )
+        return message_container
+
+    def process(self):
+        message_container = self.construct_container()
         notification.notify(message_container)
 
     def process_message(self, session=None):
@@ -227,12 +205,15 @@ class WinPathResults(MessageImporter):
     def process_message(self):
         # we still need to add NTEs to this
         def get_obx_dict(obxs, comments):
+            units = obxs.obx.units
+            if units:
+                units = units.replace("\\S\\", "^")
             return dict(
                 value_type=obxs.obx.value_type,
                 test_code=obxs.obx.test_code,
                 test_name=obxs.obx.test_name,
                 observation_value=obxs.obx.observation_value,
-                units=obxs.obx.units.replace("\\S\\", "^"),
+                units=units,
                 reference_range=obxs.obx.reference_range,
                 result_status=obxs.obx.result_status,
                 comments=comments.get(obxs.obx.set_id, None)
@@ -295,8 +276,13 @@ class MessageProcessor(object):
         if not message_type:
             # not necessarily an error, we ignore messages such
             # as results orders
-            logging.info(
+            logging.warning(
                 "unable to find message type for {}".format(message_type)
             )
             return
-        message_type(msg).process()
+        try:
+            message_type(msg).process()
+        except Exception as e:
+            logging.critical("failed to parse")
+            logging.critical(str(msg).replace("\r", "\n"))
+            logging.critical("with %s" % e)

@@ -14,8 +14,11 @@ PASSTHROUGH_SUBSCRIPTIONS = {}
 DATE_FORMAT = 'd/m/Y'
 DATETIME_FORMAT = 'd/m/Y H:i:s'
 SAVE_LOCATION = True
+PROCESS_MESSAGES = True
+HOST = "localhost"
+PORT = 2575
 
 try:
     from local_settings import *
-except:
+except ImportError:
     pass

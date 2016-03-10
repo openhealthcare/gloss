@@ -1,6 +1,6 @@
 from hl7.client import MLLPClient
 import hl7
-import time
+from gloss.settings import HOST, PORT
 
 
 PATIENT_UPDATE = """
@@ -202,28 +202,63 @@ OBX|4|NM|EO^Eosinophils^Winpath||3.0%  0.24|x10\S\9/L|0.0-0.4||||F
 OBX|5|NM|BA^Basophils^Winpath||2.0%  0.16|x10\S\9/L|0.0-0.1|H|||F
 """
 
+GYNAECOLOGY = r"""
+MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201307290934||ORU^R01|0729093413V344364|P|2.3
+PID||^^NHS|C2088282317^^HOSP||DELA CRUZ^ANNABELLE||19830114|F||||||||||11185243
+PV1|||MMF^MORTIMER MKT - FEMALE CLINIC^^^^^^^GUM||||||AJR^ROBINSON, DR. A. J.
+ORC|RE|13V344364|13V344364||CM||||201307290934
+OBR|1|13V344364|13V344364|GYNC^GYNAECOLOGY CULTURE^WinPath||201307261005|201307251858||||||||SWVU^Swab - Vulva|AJR^ROBINSON, DR. A. J.||||||201307290933||MC|F
+OBX|1|FT|GYNC^GYNAECOLOGY CULTURE^Winpath||GYNAECOLOGY CULTURE REPORT||||||F
+OBX|2|FT|GPRE^Culture^Winpath||No significant growth.||||||F
+OBX|3|FT|GYST^STATUS^Winpath||COMPLETE: 29/07/13||||||F
+OBR|2|13V344364|13V344364|GYNM^GYNAECOLOGY MICROSCOPY^WinPath||201307261005|201307251858||||||||SWVU^Swab - Vulva|AJR^ROBINSON, DR. A. J.||||||201307271141||MC|F
+OBX|1|FT|GYNM^GYNAECOLOGY MICROSCOPY^Winpath||GYNAECOLOGY MICROSCOPY REPORT||||||F
+OBX|2|FT|GETV^T. vaginalis microscopy^Winpath||No Trichomonas vaginalis seen.||||||F
+"""
+
+HEPD = r"""MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201411261546||ORU^R01|1126154614U700101|P|2.3
+PID||^^NHS|2470^^HOSP|C2130015640^^OASIS|TEST^BECKY||19530912|F||||||||||Y
+PV1|||ARCH^ARCHWAY SEXUAL HEALTH CLINIC^^^^^^^GUM||||||DEM^MERCEY DR DE
+ORC|RE|14U700101|14U700101||CM||||201411261546
+OBR|1|14U700101|14U700101|HDV^HEPATITIS D (DELTA)^WinPath||201411181342|201411181200||||||TESTING DPL||CLB^Clotted blood|DEM^MERCEY DR DE||||||201411181346||V|F
+OBX|1|FT|HDVT^Anti-HDV (Delta)^Winpath||Positive|||A|||F"""
+
+FULL_BLOOD_COUNT = r"""MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201411261546||ORU^R01|1126154698U000057|P|2.3
+PID||^^NHS|50031772^^HOSP||TEST^TEST||19870912|M
+PV1|||HAEM^HAEMATOLOGY OUTPATIENTS^^^^^^^OP||||||HC1^COHEN DR H
+ORC|RE|98U000057|98U000057||CM||||201411261546
+OBR|1|98U000057|98U000057|FBCY^FULL BLOOD COUNT^WinPath||201411121606|201411121600|||||||||HC1^COHEN DR H||||||201411121608||H1|F
+OBX|1|NM|WCC^White cell count^Winpath||8.00|x10\S\9/L|3.0-10.0||||F
+OBX|2|NM|RCC^Red cell count^Winpath||3.20|x10\S\12/L|4.4-5.8|L|||F
+OBX|3|NM|HBGL^Haemoglobin (g/L)^Winpath||87|g/L|||||F
+OBX|4|NM|HCTU^HCT^Winpath||0.350|L/L|0.37-0.50|L|||F
+OBX|5|NM|MCVU^MCV^Winpath||78.0|fL|80-99|L|||F
+OBX|6|NM|MCHU^MCH^Winpath||28.0|pg|27.0-33.5||||F
+OBX|7|NM|MCGL^MCHC (g/L)^Winpath||300|g/L|||||F
+OBX|8|NM|RDWU^RDW^Winpath||17.0|%|11.5-15.0|H|||F
+OBX|9|NM|PLT^Platelet count^Winpath||250|x10\S\9/L|150-400||||F
+OBX|10|NM|MPVU^MPV^Winpath||10.0|fL|7-13||||F
+OBR|2|98U000057|98U000057|FBCZ^DIFFERENTIAL^WinPath||201411121606|201411121600|||||||||HC1^COHEN DR H||||||201411121609||H1|F
+OBX|1|NM|NE^Neutrophils^Winpath||55.0%  4.40|x10\S\9/L|2.0-7.5||||F
+OBX|2|NM|LY^Lymphocytes^Winpath||25.0%  2.00|x10\S\9/L|1.2-3.65||||F
+OBX|3|NM|MO^Monocytes^Winpath||15.0%  1.20|x10\S\9/L|0.2-1.0|H|||F
+OBX|4|NM|EO^Eosinophils^Winpath||3.0%  0.24|x10\S\9/L|0.0-0.4||||F
+OBX|5|NM|BA^Basophils^Winpath||2.0%  0.16|x10\S\9/L|0.0-0.1|H|||F"""
+
 
 MESSAGES = [i.replace("\n", "\r") for i in [
     PATIENT_UPDATE, PATIENT_DEATH, PATIENT_MERGE,
     INPATIENT_ADMISSION, INPATIENT_DISCHARGE,
     ALLERGY, INPATIENT_CANCEL_DISCHARGE, RESULTS_MESSAGE,
-    COMPLEX_WINPATH_RESULT
+    COMPLEX_WINPATH_RESULT, GYNAECOLOGY
 ]]
-HOST = "localhost"
-PORT = 2575
 
 
 def send_messages(messages):
-    start_time = time.time()
     with MLLPClient(HOST, PORT) as client:
         for message in messages:
             client.send_message(message)
 
-    print "end time %s" % (time.time() - start_time)
-
 
 def read_message(some_msg):
     return hl7.parse(some_msg.replace("\n", "\r"))
-
-if __name__ == "__main__":
-    send_messages(MESSAGES)

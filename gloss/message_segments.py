@@ -1,4 +1,6 @@
 from datetime import datetime
+import exceptions
+import logging
 from collections import namedtuple
 from coded_values import (
     RELIGION_MAPPINGS, SEX_MAPPING, MARITAL_STATUSES_MAPPING,
@@ -332,7 +334,11 @@ class RepeatingField(HL7Base):
                         message = clean_until(message, segment.name())
 
                 if index == len(self.segments) - 1:
-                    if len(kwargs):
+                    # we haven't found the response if we can't fulfill
+                    # all the segments, this means that
+                    # the non repeating field kwargs aren't there
+                    # and the repeating fields are empty
+                    if any(kwargs.itervalues()):
                         found_repeaters.append(self.repeated_class(**kwargs))
                         kwargs = {}
                     else:
@@ -354,15 +360,9 @@ class HL7Message(HL7Base):
                 setattr(self, field.section_name, found_repeaters)
             else:
                 mthd = self.get_method_for_field(field.name())
-                setattr(self, field.name().lower(), mthd(message.segment(field.name())))
+                try:
+                    setattr(self, field.name().lower(), mthd(message.segment(field.name())))
+                except exceptions.KeyError:
+                    logging.critical("unable to find {0} for {1}".format(field.name(), raw_message))
+                    raise
                 message = clean_until(message, field.name())
-
-
-class WinpathResult(HL7Message):
-    segments = (
-        MSH, ResultsPID, ResultsPV1, ORC, RepeatingField(
-            OBR,
-            RepeatingField(OBX, section_name="obxs"),
-            section_name="results"
-            )
-    )

@@ -1,5 +1,7 @@
 import json
 import datetime
+import logging
+import requests
 
 from gloss.models import (
     InpatientEpisode, PatientIdentifier, Merge,
@@ -72,30 +74,19 @@ class Subscription(object):
 
 
 class OpalSerialiser(object):
-    def serialise(self, *models):
-        if not len(models):
-            raise ValueError("models should be passed into the serialise method")
+    def send_to_opal(self, message_container):
+        subs = settings.PASSTHROUGH_SUBSCRIPTIONS
+        url = subs.get(message_container.issuing_source, None)
 
-        patient_identifier = None
+        if not url:
+            raise ValueError('no url for issuing source {}'.format(
+                message_container.issuing_source
+            ))
+        logging.info('Sending Downstream message to {0}'.format(url))
 
-        for model in models:
-            if model.__class__ == PatientIdentifier:
-                if model.issuing_source == self.issuing_source:
-                    patient_identifier = model
-
-        if patient_identifier is None:
-            with session_scope() as session:
-                patient_identifier = session.query(PatientIdentifier).filter(
-                    PatientIdentifier.issuing_source == self.issuing_source,
-                    PatientIdentifier.gloss_reference == models[0].gloss_reference
-                ).one()
-
-        as_dict = dict(
-            identifier=patient_identifier.identifier,
-            data=[i.to_dict() for i in models]
-        )
-
-        return json.dumps(as_dict, cls=OpalJSONSerializer)
+        as_dict = message_container.to_dict()
+        requests.post(url, json=json.dumps(as_dict, cls=OpalJSONSerializer))
+        return
 
 
 class UclhAllergySubscription(Subscription, OpalSerialiser):
@@ -309,3 +300,14 @@ class UclhPatientUpdateSubscription(Subscription, OpalSerialiser):
                 q.update(
                     vars(message)
                 )
+
+
+class WinPathMessage(Subscription, OpalSerialiser):
+    message_type = ResultMessage
+    """
+    We don't expect this to be a long term strategy.
+    It's a placeholder class to simply pass through
+    winpath stuff to an OPAL instance.
+    """
+    def notify(self, message_container):
+        self.send_to_opal(message_container)
