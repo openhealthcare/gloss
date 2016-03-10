@@ -15,15 +15,13 @@ from ..models import (
 
 class SessionScopeTestCase(GlossTestCase):
 
-    @patch('gloss.models.Session')
     def test_rollback(self, sess):
-        sess.return_value.commit.side_effect = ValueError('Fail')
-
-        with self.assertRaises(ValueError):
-            with session_scope() as s:
-                s.add(None)
-
-        sess.return_value.rollback.assert_called_with()
+        with patch(sess, "add", side_effect=ValueError('Fail')):
+            with patch(sess, "rollback") as rollback:
+                with self.assertRaises(ValueError):
+                    with session_scope() as s:
+                        s.add(None)
+                rollback.assert_called_once_with()
 
 
 class IsSubscribedTestCase(GlossTestCase):
