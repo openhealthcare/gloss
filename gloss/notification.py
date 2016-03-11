@@ -1,25 +1,15 @@
-"""
-Notifiying downstream systems of messages.
-"""
-import logging
+from subscriptions import *
+from utils import itersubclasses
 
-import requests
 
-from gloss import settings
+def get_subscription(message_container):
+    classes = itersubclasses(Subscription)
+    for subscription_class in classes:
+        if subscription_class.message_type == message_container.message_type:
+            yield subscription_class()
 
-logging.error(settings.PASSTHROUGH_SUBSCRIPTIONS)
 
-def send_downstream(target, message):
-    logging.error('Sending Downstream message to {0}'.format(target))
-    url, protocol = target
-    if not hasattr(message, 'to_{0}'.format(protocol)):
-        raise ValueError('{0} must have a to_{1} method'.format(message, protocol))
-    serialised = getattr(message, 'to_{0}'.format(protocol))()
-    requests.post(url, json=serialised)
-    return
-
-def notify(system, message):
-    if system in settings.PASSTHROUGH_SUBSCRIPTIONS:
-        for target in settings.PASSTHROUGH_SUBSCRIPTIONS[system]:
-            send_downstream(target, message)
-    return
+def notify(message_container):
+    subscriptions = get_subscription(message_container)
+    for subscription in subscriptions:
+        subscription.notify(message_container)

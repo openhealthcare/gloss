@@ -6,16 +6,16 @@ import datetime
 import json
 
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import func
 
 from sqlalchemy import (
     Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text
 )
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
-
 from gloss.settings import DATABASE_STRING
-
 engine = create_engine(DATABASE_STRING)
 
 
@@ -42,7 +42,7 @@ class GlossSubrecord(object):
     def gloss_reference(cls):
         return relationship(
             "GlossolaliaReference",
-            back_populates=get_plural_name(cls)
+            foreign_keys=[getattr(cls, "gloss_reference_id")]
         )
 
     @classmethod
@@ -65,6 +65,9 @@ class GlossSubrecord(object):
         filter(PatientIdentifier.issuing_source == issuing_source).\
         filter(PatientIdentifier.identifier == identifier)
 
+    def to_dict(self):
+        pass
+
 
 class Patient(Base, GlossSubrecord):
     surname = Column(String(250), nullable=False)
@@ -83,24 +86,62 @@ class Patient(Base, GlossSubrecord):
     # therefore might be useful for data validation purposes
     # (also might give us an indicator and the max time of death)
     death_indicator = Column(Boolean, default=False)
-    birth_place = Column(String)
 
 
 class InpatientEpisode(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
-    datetime_of_deletion = Column(DateTime)
+    visit_number = Column(String(250), nullable=False)
+
+
+class InpatientLocation(Base):
+    inpatient_episode_id = Column(Integer, ForeignKey('inpatientepisode.id'))
+    inpatient_episode = relationship(
+        "InpatientEpisode", foreign_keys=[inpatient_episode_id], cascade="all"
+    )
+
+    # when the patient was transferred from this location
+    # null when the patient is at that location
+    datetime_of_transfer = Column(DateTime)
+
+    # when the patient was transferred from this location
+    # None if the patient is currently there
     ward_code = Column(String(250))
     room_code = Column(String(250))
     bed_code = Column(String(250))
-    visit_number = Column(String(250), nullable=False)
+
+    @classmethod
+    def get_location(cls, inpatient_episode, session):
+        """
+            get's the location of a patient
+        """
+        q = session.query(cls).filter(cls.datetime_of_transfer == None)
+        q = q.filter(cls.inpatient_episode == inpatient_episode)
+        return q.one_or_none()
 
 
 class PatientIdentifier(Base, GlossSubrecord):
     identifier = Column(String(250))
     issuing_source = Column(String(250))
     active = Column(Boolean, default=True)
-    merged_into_identifier = Column(String(250))
+
+    @declared_attr
+    def gloss_reference_id(cls):
+        return Column(Integer, ForeignKey('glossolaliareference.id'))
+
+    @declared_attr
+    def gloss_reference(cls):
+        return relationship(
+            "GlossolaliaReference",
+            foreign_keys=[getattr(cls, "gloss_reference_id")]
+        )
+
+
+class Merge(Base, GlossSubrecord):
+    old_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
+    old_reference = relationship(
+        "GlossolaliaReference", foreign_keys=[old_reference_id]
+    )
 
 
 class Subscription(Base, GlossSubrecord):
@@ -123,35 +164,36 @@ class Allergy(Base, GlossSubrecord):
     status_description = Column(String(250))
     diagnosis_datetime = Column(DateTime)
     allergy_start_datetime = Column(DateTime)
-    no_allergies = Column(Boolean)
+    no_allergies = Column(Boolean, default=False)
+
 
 class Result(Base, GlossSubrecord):
-    value_type = Column(String(250))
-    test_code = Column(String(250))
-    test_name = Column(String(250))
-    observation_value = Column(String(250))
-    units = Column(String(250))
-    reference_range = Column(String(250))
-    result_status = Column(String(250))
-    comments = Column(Text)
+    lab_number = Column(String(250))
+    profile_code = Column(String(250))
+    request_datetime = Column(DateTime)
     observation_datetime = Column(DateTime)
+    last_edited = Column(DateTime)
+    result_status = Column(String(250))
+    observations = Column(Text)
+
 
 class GlossolaliaReference(Base):
     pass
-
-for subrecord in GlossSubrecord.__subclasses__():
-    r = relationship(subrecord.__name__, back_populates="gloss_reference")
-    setattr(GlossolaliaReference, get_plural_name(subrecord), r)
 
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 
+def get_session():
+    # used by mock in unit tests
+    return Session()
+
+
 @contextmanager
 def session_scope():
     """Provide a transactional scope around a series of operations."""
-    session = Session()
+    session = get_session()
     try:
         yield session
         session.commit()
@@ -161,6 +203,15 @@ def session_scope():
     finally:
         session.close()
 
+def atomic_method(some_fun):
+    def wrap_method(*args, **kwargs):
+        with session_scope() as session:
+            if "session" not in kwargs:
+                kwargs["session"] = session
+            some_fun(*args, **kwargs)
+
+    return wrap_method
+
 
 # we need to get subscription from hospital number
 def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
@@ -169,20 +220,23 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
     )
     return subscription.filter(Subscription.active == True).count()
 
+
+def is_known(hospital_number, session=None, issuing_source="uclh"):
+    return Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    ).count()
+
+
 def subscribe(hospital_number, session, issuing_source):
-    gloss_reference = GlossolaliaReference()
+    gloss_reference = get_or_create_identifier(
+        hospital_number, session, issuing_source
+    )
     session.add(gloss_reference)
     subscription = Subscription(
         gloss_reference=gloss_reference,
         system=issuing_source,
     )
     session.add(subscription)
-    hospital_identifier = PatientIdentifier(
-        identifier=hospital_number,
-        issuing_source="uclh",
-        gloss_reference=gloss_reference
-    )
-    session.add(hospital_identifier)
 
 
 def get_gloss_reference(hospital_number, session, issuing_source="uclh"):
@@ -213,39 +267,3 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
         return gloss_reference
     else:
         return save_identifier(hospital_number, session, issuing_source="uclh")
-
-
-
-class WinPathMessage(object):
-    """
-    We don't expect this to be a long term strategy.
-    It's a placeholder class to simply pass through
-    winpath stuff to an OPAL instance.
-    """
-    def __init__(self, msg):
-        self.msg = msg
-
-    def to_OPAL(self):
-        return dict(
-                identifier=self.msg.pid.hospital_number,
-                data=dict(
-                    lab_number=self.msg.obr.lab_number,
-                    profile_code=self.msg.obr.profile_code,
-                    profile_description=self.msg.obr.profile_description,
-                    request_datetime=self.msg.obr.request_datetime.strftime('%Y/%m/%d %H:%M'),
-                    observation_datetime=self.msg.obr.observation_datetime.strftime('%Y/%m/%d %H:%M'),
-                    last_edited=self.msg.obr.last_edited.strftime('%Y/%m/%d %H:%M'),
-                    result_status=self.msg.obr.result_status,
-                    observations=json.dumps([
-                        dict(
-                            value_type=obx.value_type,
-                            test_code=obx.test_code,
-                            test_name=obx.test_name,
-                            observation_value=obx.observation_value,
-                            units=obx.units,
-                            reference_range=obx.reference_range,
-                            result_status=obx.result_status
-                        ) for obx in self.msg.obxs
-                    ])
-                )
-            )

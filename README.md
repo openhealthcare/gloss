@@ -34,15 +34,19 @@ Gloss is a twisted server that listens for HL7v2 messages via MLLP.
 
 ### Subscriptions
 
-Applications can subscribe either to particualr patients, or to entire services.
+Gloss receives hl7 messages into the OhcReceiver
+these are translated into MessageTypes (as defined in gloss.message_types) by
+the MessageImporter classes in import_message.
 
-Subscribing to particular patients takes place via the API, and subscriptions are
-stored in the database. This is useful for cases when you expect a large volume of
-irrelevant messages.
+The MessageImporter returns a MessageContainer that has a MessageType class in
+a message_type field
 
-Subscribing to an entire service is better suited for occasions when you are seeking
-a translation and passthrough service, expecting either to process every message at
-your application layer, or for whatever reason preferring to do your filtering there.
+Subscriptions looks for this and runs all subscriptions that have that message
+type class. These subscriptions should handle any db saving or sending
+downstream logic.
+
+MessageContainers and MessageTypes have to dict methods that recursively
+translate the data structure into a dictionary for serialisation if needed.
 
 ### Configuration
 
