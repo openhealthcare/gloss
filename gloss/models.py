@@ -33,24 +33,6 @@ class Base(object):
     created = Column(DateTime, default=datetime.datetime.utcnow)
 
 
-class Serialisable(object):
-    def get_fieldnames_to_serialize(self):
-        attributes = vars(self.__class__)
-        field_names = []
-        for name, class_type in attributes.iteritems():
-            if class_type == InstrumentedAttribute:
-                field_names.append(name)
-
-        return field_names
-
-    def to_dict(self):
-        field_names = self.get_fieldnames_to_serialize()
-
-        return {
-            field_name: getattr(self, field_name) for field_name in field_names
-        }
-
-
 class GlossSubrecord(object):
     @declared_attr
     def gloss_reference_id(cls):
@@ -204,6 +186,7 @@ Session = sessionmaker(bind=engine)
 
 
 def get_session():
+    # used by mock in unit tests
     return Session()
 
 

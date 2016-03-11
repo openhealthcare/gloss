@@ -2,7 +2,7 @@ from unittest import TestCase
 from gloss.tests.test_messages import (
     COMPLEX_WINPATH_RESULT, read_message
 )
-from gloss.process_message import WinPathResults
+from gloss.import_message import WinPathResults
 import datetime
 
 expected = {'hospital_number': u'50031772',

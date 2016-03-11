@@ -11,8 +11,8 @@ else:
 
 PASSTHROUGH_SUBSCRIPTIONS = {}
 
-DATE_FORMAT = 'd/m/Y'
-DATETIME_FORMAT = 'd/m/Y H:i:s'
+DATE_FORMAT = '%d/%m/%Y'
+DATETIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 SAVE_LOCATION = True
 PROCESS_MESSAGES = True
 HOST = "localhost"

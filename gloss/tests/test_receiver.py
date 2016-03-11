@@ -3,7 +3,7 @@ import hl7
 
 from gloss.ohc_receiver import OhcReceiver
 from gloss.tests.core import GlossTestCase
-from gloss.process_message import MSH
+from gloss.import_message import MSH
 from test_messages import PATIENT_UPDATE, read_message
 from txHL7.receiver import HL7MessageContainer
 

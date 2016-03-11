@@ -1,11 +1,10 @@
 import json
-import datetime
-import logging
-import requests
+
+from gloss.serialisers.opal import OpalSerialiser
 
 from gloss.models import (
-    InpatientEpisode, PatientIdentifier, Merge,
-    session_scope, get_gloss_reference, InpatientLocation, Allergy,
+    InpatientEpisode, Merge,
+    get_gloss_reference, InpatientLocation, Allergy,
     Result, is_known, Patient
 )
 from gloss import settings
@@ -33,25 +32,6 @@ def db_message_processor(some_fun):
     return atomic_method(add_gloss_ref)
 
 
-class OpalJSONSerializer(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime.datetime):
-            return format(o, settings.DATETIME_FORMAT)
-        elif isinstance(o, datetime.date):
-            return format(
-                datetime.datetime.combine(
-                    o, datetime.datetime.min.time()
-                ), settings.DATE_FORMAT
-            )
-        elif isinstance(o, datetime.datetime):
-            return format(
-                datetime.datetime.combine(
-                    o, datetime.datetime.min.time()
-                ), settings.DATETIME_FORMAT
-            )
-        super(OpalJSONSerializer, self).default(o)
-
-
 class Subscription(object):
     @classmethod
     def cares_about(self, message_container):
@@ -71,22 +51,6 @@ class Subscription(object):
 
     def notify(self, message, *args, **kwargs):
         pass
-
-
-class OpalSerialiser(object):
-    def send_to_opal(self, message_container):
-        subs = settings.PASSTHROUGH_SUBSCRIPTIONS
-        url = subs.get(message_container.issuing_source, None)
-
-        if not url:
-            raise ValueError('no url for issuing source {}'.format(
-                message_container.issuing_source
-            ))
-        logging.info('Sending Downstream message to {0}'.format(url))
-
-        as_dict = message_container.to_dict()
-        requests.post(url, json=json.dumps(as_dict, cls=OpalJSONSerializer))
-        return
 
 
 class UclhAllergySubscription(Subscription, OpalSerialiser):

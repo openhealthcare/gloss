@@ -4,7 +4,7 @@ import settings
 from txHL7.receiver import AbstractHL7Receiver
 from twisted.internet import defer
 
-from process_message import MessageProcessor
+from import_message import MessageProcessor
 
 
 class OhcReceiver(AbstractHL7Receiver):
