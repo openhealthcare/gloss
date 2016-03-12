@@ -1,3 +1,6 @@
+"""
+gloss.message_type contains the core Gloss Archetypes
+"""
 from subscriptions import *
 
 
@@ -86,7 +89,7 @@ class ResultMessage(MessageType):
         self.request_datetime = kwargs.pop("request_datetime")
         self.observation_datetime = kwargs.pop("observation_datetime")
         self.last_edited = kwargs.pop("last_edited")
-        self.result_status = kwargs.pop("result_status")
+        self.result_status = kwargs.pop("result_status", None)
         self.observations = kwargs.pop("observations")
 
 

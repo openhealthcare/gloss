@@ -8,6 +8,7 @@ import logging
 from gloss import notification
 from gloss.models import session_scope
 from gloss.translate import drugs
+from gloss import message_type
 
 class FileType(object):
     """
@@ -21,10 +22,10 @@ class FileType(object):
         """
         Enforce transactions for processing
         """
-        with session_scope() as session:
-            self.process_file(session)
+        for container in self.process_file():
+            notification.notify(container)
 
-    def process_file(self, session):
+    def process_file(self):
         raise NotImplementedError(
             'Must implement {0}.process_file()'.format(self.__class__.__name__))
 
@@ -33,11 +34,8 @@ class FileProcessor(object):
     """
     Base processor for data we're getting via (e.g. CSV) files
     """
-    def get_file_type(self, path):
-        return
-
-    def process_file(self, path):
-        return
+    def get_file_type(self, path): pass
+    def process_file(self, path): pass
 
 
 class BaseFileRetriever(object):
@@ -57,84 +55,85 @@ class BaseFileRetriever(object):
         )
 
 
-class RFHBloodCultureRow(object):
-    def __init__(self, row):
-        self.row = row
+class RFHBloodCulturesFileType(FileType):
 
-    def _to_datestring(self, datestr):
-        as_date = datetime.datetime.strptime(datestr, '%d/%m/%Y')
-        return as_date.strftime('%Y/%m/%d %H:%M')
+    def _to_date(self, datestr):
+        return datetime.datetime.strptime(datestr, '%d/%m/%Y')
 
-    def to_OPAL(self):
-        res = [
-            u"{0} {1}".format(drugs.abbreviations[a], getattr(self.row, a))
-            for a in drugs.abbreviations if getattr(self.row, a) in ('R', 'r')
-        ]
-        sens = [
-            u"{0} {1}".format(drugs.abbreviations[a], getattr(self.row, a))
-            for a in drugs.abbreviations if getattr(self.row, a) in ('S', 's')
+    def res(self, row):
+        return [
+            u"{0} {1}".format(drugs.abbreviations[a], getattr(row, a))
+            for a in drugs.abbreviations if getattr(row, a) in ('R', 'r')
         ]
 
-        return dict(
-            identifier=self.row.hospno,
-            data=dict(
-                lab_number=self.row.labno,
-                profile_code='BC',
-                profile_description='BLOOD CULTURE',
-                request_datetime=self._to_datestring(self.row.daterec),
-                observation_datetime=self._to_datestring(self.row.datetest),
-                last_edited=self._to_datestring(self.row.daterep),
-                observations=json.dumps([
-                    dict(
-                        value_type='FT',
-                        test_code='ORG',
-                        test_name='ORGANISM',
-                        observation_value=self.row.org
-                    ),
+    def sens(self, row):
+        return [
+            u"{0} {1}".format(drugs.abbreviations[a], getattr(row, a))
+            for a in drugs.abbreviations if getattr(row, a) in ('S', 's')
+        ]
+
+    def row_to_result_message(self, row):
+
+        return message_type.ResultMessage(
+            lab_number=row.labno,
+            profile_code='BC',
+            profile_description='BLOOD CULTURE',
+            request_datetime=self._to_date(row.daterec),
+            observation_datetime=self._to_date(row.datetest),
+            last_edited=self._to_date(row.daterep),
+
+            observations=[
+                dict(
+                    value_type='FT',
+                    test_code='ORG',
+                    test_name='ORGANISM',
+                    observation_value=row.org
+                ),
                 dict(
                     value_type='FT',
                     test_code='RES',
                     test_name='RESISTENT',
-                    observation_value=res
+                    observation_value=self.res(row)
                 ),
                 dict(
                     value_type='FT',
                     test_code='SENS',
                     test_name='SENSITIVE',
-                    observation_value=sens
+                    observation_value=self.sens(row)
                 ),
                 dict(
                     value_type='FT',
                     test_code='!STS',
                     test_name='RFH SAMPTESTS',
-                    observation_value=self.row.samptests
+                    observation_value=row.samptests
                 ),
                 dict(
                     value_type='FT',
                     test_code='!STY',
                     test_name='RFH SAMPTYPE',
-                    observation_value=self.row.samptype
+                    observation_value=row.samptype
                 ),
                 dict(
                     value_type='FT',
                     test_code='!RES',
                     test_name='RFH RESULT',
-                    observation_value=self.row.result
+                    observation_value=row.result
                 )
-            ])
-                )
+            ]
+
+
         )
 
+    def process_file(self):
+        logging.error('processing')
 
-class RFHBloodCulturesFileType(FileType):
-    def process_file(self, session):
-        print 'processing'
         with self.path.csv(header=True) as csv:
             for row in csv:
-                logging.error('Processing result {0}'.format(row.labno))
-                notification.notify('WINPATH', RFHBloodCultureRow(row))
 
-                # stuff_we_know_about = self.get_lab_numbers() # ['874893', '48309']
-                # for row in self.csv(): ## There will be 60K/night of these at the Free
-                #     if self.get_lab_number(row) not in stuff_we_know_about:
-                #         self.notify(patient, PathologyResults(row))
+                logging.error('Processing result {0}'.format(row.labno))
+                yield message_type.MessageContainer(
+                    messages=[self.row_to_result_message(row)],
+                    hospital_number=row.hospno,
+                    issuing_source='RFH',
+                    message_type=message_type.ResultMessage
+                )
