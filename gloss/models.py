@@ -15,7 +15,7 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
-from gloss.settings import DATABASE_STRING, COMMIT
+from gloss.settings import DATABASE_STRING
 engine = create_engine(DATABASE_STRING)
 
 
@@ -31,24 +31,6 @@ class Base(object):
     id = Column(Integer, primary_key=True)
     updated = Column(DateTime, onupdate=datetime.datetime.utcnow)
     created = Column(DateTime, default=datetime.datetime.utcnow)
-
-
-class Serialisable(object):
-    def get_fieldnames_to_serialize(self):
-        attributes = vars(self.__class__)
-        field_names = []
-        for name, class_type in attributes.iteritems():
-            if class_type == InstrumentedAttribute:
-                field_names.append(name)
-
-        return field_names
-
-    def to_dict(self):
-        field_names = self.get_fieldnames_to_serialize()
-
-        return {
-            field_name: getattr(self, field_name) for field_name in field_names
-        }
 
 
 class GlossSubrecord(object):
@@ -104,13 +86,11 @@ class Patient(Base, GlossSubrecord):
     # therefore might be useful for data validation purposes
     # (also might give us an indicator and the max time of death)
     death_indicator = Column(Boolean, default=False)
-    birth_place = Column(String)
 
 
 class InpatientEpisode(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
-    datetime_of_deletion = Column(DateTime)
     visit_number = Column(String(250), nullable=False)
 
 
@@ -184,19 +164,17 @@ class Allergy(Base, GlossSubrecord):
     status_description = Column(String(250))
     diagnosis_datetime = Column(DateTime)
     allergy_start_datetime = Column(DateTime)
-    no_allergies = Column(Boolean)
+    no_allergies = Column(Boolean, default=False)
 
 
 class Result(Base, GlossSubrecord):
-    value_type = Column(String(250))
-    test_code = Column(String(250))
-    test_name = Column(String(250))
-    observation_value = Column(String(250))
-    units = Column(String(250))
-    reference_range = Column(String(250))
-    result_status = Column(String(250))
-    comments = Column(Text)
+    lab_number = Column(String(250))
+    profile_code = Column(String(250))
+    request_datetime = Column(DateTime)
     observation_datetime = Column(DateTime)
+    last_edited = Column(DateTime)
+    result_status = Column(String(250))
+    observations = Column(Text)
 
 
 class GlossolaliaReference(Base):
@@ -208,6 +186,7 @@ Session = sessionmaker(bind=engine)
 
 
 def get_session():
+    # used by mock in unit tests
     return Session()
 
 
@@ -217,14 +196,12 @@ def session_scope():
     session = get_session()
     try:
         yield session
-        if COMMIT:
-            session.commit()
+        session.commit()
     except:
         session.rollback()
         raise
     finally:
-        if COMMIT:
-            session.close()
+        session.close()
 
 def atomic_method(some_fun):
     def wrap_method(*args, **kwargs):
@@ -242,6 +219,12 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
         hospital_number, issuing_source, session
     )
     return subscription.filter(Subscription.active == True).count()
+
+
+def is_known(hospital_number, session=None, issuing_source="uclh"):
+    return Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    ).count()
 
 
 def subscribe(hospital_number, session, issuing_source):
@@ -284,39 +267,3 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
         return gloss_reference
     else:
         return save_identifier(hospital_number, session, issuing_source="uclh")
-
-
-
-class WinPathMessage(object):
-    """
-    We don't expect this to be a long term strategy.
-    It's a placeholder class to simply pass through
-    winpath stuff to an OPAL instance.
-    """
-    def __init__(self, msg):
-        self.msg = msg
-
-    def to_OPAL(self):
-        return dict(
-                identifier=self.msg.pid.hospital_number,
-                data=dict(
-                    lab_number=self.msg.obr.lab_number,
-                    profile_code=self.msg.obr.profile_code,
-                    profile_description=self.msg.obr.profile_description,
-                    request_datetime=self.msg.obr.request_datetime.strftime('%Y/%m/%d %H:%M'),
-                    observation_datetime=self.msg.obr.observation_datetime.strftime('%Y/%m/%d %H:%M'),
-                    last_edited=self.msg.obr.last_edited.strftime('%Y/%m/%d %H:%M'),
-                    result_status=self.msg.obr.result_status,
-                    observations=json.dumps([
-                        dict(
-                            value_type=obx.value_type,
-                            test_code=obx.test_code,
-                            test_name=obx.test_name,
-                            observation_value=obx.observation_value,
-                            units=obx.units,
-                            reference_range=obx.reference_range,
-                            result_status=obx.result_status
-                        ) for obx in self.msg.obxs
-                    ])
-                )
-            )

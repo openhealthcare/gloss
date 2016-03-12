@@ -3,64 +3,47 @@ from gloss import notification
 from utils import itersubclasses
 from message_type import (
     InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
-    InpatientEpisodeTransferMessage
+    InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage,
+    PatientUpdateMessage, AllergyMessage, MessageContainer
 )
 import logging
 from collections import defaultdict
 
 
-from gloss.models import (
-    save_identifier, InpatientEpisode,
-    get_or_create_identifier, PatientIdentifier, get_gloss_reference,
-    Allergy, Result
-)
+class MessageImporter(HL7Message):
+    @property
+    def gloss_message_type(self):
+        raise NotImplementedError("we need a gloss message type")
 
-
-def get_inpatient_message(pid, pv1):
-    return InpatientEpisodeMessage(
-        pv1.datetime_of_admission,
-        pv1.ward_code,
-        pv1.room_code,
-        pv1.bed_code,
-        pid.patient_account_number,
-        hospital_identifier=pid.hospital_number,
-        issuing_source="uclh",
-        datetime_of_discharge=pv1.datetime_of_discharge,
-    )
-
-
-def process_demographics(pid, session):
-    """ saves a gloss id to hospital number and then goes and fetches demogrphics
-    """
-    # save a reference to the pid and the hospital id in the db, then go fetch demographics
-    fetch_demographics(pid)
-    return save_identifier(pid, session)
-
-
-# stubbed method that will make the async call to the demographics query
-# service
-def fetch_demographics(pid): pass
-
-
-class MessageImporter(object):
-    def process(self):
+    def construct_container(self):
         msgs = self.process_message()
-        notification.notify(msgs)
+        message_container = MessageContainer(
+            messages=msgs,
+            hospital_number=self.pid.hospital_number,
+            issuing_source="uclh",
+            message_type=self.gloss_message_type
+        )
+        return message_container
+
+    def process(self):
+        message_container = self.construct_container()
+        notification.notify(message_container)
 
     def process_message(self, session=None):
         pass
 
 
-class PatientMerge(MessageImporter, HL7Message):
+class PatientMerge(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A34"
+    gloss_message_type = PatientMergeMessage
 
     segments = (
         MSH, InpatientPID, MRG
     )
 
     def process_message(self, session=None):
-        return [PatientMergeMessage(
+        return [self.gloss_message_type(
             old_id=self.mrg.duplicate_hospital_number,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh"
@@ -71,31 +54,46 @@ class PatientUpdate(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A31"
     sending_application = "CARECAST"
+    segments = (InpatientPID,)
+    gloss_message_type = PatientUpdateMessage
 
-    @property
-    def pid(self):
-        return InpatientPID(self.raw_msg.segment("PID"))
+    def process_message(self):
+        interesting_fields = [
+            "surname",
+            "first_name",
+            "middle_name",
+            "title",
+            "date_of_birth",
+            "sex",
+            "marital_status",
+            "religion",
+            "date_of_death",
+            "death_indicator"
+        ]
 
-    def process_message(self, session):
-        # if we have no gloss reference we won't be interested
-        # if we are, punt the gloss reference down stream
-        # and go and fetch the details
-        gloss_reference = get_gloss_reference(
-            self.pid.hospital_number, session, "uclh"
-        )
+        # if we get an empty field the way the message formatting is, we can
+        # ignore it, unless its if the patient death has turned to negative
+        # in which case we need to null out the date of death
+        kwargs = {
+            i: getattr(self.pid, i) for i in interesting_fields if getattr(self.pid, i)
+        }
 
-        if gloss_reference:
-            pass
-            # notification.notify(gloss_reference, SubscriptionTypes.PATIENT_IDENTIFIER)
+        if self.pid.death_indicator == False:
+            kwargs["date_of_death"] = None
+
+        return [
+            PatientUpdateMessage(**kwargs)
+        ]
 
 
-class InpatientAdmit(MessageImporter, HL7Message):
+class InpatientAdmit(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A01"
     segments = (EVN, InpatientPID, PV1,)
+    gloss_message_type = InpatientEpisodeMessage
 
     def process_message(self):
-        return [InpatientEpisodeMessage(
+        return [self.gloss_message_type(
             datetime_of_admission=self.pv1.datetime_of_admission,
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
@@ -122,15 +120,16 @@ class InpatientCancelDischarge(InpatientAdmit):
     trigger_event = "A13"
 
 
-class InpatientTransfer(MessageImporter, HL7Message):
+class InpatientTransfer(MessageImporter):
     # currently untested and incomplete
     # pending us being given an example message
     message_type = "ADT"
     trigger_event = "A02"
     segments = (EVN, InpatientPID, PV1,)
+    gloss_message_type = InpatientEpisodeTransferMessage
 
     def process_message(self):
-        message = InpatientEpisodeTransferMessage(
+        message = self.gloss_message_type(
             datetime_of_admission=self.pv1.datetime_of_admission,
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
@@ -144,71 +143,55 @@ class InpatientTransfer(MessageImporter, HL7Message):
         return [message]
 
 
-class InpatientSpellDelete(MessageImporter, HL7Message):
+class InpatientSpellDelete(MessageImporter):
     message_type = "ADT"
     trigger_event = "A07"
     segments = (EVN, InpatientPID, PV1,)
+    gloss_message_type = InpatientEpisodeDeleteMessage
 
-    def process_message(self, session):
-        hospital_number = self.pid.hospital_number
-        query = InpatientEpisode.query_from_identifier(
-            hospital_number,
-            issuing_source="uclh",
-            session=session
-        )
-        query = query.filter(
-            InpatientEpisode.visit_number == self.pid.patient_account_number
-        )
-        inpatient_episode = query.one_or_none()
-        if inpatient_episode:
-            # I think what we actually want to do is store a deleted field
-            # that way we can pass the object nicely down stream
-            inpatient_episode.datetime_of_deletion = self.evn.recorded_datetime
-            session.add(inpatient_episode)
-            # notification.notify(self.msh.sending_application, inpatient_episode)
+    def process_message(self):
+        return [self.gloss_message_type(
+            visit_number=self.pid.patient_account_number,
+            datetime_of_deletion=self.evn.recorded_datetime,
+            hospital_number=self.pid.hospital_number,
+            issuing_source="uclh"
+        )]
 
 
 class AllergyMessage(MessageImporter):
     message_type = "ADT"
     trigger_event = "A31"
     sending_application = "ePMA"
-
-    @property
-    def pid(self):
-        return AllergiesPID(self.raw_msg.segment("PID"))
-
-    @property
-    def al1(self):
-        try:
-            return AL1(self.raw_msg.segment("AL1"))
-        except KeyError:
-            return None
+    segments = (AllergiesPID, RepeatingField(AL1, section_name="allergies"),)
+    gloss_message_type = AllergyMessage
 
     def process_message(self):
-        if self.al1:
-            Allergy(
-                allergy_type=self.al1.allergy_type,
-                allergy_type_description=self.al1.allergy_type_description,
-                certainty_id=self.al1.certainty_id,
-                certainty_description=self.al1.certainty_description,
-                allergy_reference_name=self.al1.allergy_reference_name,
-                allergy_description=self.al1.allergy_description,
-                allergen_reference_system=self.al1.allergen_reference_system,
-                allergen_reference=self.al1.allergen_reference,
-                status_id=self.al1.status_id,
-                status_description=self.al1.status_description,
-                diagnosis_datetime=self.al1.diagnosis_datetime,
-                allergy_start_datetime=self.al1.allergy_start_datetime
-            )
-        else:
-            Allergy(
-                no_allergies=True
-            )
+        all_allergies = []
+        for allergy in self.allergies:
+            all_allergies.append(self.gloss_message_type(
+                allergy_type=allergy.al1.allergy_type,
+                allergy_type_description=allergy.al1.allergy_type_description,
+                certainty_id=allergy.al1.certainty_id,
+                certainty_description=allergy.al1.certainty_description,
+                allergy_reference_name=allergy.al1.allergy_reference_name,
+                allergy_description=allergy.al1.allergy_description,
+                allergen_reference_system=allergy.al1.allergen_reference_system,
+                allergen_reference=allergy.al1.allergen_reference,
+                status_id=allergy.al1.status_id,
+                status_description=allergy.al1.status_description,
+                diagnosis_datetime=allergy.al1.diagnosis_datetime,
+                allergy_start_datetime=allergy.al1.allergy_start_datetime,
+                hospital_number=self.pid.hospital_number,
+                issuing_source="uclh"
+            ))
+        return all_allergies
 
 
-class WinPathResults(MessageImporter, HL7Message):
+
+class WinPathResults(MessageImporter):
     message_type = u"ORU"
     trigger_event = u"R01"
+    gloss_message_type = ResultMessage
 
     segments = (
         MSH, ResultsPID, ResultsPV1, ORC, RepeatingField(
@@ -222,12 +205,15 @@ class WinPathResults(MessageImporter, HL7Message):
     def process_message(self):
         # we still need to add NTEs to this
         def get_obx_dict(obxs, comments):
+            units = obxs.obx.units
+            if units:
+                units = units.replace("\\S\\", "^")
             return dict(
                 value_type=obxs.obx.value_type,
                 test_code=obxs.obx.test_code,
                 test_name=obxs.obx.test_name,
                 observation_value=obxs.obx.observation_value,
-                units=obxs.obx.units,
+                units=units,
                 reference_range=obxs.obx.reference_range,
                 result_status=obxs.obx.result_status,
                 comments=comments.get(obxs.obx.set_id, None)
@@ -249,7 +235,7 @@ class WinPathResults(MessageImporter, HL7Message):
         for result in self.results:
             set_id_to_comments = get_comments(result.ntes)
             messages.append(
-                ResultMessage(
+                self.gloss_message_type(
                     hospital_number=self.pid.hospital_number,
                     issuing_source="uclh",
                     lab_number=result.obr.lab_number,
@@ -290,8 +276,13 @@ class MessageProcessor(object):
         if not message_type:
             # not necessarily an error, we ignore messages such
             # as results orders
-            logging.info(
+            logging.warning(
                 "unable to find message type for {}".format(message_type)
             )
             return
-        message_type(msg).process()
+        try:
+            message_type(msg).process()
+        except Exception as e:
+            logging.critical("failed to parse")
+            logging.critical(str(msg).replace("\r", "\n"))
+            logging.critical("with %s" % e)

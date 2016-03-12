@@ -1,16 +1,19 @@
 import logging
+import settings
 
 from txHL7.receiver import AbstractHL7Receiver
 from twisted.internet import defer
 
-from process_message import MessageProcessor
+from import_message import MessageProcessor
+
 
 class OhcReceiver(AbstractHL7Receiver):
     def handleMessage(self, container):
         message = container.message
-        logging.info(message)
-        message_processor = MessageProcessor()
-        message_processor.process_message(message)
+        logging.info(str(message).replace("\r", "\n"))
+        if settings.PROCESS_MESSAGES:
+            message_processor = MessageProcessor()
+            message_processor.process_message(message)
 
         # We succeeded, so ACK back (default is AA)
         return self.ack(container)
@@ -25,5 +28,5 @@ class OhcReceiver(AbstractHL7Receiver):
         ack_message = unicode(container.message.create_ack(
             application="ELCID", facility="UCLH"
         ))
-
+        logging.info("acking {}".format(str(ack_message).replace("\r", "\n")))
         return defer.succeed(ack_message)

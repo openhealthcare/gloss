@@ -6,18 +6,19 @@ sys.path.append('.')
 
 if getattr(sys, '_called_from_test', None):
     DATABASE_STRING = 'sqlite:///:memory:'
-    COMMIT = False
 else:
     DATABASE_STRING = 'sqlite:///mllpHandler.db'
-    COMMIT = True
 
 PASSTHROUGH_SUBSCRIPTIONS = {}
 
-DATE_FORMAT = 'd/m/Y'
-DATETIME_FORMAT = 'd/m/Y H:i:s'
+DATE_FORMAT = '%d/%m/%Y'
+DATETIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 SAVE_LOCATION = True
+PROCESS_MESSAGES = True
+HOST = "localhost"
+PORT = 2575
 
 try:
     from local_settings import *
-except:
+except ImportError:
     pass
