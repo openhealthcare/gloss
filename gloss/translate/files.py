@@ -125,12 +125,12 @@ class RFHBloodCulturesFileType(FileType):
         )
 
     def process_file(self):
-        logging.error('processing')
+        logging.info('processing')
 
         with self.path.csv(header=True) as csv:
             for row in csv:
 
-                logging.error('Processing result {0}'.format(row.labno))
+                logging.info('Processing result {0}'.format(row.labno))
                 yield message_type.MessageContainer(
                     messages=[self.row_to_result_message(row)],
                     hospital_number=row.hospno,
