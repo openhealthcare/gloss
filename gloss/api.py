@@ -29,7 +29,19 @@ def json_api(fn):
 @app.route('/api/patient/<identifier>')
 @json_api
 def patient_query(session, identifier):
-    raise exceptions.APIError("We've not implemented this yet - sorry.")
+    patient = models.Patient.query_from_identifier(identifier, 'uclh', session).first()
+    if not patient:
+        raise exceptions.APIError("We can't find any patients with that identifier")
+    return {
+        'demographics': [
+            models.Patient.get_from_gloss_reference(patient.gloss_reference, session).to_dict()
+        ],
+        'results': [
+            r.to_dict() for r in
+            session.query(models.Result).filter(
+                models.Result.gloss_reference_id==patient.gloss_reference_id).all()
+        ]
+    }
 
 @app.route('/api/demographics/', methods=['POST'])
 @json_api
@@ -42,17 +54,7 @@ def demographics_query(session, identifier):
     patient = models.Patient.query_from_identifier(identifier, 'uclh', session).first()
     if not patient:
         raise exceptions.APIError("We can't find any patients with that identifier")
-    return {
-        'demographics': [
-            {
-            'surname': patient.surname,
-                'first_name': patient.first_name,
-                'middle_name': patient.middle_name,
-                'title': patient.title,
-                'date_of_birth': patient.date_of_birth.strftime(settings.DATE_FORMAT),
-            }
-        ]
-    }
+    return {'demographics': [ patient.to_dict() ] }
 
 @app.route('/api/subscribe/<identifier>')
 @json_api
