@@ -1,6 +1,6 @@
 import json
 import datetime
-import logging
+from twisted.python import log
 import requests
 from gloss import settings
 
@@ -25,7 +25,7 @@ class OpalSerialiser(object):
             raise ValueError('no url for issuing source {}'.format(
                 message_container.issuing_source
             ))
-        logging.info('Sending Downstream message to {0}'.format(url))
+        log.msg('Sending Downstream message to {0}'.format(url))
 
         as_dict = message_container.to_dict()
         requests.post(url, json=json.dumps(as_dict, cls=OpalJSONSerializer))

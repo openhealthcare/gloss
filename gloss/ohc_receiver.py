@@ -1,16 +1,18 @@
-import logging
+from twisted.logger import Logger
 import settings
-
 from txHL7.receiver import AbstractHL7Receiver
 from twisted.internet import defer
+
 
 from import_message import MessageProcessor
 
 
 class OhcReceiver(AbstractHL7Receiver):
+    log = Logger(namespace="receiver")
+
     def handleMessage(self, container):
         message = container.message
-        logging.info(str(message).replace("\r", "\n"))
+        self.log.info(str(message).replace("\r", "\n"))
         if settings.PROCESS_MESSAGES:
             message_processor = MessageProcessor()
             message_processor.process_message(message)
@@ -28,5 +30,5 @@ class OhcReceiver(AbstractHL7Receiver):
         ack_message = unicode(container.message.create_ack(
             application="ELCID", facility="UCLH"
         ))
-        logging.info("acking {}".format(str(ack_message).replace("\r", "\n")))
+        self.log.info(ack_message.replace("\r", "\n"))
         return defer.succeed(ack_message)
