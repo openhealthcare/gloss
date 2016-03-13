@@ -16,6 +16,7 @@ DEBUG = False
 DATE_FORMAT = '%d/%m/%Y'
 DATETIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 SAVE_LOCATION = True
+SAVE_ERRORS = True
 PROCESS_MESSAGES = True
 HOST = "localhost"
 PORT = 2575

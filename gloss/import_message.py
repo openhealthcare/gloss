@@ -1,12 +1,13 @@
+from twisted.logger import Logger
 from gloss.message_segments import *
 from gloss import notification
+from gloss.models import session_scope, Error
 from utils import itersubclasses
 from message_type import (
     InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
     InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage,
     PatientUpdateMessage, AllergyMessage, MessageContainer
 )
-import logging
 from collections import defaultdict
 
 
@@ -251,6 +252,8 @@ class WinPathResults(MessageImporter):
 
 
 class MessageProcessor(object):
+    log = Logger(namespace="processor")
+
     def get_msh_for_message(self, msg):
         """
         We need this because we don't know the correct messageType subclass to
@@ -270,19 +273,28 @@ class MessageProcessor(object):
                     else:
                         return message_type
 
-
     def process_message(self, msg):
         message_type = self.get_message_type(msg)
         if not message_type:
             # not necessarily an error, we ignore messages such
             # as results orders
-            logging.warning(
+            self.log.info(
                 "unable to find message type for {}".format(message_type)
             )
             return
         try:
             message_type(msg).process()
         except Exception as e:
-            logging.critical("failed to parse")
-            logging.critical(str(msg).replace("\r", "\n"))
-            logging.critical("with %s" % e)
+            self.log.error("failed to parse")
+            self.log.error(str(msg).replace("\r", "\n"))
+            self.log.error("with %s" % e)
+            try:
+                with session_scope() as session:
+                    err = Error(
+                        error=str(e),
+                        message=str(msg)
+                    )
+                    session.add(err)
+            except Exception as e:
+                self.log.error("failed to save error to database")
+                self.log.error("with %s" % e)

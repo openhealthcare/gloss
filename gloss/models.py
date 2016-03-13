@@ -69,6 +69,11 @@ class GlossSubrecord(object):
         pass
 
 
+class Error(Base):
+    error = Column(Text)
+    message = Column(Text)
+
+
 class Patient(Base, GlossSubrecord):
     surname = Column(String(250), nullable=False)
     first_name = Column(String(250), nullable=False)

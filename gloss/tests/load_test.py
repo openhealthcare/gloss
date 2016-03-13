@@ -20,6 +20,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     start_time = time.time()
     with MLLPClient(settings.HOST, settings.PORT) as client:
+        print "sending"
         amount =int(args.amount)/len(MESSAGES)
         for i in xrange(amount):
             for raw_message in MESSAGES:
