@@ -39,11 +39,9 @@ def demographics_create(session):
 @app.route('/api/demographics/<identifier>')
 @json_api
 def demographics_query(session, identifier):
-    gloss_ref = models.get_gloss_reference(identifier, session)
-    if not gloss_ref:
+    patient = models.Patient.query_from_identifier(identifier, 'uclh', session).first()
+    if not patient:
         raise exceptions.APIError("We can't find any patients with that identifier")
-    query = session.query(models.Patient).filter_by(gloss_reference=gloss_ref)
-    patient = query.first()
     return {
         'demographics': [
             {

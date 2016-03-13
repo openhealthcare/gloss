@@ -87,7 +87,6 @@ class Patient(Base, GlossSubrecord):
     # (also might give us an indicator and the max time of death)
     death_indicator = Column(Boolean, default=False)
 
-
 class InpatientEpisode(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
