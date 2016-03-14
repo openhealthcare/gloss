@@ -58,6 +58,17 @@ Our load test script will fire 1200 messages at it and calculate the time it too
 
     python tests/test_messages.py
 
+### Database migrations
+
+database migrations are done using [![alembic]](http://alembic.readthedocs.org/)
+
+to create a migration run "alembic revision --autogenerate"
+to update to head run "alembic upgrade head"
+to upgrade or downgrade you can use upgrade +1 (e.g. "alembic downgrade -1") or it pattern matches with the version number.
+
+ie if its unique you can run "alembic upgrade ad" and it'll upgrade to the version number beginning
+"ad"
+
 ## Licence
 
 Gloss is released under the GNU Affero GPLv3
