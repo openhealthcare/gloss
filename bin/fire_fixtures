@@ -19,7 +19,7 @@ def fixture_contents_generator(directory):
     for msg in hl7s.ls('*.hl7'):
         counter += 1
         print('Sending message {0}, {1}'.format(counter, msg))
-        yield msg.contents
+        yield msg.contents.replace("\n", "\r")
 
 def fire_fixtures(args):
     send_messages(fixture_contents_generator(args.directory))
