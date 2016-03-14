@@ -274,4 +274,5 @@ class WinPathMessage(Subscription, OpalSerialiser):
     winpath stuff to an OPAL instance.
     """
     def notify(self, message_container):
-        self.send_to_opal(message_container)
+        # self.send_to_opal(message_container)
+        pass
