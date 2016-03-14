@@ -48,7 +48,7 @@ def patient_query(session, identifier):
 
 @json_api('/api/demographics/', methods=['POST'])
 def demographics_create(session):
-    raise exceptions.APIError("We've not implemented this yet - sorry.")
+    raise exceptions.APIError("We've not implemented this yet - sorry")
 
 @json_api('/api/demographics/<identifier>')
 def demographics_query(session, identifier):
@@ -64,8 +64,3 @@ def subscribe(session, identifier):
 @json_api('/api/unsubscribe/<identifier>')
 def unsubscribe(session, identifier):
     raise exceptions.APIError("We've not implemented this yet - sorry")
-
-if __name__ == '__main__':
-    # Bind to PORT if defined, otherwise default to 6767
-    port = int(os.environ.get('PORT', 6767))
-    app.run(host='0.0.0.0', port=port)
