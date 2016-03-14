@@ -15,8 +15,8 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
-from gloss.settings import DATABASE_STRING
-engine = create_engine(DATABASE_STRING)
+from gloss import settings
+engine = create_engine(settings.DATABASE_STRING)
 
 
 def get_plural_name(cls):
@@ -94,6 +94,15 @@ class Patient(Base, GlossSubrecord):
     # therefore might be useful for data validation purposes
     # (also might give us an indicator and the max time of death)
     death_indicator = Column(Boolean, default=False)
+
+    def to_dict(self):
+        return {
+            'surname': self.surname,
+            'first_name': self.first_name,
+            'middle_name': self.middle_name,
+            'title': self.title,
+            'date_of_birth': self.date_of_birth.strftime(settings.DATE_FORMAT),
+        }
 
 
 class InpatientEpisode(Base, GlossSubrecord):
@@ -184,6 +193,17 @@ class Result(Base, GlossSubrecord):
     last_edited = Column(DateTime)
     result_status = Column(String(250))
     observations = Column(Text)
+
+    def to_dict(self):
+        return dict(
+            lab_number=self.lab_number,
+            profile_code=self.profile_code,
+            request_datetime=self.request_datetime.strftime(settings.DATE_FORMAT),
+            observation_datetime=self.observation_datetime.strftime(settings.DATE_FORMAT),
+            last_edited=self.last_edited.strftime(settings.DATE_FORMAT),
+            result_status=self.result_status,
+            observations=json.loads(self.observations)
+        )
 
 
 class GlossolaliaReference(Base):
