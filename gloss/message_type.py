@@ -52,8 +52,8 @@ class PatientUpdateMessage(MessageType):
     def __init__(self, **kwargs):
         fields = [
             "surname", "first_name", "middle_name", "title",
-            "date_of_birth", "sex", "marital_status", "religsion",
-            "date_of_death", "death_indicator"
+            "date_of_birth", "sex", "marital_status", "religsion", "ethnicity",
+            "date_of_death", "death_indicator", "post_code", "gp_practice_code"
         ]
 
         for field in fields:
@@ -101,6 +101,7 @@ class InpatientEpisodeMessage(MessageType):
         self.visit_number = kwargs.pop("visit_number")
         self.datetime_of_admission = kwargs.pop("datetime_of_admission")
         self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
+        self.admission_diagnosis = kwargs.pop("admission_diagnosis")
 
 
 class InpatientEpisodeTransferMessage(InpatientEpisodeMessage):

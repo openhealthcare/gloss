@@ -85,6 +85,9 @@ class Patient(Base, GlossSubrecord):
     marital_status = Column(String(250))
     religion = Column(String(250))
     date_of_death = Column(Date)
+    post_code = Column(String(20))
+    gp_practice_code = Column(String(20))
+    ethnicity = Column(String(250))
 
     # I know it seems like we can calculate this from the above
     # however it comes as a seperate field in the feed and
@@ -97,6 +100,7 @@ class InpatientEpisode(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
     visit_number = Column(String(250), nullable=False)
+    admission_diagnosis = Column(String(250))
 
 
 class InpatientLocation(Base):
