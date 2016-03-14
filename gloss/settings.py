@@ -2,12 +2,12 @@
 Gloss settings
 """
 import sys
-sys.path.append('.')
 
 if getattr(sys, '_called_from_test', None):
     DATABASE_STRING = 'sqlite:///:memory:'
 else:
     DATABASE_STRING = 'sqlite:///mllpHandler.db'
+    DATABASE_STRING = 'postgresql://gloss:gloss@localhost/gloss'
 
 PASSTHROUGH_SUBSCRIPTIONS = {}
 

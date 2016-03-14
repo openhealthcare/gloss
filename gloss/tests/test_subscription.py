@@ -29,12 +29,16 @@ class TestInpatientAdmissionFlow(GlossTestCase):
         self.assertEqual(
             datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
         )
+        self.assertEqual(
+            "TEST NON ELECTIVE PATIENT", admission.admission_diagnosis
+        )
         location = self.session.query(InpatientLocation).one()
         self.assertEqual(location.inpatient_episode, admission)
         self.assertEqual(location.ward_code, "BBNU")
         self.assertEqual(location.room_code, "BCOT")
         self.assertEqual(location.bed_code, "BCOT-02B")
         self.assertIsNone(location.datetime_of_transfer)
+
 
 
 class TestInpatientDischarge(GlossTestCase):
@@ -136,6 +140,10 @@ class TestInpatientAmend(GlossTestCase):
         self.assertEqual(
             inpatient_episode.datetime_of_discharge,
             datetime(2012, 12, 8, 14, 30)
+        )
+        self.assertEqual(
+            "ANY FOR TESTING",
+            inpatient_episode.admission_diagnosis
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
@@ -663,6 +671,9 @@ class TestPatientUpdate(GlossTestCase):
         self.assertEqual("MEDHCART FIRSTNAME", patient.first_name)
         self.assertEqual("MEDCHART JONES", patient.middle_name)
         self.assertEqual("MR", patient.title)
+        self.assertEqual("N2 9DU", patient.post_code)
+        self.assertEqual("P816881", patient.gp_practice_code)
+        self.assertEqual("British", patient.ethnicity)
         self.assertIsNone(patient.date_of_death)
 
     def test_patient_death(self):
