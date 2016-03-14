@@ -1,0 +1,16 @@
+MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201307290925||ORU^R01|0729092513U414319|P|2.3
+PID||4447388545^^NHS|QSD13175^^HOSP||GAFNEY^JOAN LILIAN||19530123|F|||^^^^N7 7RS
+PV1|||OPDP1^OPD 1st Floor Podium UCH^^^^^^^OP||||||MRE^EHRENSTEIN DR MR
+ORC|RE|13U414319|13U414319||CM||||201307290925
+OBR|1|13U414319|13U414319|ELU^RENAL PROFILE^WinPath||201307241214|201307241025|||||||||MRE^EHRENSTEIN DR MR||||||201307241336||CC|F
+OBX|1|NM|NA^Sodium^Winpath||138|mmol/L|135-145||||F
+OBX|2|NM|K^Potassium^Winpath||4.2|mmol/L|3.5-5.1||||F
+OBX|3|NM|UREA^Urea^Winpath||4.2|mmol/L|1.7-8.3||||F
+OBX|4|NM|CREA^Creatinine^Winpath||71|umol/L|49-92||||F
+OBX|5|NM|GFR^Estimated GFR^Winpath||77|.|||||F
+NTE|1||Units: mL/min/1.73sqm
+NTE|1||Multiply eGFR by 1.21 for people of African
+NTE|1||Caribbean origin. Interpret with regard to
+NTE|1||UK CKD guidelines: www.renal.org/CKDguide/ckd.html
+NTE|1||Use with caution for adjusting drug dosages -
+NTE|1||contact clinical pharmacist for advice.

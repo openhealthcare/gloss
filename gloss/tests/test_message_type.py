@@ -1,9 +1,11 @@
+import datetime
 from unittest import TestCase
+
 from gloss.tests.test_messages import (
     COMPLEX_WINPATH_RESULT, read_message
 )
 from gloss.import_message import WinPathResults
-import datetime
+from gloss import message_type
 
 expected = {'hospital_number': u'50031772',
  'issuing_source': 'uclh',
@@ -143,8 +145,24 @@ expected = {'hospital_number': u'50031772',
 
 
 class TestToDict(TestCase):
+
     def test_pathology_to_dict(self):
         msg = read_message(COMPLEX_WINPATH_RESULT)
         message_container = WinPathResults(msg).construct_container()
         result = message_container.to_dict()
         self.assertEqual(result, expected)
+
+
+class ResultMessageTestCase(TestCase):
+
+    def test_result_status_optional(self):
+
+        message = message_type.ResultMessage(
+            lab_number='555',
+            profile_code='BC',
+            request_datetime='yesterday',
+            observation_datetime='yesterday',
+            last_edited='yesterday',
+            observations=[]
+        )
+        self.assertTrue(message.result_status is None)
