@@ -462,6 +462,7 @@ class TestResultsFlow(GlossTestCase):
         )
 
         self.assertEqual('ELU', result.profile_code)
+        self.assertEqual('RENAL PROFILE', result.profile_description)
         self.assertEqual('FINAL', result.result_status)
 
     def test_complex_message(self):
@@ -586,6 +587,7 @@ class TestResultsFlow(GlossTestCase):
         )
         self.assertEqual("FINAL", result_1.result_status)
         self.assertEqual("FBCY", result_1.profile_code)
+        self.assertEqual("FULL BLOOD COUNT", result_1.profile_description)
 
         result_2 = results[1]
 
@@ -655,6 +657,7 @@ class TestResultsFlow(GlossTestCase):
         )
         self.assertEqual("FINAL", result_2.result_status)
         self.assertEqual("FBCZ", result_2.profile_code)
+        self.assertEqual("DIFFERENTIAL", result_2.profile_description)
 
 
 class TestPatientUpdate(GlossTestCase):

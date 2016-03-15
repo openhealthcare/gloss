@@ -94,6 +94,7 @@ expected = {'hospital_number': u'50031772',
                                  'units': u'fL',
                                  'value_type': u'NM'}],
                'profile_code': u'FBCY',
+               'profile_description': u'FULL BLOOD COUNT',
                'request_datetime': datetime.datetime(2014, 11, 12, 16, 6),
                'result_status': 'FINAL'},
               {'lab_number': u'98U000057',
@@ -140,6 +141,7 @@ expected = {'hospital_number': u'50031772',
                                  'units': u'x10^9/L',
                                  'value_type': u'NM'}],
                'profile_code': u'FBCZ',
+               'profile_description': u'DIFFERENTIAL',
                'request_datetime': datetime.datetime(2014, 11, 12, 16, 6),
                'result_status': 'FINAL'}]}
 
@@ -160,6 +162,7 @@ class ResultMessageTestCase(TestCase):
         message = message_type.ResultMessage(
             lab_number='555',
             profile_code='BC',
+            profile_description='BLOOD COUNT',
             request_datetime='yesterday',
             observation_datetime='yesterday',
             last_edited='yesterday',

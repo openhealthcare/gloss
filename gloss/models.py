@@ -188,6 +188,7 @@ class Allergy(Base, GlossSubrecord):
 class Result(Base, GlossSubrecord):
     lab_number = Column(String(250))
     profile_code = Column(String(250))
+    profile_description = Column(String(250))
     request_datetime = Column(DateTime)
     observation_datetime = Column(DateTime)
     last_edited = Column(DateTime)
