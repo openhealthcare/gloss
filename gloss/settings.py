@@ -19,7 +19,8 @@ SAVE_LOCATION = True
 SAVE_ERRORS = True
 PROCESS_MESSAGES = True
 HOST = "localhost"
-PORT = 2575
+PORTS = [2574, 2575]
+
 
 try:
     from local_settings import *

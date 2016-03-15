@@ -30,7 +30,7 @@ You will also need the python dependencies:
 
 To run the HL7 server:
 
-    twistd --nodaemon mllp --receiver gloss.ohc_receiver.OhcReceiver
+    twistd --nodaemon multiple_mllp --receiver gloss.ohc_receiver.OhcReceiver
 
 To run the OPAL/JSON/HTTP API:
 
@@ -145,11 +145,14 @@ dates. Defaults to:
 
 Turn on debugging. Defaults to False.
 
+### PORTS
+gloss will listen one or more ports by default these are 2574 and 2575
+
 ## Load testing
 
-Our load test script will fire 1200 messages at it and calculate the time it took.
+Our load test script will fire a given amount messages as as many ports as are given in settings.
 
-    python tests/test_messages.py
+    python gloss/tests/load_test.py {{ amount }}
 
 ### Database migrations
 
