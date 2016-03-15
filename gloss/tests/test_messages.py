@@ -1,6 +1,6 @@
 from hl7.client import MLLPClient
 import hl7
-from gloss.settings import HOST, PORT
+from gloss.settings import HOST, PORTS
 
 
 PATIENT_UPDATE = """
@@ -256,7 +256,8 @@ MESSAGES = [i.replace("\n", "\r") for i in [
 
 
 def send_messages(messages):
-    with MLLPClient(HOST, PORT) as client:
+    port = PORTS[0]
+    with MLLPClient(HOST, port) as client:
         for message in messages:
             client.send_message(message)
 
