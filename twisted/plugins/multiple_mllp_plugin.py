@@ -1,13 +1,13 @@
 from zope.interface import implements
 from zope.interface.verify import verifyClass
 
+from gloss.settings import PORTS
 from twisted.python import usage, reflect
 from twisted.plugin import IPlugin
 from twisted.internet import endpoints
 from twisted.application.service import IServiceMaker, MultiService
 from twisted.application import internet
 
-DEFAULT_ENDPOINT = "tcp:2575"
 DEFAULT_RECEIVER = "txHL7.receiver.LoggingReceiver"
 
 
@@ -45,8 +45,9 @@ class MLLPMultiServiceMaker(object):
         factory = MLLPFactory(receiver_class())
         multi_service = MultiService()
 
-        for port_number in ["tcp:2575", "tcp:2574"]:
-            endpoint = endpoints.serverFromString(reactor, port_number)
+        for port_number in PORTS:
+            port = "tcp:{}".format(port_number)
+            endpoint = endpoints.serverFromString(reactor, port)
             server = internet.StreamServerEndpointService(endpoint, factory)
             server.setName(u"mllp-{0}-{1}".format(receiver_name, port_number))
             multi_service.addService(server)
