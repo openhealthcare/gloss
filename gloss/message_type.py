@@ -86,6 +86,7 @@ class ResultMessage(MessageType):
     def __init__(self, **kwargs):
         self.lab_number = kwargs.pop("lab_number")
         self.profile_code = kwargs.pop("profile_code")
+        self.profile_description = kwargs.pop("profile_description")
         self.request_datetime = kwargs.pop("request_datetime")
         self.observation_datetime = kwargs.pop("observation_datetime")
         self.last_edited = kwargs.pop("last_edited")

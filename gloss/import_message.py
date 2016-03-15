@@ -247,6 +247,7 @@ class WinPathResults(MessageImporter):
                     issuing_source="uclh",
                     lab_number=result.obr.lab_number,
                     profile_code=result.obr.profile_code,
+                    profile_description=result.obr.profile_description,
                     request_datetime=result.obr.request_datetime,
                     observation_datetime=result.obr.observation_datetime,
                     last_edited=result.obr.last_edited,
