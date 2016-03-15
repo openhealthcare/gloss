@@ -12,11 +12,10 @@ DEFAULT_RECEIVER = "txHL7.receiver.LoggingReceiver"
 
 
 class Options(usage.Options):
-    """Define the options accepted by the ``twistd mllp`` plugin"""
+    """Define the options accepted by the ``twistd multiple_mllp`` plugin"""
     synopsis = "[mllp options]"
 
     optParameters = [
-        ['endpoint', 'e', DEFAULT_ENDPOINT, 'The string endpoint on which to listen.'],
         ['receiver', 'r', DEFAULT_RECEIVER, 'A txHL7.receiver.IHL7Receiver subclass to handle messages.'],
     ]
 
