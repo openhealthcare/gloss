@@ -1,7 +1,7 @@
 from zope.interface import implements
 from zope.interface.verify import verifyClass
 
-from gloss.settings import PORTS
+from gloss.settings import PORTS, HOST
 from twisted.python import usage, reflect
 from twisted.plugin import IPlugin
 from twisted.internet import endpoints
@@ -46,7 +46,7 @@ class MLLPMultiServiceMaker(object):
         multi_service = MultiService()
 
         for port_number in PORTS:
-            port = "tcp:{}".format(port_number)
+            port = "tcp:interface={0}:port={1}".format(HOST, port_number,)
             endpoint = endpoints.serverFromString(reactor, port)
             server = internet.StreamServerEndpointService(endpoint, factory)
             server.setName(u"mllp-{0}-{1}".format(receiver_name, port_number))
