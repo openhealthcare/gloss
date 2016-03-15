@@ -22,7 +22,9 @@ def post_to_mllp_client(port, original_amount):
                     message = read_message(copy.copy(raw_message))
                     message[2][3][0][0][0] = str(random.randint(0, 1000000000))
                     client.send_message(str(message))
-                    print "sending {0} of {1}".format(count, original_amount)
+                    print "sending {0} of {1} to {2}".format(
+                        count, original_amount, port
+                    )
                     count += 1
 
 
