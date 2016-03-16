@@ -385,6 +385,7 @@ class TestResultsFlow(GlossTestCase):
         currently a shell of a test that makes sure we get no errors
         from repeating fields
     """
+
     def test_message_with_notes(self):
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(RESULTS_MESSAGE))

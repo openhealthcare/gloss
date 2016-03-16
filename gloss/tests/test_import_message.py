@@ -1,4 +1,5 @@
 from gloss.tests.core import GlossTestCase
+from gloss.tests.test_messages import ORDER_MESSAGE, read_message
 from mock import patch, MagicMock
 from gloss.import_message import MessageProcessor
 from gloss.models import Error
@@ -34,3 +35,12 @@ class TestMessageImporter(GlossTestCase):
             self.assertTrue(message_type.process)
             error_count = self.session.query(Error).count()
             self.assertEqual(error_count, 0)
+
+
+class TestOrderMessages(GlossTestCase):
+    @patch("gloss.import_message.notification.notify")
+    def test_no_notification(self, notication_patch):
+        msg = read_message(ORDER_MESSAGE)
+        message_processor = MessageProcessor()
+        message_processor.process_message(msg)
+        self.assertFalse(notication_patch.called)
