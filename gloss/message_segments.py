@@ -1,6 +1,5 @@
 from datetime import datetime
 from twisted.python import log
-import exceptions
 from collections import namedtuple
 from coded_values import (
     RELIGION_MAPPINGS, SEX_MAPPING, MARITAL_STATUSES_MAPPING,
@@ -377,7 +376,7 @@ class HL7Message(HL7Base):
                 mthd = self.get_method_for_field(field.name())
                 try:
                     setattr(self, field.name().lower(), mthd(message.segment(field.name())))
-                except exceptions.KeyError:
+                except KeyError:
                     log.msg("unable to find {0} for {1}".format(field.name(), raw_message))
                     raise
                 message = clean_until(message, field.name())
