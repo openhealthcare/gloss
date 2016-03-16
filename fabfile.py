@@ -31,4 +31,4 @@ def deploy_test(key_file_name="../ec2.pem"):
             run("pkill twistd||true")
             run("pkill gloss||true")
             run("twistd multiple_mllp --receiver gloss.ohc_receiver.OhcReceiver")
-            run("python -m gloss.api")
+            run("gunicorn -w 1 -b 0.0.0:6767 -D gloss.api:app")

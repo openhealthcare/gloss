@@ -35,3 +35,4 @@ zope.interface==4.1.3
 Flask==0.10.1
 alembic==0.8.5
 Fabric==1.10.2
+gunicorn==19.4.5
