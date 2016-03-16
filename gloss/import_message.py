@@ -194,6 +194,15 @@ class AllergyMessage(MessageImporter):
         return all_allergies
 
 
+class WinPathResultsOrder(MessageImporter):
+    message_type = u"ORM"
+    trigger_event = "O01"
+
+    def process_message(self):
+        # we don't process order messages at this time
+        pass
+
+
 
 class WinPathResults(MessageImporter):
     message_type = u"ORU"

@@ -157,6 +157,7 @@ class TestToDict(TestCase):
 
 class ResultMessageTestCase(TestCase):
 
+
     def test_result_status_optional(self):
 
         message = message_type.ResultMessage(
