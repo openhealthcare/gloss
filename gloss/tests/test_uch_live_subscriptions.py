@@ -12,7 +12,7 @@ from gloss.tests.test_messages import (
     INPATIENT_ADMISSION, read_message, PATIENT_MERGE, COMPLEX_WINPATH_RESULT,
     RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE, INPATIENT_AMEND,
     INPATIENT_SPELL_DELETE, INPATIENT_CANCEL_DISCHARGE, ALLERGY, NO_ALLERGY,
-    COMPLEX_WINPATH_RESULT, PATIENT_DEATH, PATIENT_UPDATE
+    COMPLEX_WINPATH_RESULT, PATIENT_DEATH, PATIENT_UPDATE, MULTIPLE_ALLERGIES
 )
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
@@ -384,6 +384,45 @@ class TestAllergyFlow(GlossTestCase):
             "97995000", session=self.session, issuing_source="uclh"
         )
         self.assertEqual(gloss_ref, found_allergy.gloss_reference)
+
+    def test_with_multiple_allergies(self):
+        self.message_processor.process_message(read_message(MULTIPLE_ALLERGIES))
+        allergies = self.session.query(Allergy).all()
+        self.assertTrue(len(allergies), 2)
+        allergy = allergies[0]
+        self.assertEqual("Feathers : ", allergy.allergy_description)
+        self.assertEqual(
+            datetime(2016, 3, 17, 12, 0), allergy.allergy_start_datetime
+        )
+        self.assertEqual(
+            datetime(2016, 3, 17, 1, 42), allergy.diagnosis_datetime
+        )
+
+        self.assertEqual('Definite', allergy.certainty_description)
+        self.assertIsNone(allergy.allergen_reference)
+        self.assertEqual("Feathers : ", allergy.allergy_description)
+        self.assertEqual('Non-Drug Allergy', allergy.allergy_type_description)
+        self.assertEqual('CERT-1', allergy.certainty_id)
+        self.assertEqual('Active', allergy.status_description)
+        self.assertEqual(False, allergy.no_allergies)
+
+        allergy_2 = allergies[1]
+
+        self.assertEqual(
+            'ANGIOTENSIN-II RECEPTOR ANTAGONISTS',
+            allergy_2.allergy_reference_name
+        )
+        self.assertEqual(
+            'Class Allergy', allergy_2.allergy_type_description
+        )
+        self.assertEqual('Active', allergy_2.status_description)
+        self.assertEqual(False, allergy_2.no_allergies)
+        self.assertEqual('Definite', allergy_2.certainty_description)
+        self.assertEqual('4', allergy_2.allergy_type)
+        self.assertEqual(
+            '7896c6a0-f69b-4a97-aa4a-13ca28812713',
+            allergy_2.allergen_reference
+        )
 
 
 class TestResultsFlow(GlossTestCase):
