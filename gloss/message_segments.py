@@ -286,8 +286,15 @@ class AL1(Segment):
         self.certainty_description = segments[2][0][4][0]
         self.allergy_reference_name = segments[3][0][0][0]
         self.allergy_description = segments[3][0][1][0]
-        self.allergen_reference_system = segments[3][0][2][0]
-        self.allergen_reference = segments[3][0][3][0]
+
+        self.allergen_reference_system = None
+        if len(segments[3][0]) > 2:
+            self.allergen_reference_system = segments[3][0][2][0]
+
+        self.allergen_reference = None
+        if len(segments[3][0]) > 3:
+            self.allergen_reference = segments[3][0][3][0]
+
         self.status_id = segments[4][0][0][0]
         self.status_description = segments[4][0][1][0]
         self.diagnosis_datetime = datetime.strptime(
