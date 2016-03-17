@@ -1,0 +1,20 @@
+MSH|^~\&|Corepoint|TDL|UCLH|UCLH|201307290925||ORU^R01|0729092513U414319|P|2.3
+PID||4447388545^^NHS|QSD13175^^HOSP||GAFNEY^JOAN LILIAN||19530123|F|||^^^^N7 7RS
+PV1|||OPDP1^OPD 1st Floor Podium UCH^^^^^^^OP||||||MRE^EHRENSTEIN DR MR
+ORC|RE|13U414327|13U414327||CM||||201307290925
+OBR|9|13U414327|13U414327|PES^PROTEIN ELECTROPHORESIS^WinPath||201307241214|201307241025|||||||||MRE^EHRENSTEIN DR MR||||||201307251455||CS|F
+OBX|1|NM|ALBP^Albumin (electrophoresis) %^Winpath||51.2|%|51.8-67.1|L|||F
+OBX|2|NM|A1G^Alpha-1-globulins %^Winpath||3.7|%|1.7-3.8||||F
+OBX|3|NM|A2G^Alpha-2-globulins %^Winpath||12.3|%|8.1-15.3||||F
+OBX|4|NM|B1G^Beta-1-globulins %^Winpath||7.3|%|6.0-9.9||||F
+OBX|5|NM|B2G^Beta-2-globulins %^Winpath||7.5|%|2.9-7.1|H|||F
+OBX|6|NM|GG^Gamma-globulins %^Winpath||18.0|%|8.9-20.0||||F
+OBX|7|NM|ALBG^Albumin (electrophoresis)^Winpath||40.4|g/L|33.3-54.1||||F
+OBX|8|NM|A1GG^Alpha-1-globulins^Winpath||2.9|g/L|1.3-2.7|H|||F
+OBX|9|NM|A2GG^Alpha-2-globulins^Winpath||9.7|g/L|6.1-11.3||||F
+OBX|10|NM|B1GG^Beta-1-globulins^Winpath||5.8|g/L|4.1-7.7||||F
+OBX|11|NM|B2GL^Beta-2-globulins^Winpath||5.9|g/L|1.2-5.6|H|||F
+OBX|12|NM|GGG^Gamma-globulins^Winpath||14.2|g/L|6.1-15.0||||F
+OBX|13|FT|PCOM^Comment (electrophoresis)^Winpath||No significant abnormality visible. No monoclonal\.br\ gammopathy detected.||||||F
+OBX|14|FT|PPR^Paraprotein^Winpath||No paraprotein detected.|g/L|||||F
+OBX|15|NM|PROT^Protein^Winpath||79|g/L|63-83||||F

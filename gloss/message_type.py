@@ -1,3 +1,6 @@
+"""
+gloss.message_type contains the core Gloss Archetypes
+"""
 from subscriptions import *
 
 
@@ -52,8 +55,8 @@ class PatientUpdateMessage(MessageType):
     def __init__(self, **kwargs):
         fields = [
             "surname", "first_name", "middle_name", "title",
-            "date_of_birth", "sex", "marital_status", "religsion",
-            "date_of_death", "death_indicator"
+            "date_of_birth", "sex", "marital_status", "religsion", "ethnicity",
+            "date_of_death", "death_indicator", "post_code", "gp_practice_code"
         ]
 
         for field in fields:
@@ -83,10 +86,11 @@ class ResultMessage(MessageType):
     def __init__(self, **kwargs):
         self.lab_number = kwargs.pop("lab_number")
         self.profile_code = kwargs.pop("profile_code")
+        self.profile_description = kwargs.pop("profile_description")
         self.request_datetime = kwargs.pop("request_datetime")
         self.observation_datetime = kwargs.pop("observation_datetime")
         self.last_edited = kwargs.pop("last_edited")
-        self.result_status = kwargs.pop("result_status")
+        self.result_status = kwargs.pop("result_status", None)
         self.observations = kwargs.pop("observations")
 
 
@@ -101,6 +105,7 @@ class InpatientEpisodeMessage(MessageType):
         self.visit_number = kwargs.pop("visit_number")
         self.datetime_of_admission = kwargs.pop("datetime_of_admission")
         self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
+        self.admission_diagnosis = kwargs.pop("admission_diagnosis")
 
 
 class InpatientEpisodeTransferMessage(InpatientEpisodeMessage):

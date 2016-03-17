@@ -23,3 +23,12 @@ class TestSegments(TestCase):
         hl7_msg = read_message(FULL_BLOOD_COUNT)
         msg = WinPathResults(hl7_msg)
         self.assertEqual(len(msg.results), 2)
+
+
+class TestWithWrongMessage(TestCase):
+    def test_with_wrong_message(self):
+        class SomeMsg(HL7Message):
+            segments = (MSH, PV2,)
+
+        with self.assertRaises(KeyError):
+            SomeMsg(read_message(FULL_BLOOD_COUNT))

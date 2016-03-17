@@ -1,10 +1,10 @@
 from datetime import datetime
 from twisted.python import log
-import exceptions
 from collections import namedtuple
 from coded_values import (
     RELIGION_MAPPINGS, SEX_MAPPING, MARITAL_STATUSES_MAPPING,
-    TEST_STATUS_MAPPING, EPISODE_TYPES, OBX_STATUSES
+    TEST_STATUS_MAPPING, EPISODE_TYPES, OBX_STATUSES,
+    ETHNICITY_MAPPING,
 )
 from copy import copy
 
@@ -48,6 +48,10 @@ class ORC(Segment):
     def __init__(self, segment):
         pass
 
+
+class PD1(Segment):
+    def __init__(self, segment):
+        self.gp_practice_code = segment[4][1][0][0]
 
 
 class ResultsPID(Segment):
@@ -107,6 +111,11 @@ class InpatientPID(Segment):
         self.marital_status = MARITAL_STATUSES_MAPPING.get(
             segment[16][0], None
         )
+        self.ethnicity = ETHNICITY_MAPPING.get(
+            segment[22][0], None
+        )
+
+        self.post_code = segment[11][0][4][0]
 
         if len(segment[29][0]):
             self.date_of_death = datetime.strptime(
@@ -255,6 +264,11 @@ class PV1(Segment):
             self.datetime_of_discharge = None
 
 
+class PV2(Segment):
+    def __init__(self, segment):
+        self.admission_diagnosis = segment[3][0]
+
+
 class NTE(Segment):
     def __init__(self, segment):
         self.comments = segment[3][0]
@@ -362,7 +376,7 @@ class HL7Message(HL7Base):
                 mthd = self.get_method_for_field(field.name())
                 try:
                     setattr(self, field.name().lower(), mthd(message.segment(field.name())))
-                except exceptions.KeyError:
+                except KeyError:
                     log.msg("unable to find {0} for {1}".format(field.name(), raw_message))
                     raise
                 message = clean_until(message, field.name())

@@ -99,3 +99,24 @@ OBX_STATUSES = {
     'F': 'FINAL',
     'I': 'INTERIM'
 }
+
+ETHNICITY_MAPPING = {
+    "A": "British",
+    "B": "Irish",
+    "C": "Any Other White Background",
+    "D": "White and Black Caribbean",
+    "E": "White and Black African",
+    "F": "White and Asian",
+    "G": "Any Other Mixed background",
+    "H": "Indian",
+    "J": "Pakistani",
+    "K": "Bangladeshi",
+    "L": "Any other Asian background",
+    "M": "Caribbean",
+    "N": "African",
+    "P": "Any other black Background",
+    "R": "Chinese",
+    "S": "Any Other Ethnic Group",
+    "Z1": "Not Yet Asked",
+    "Z2": "Refused to give"
+}

@@ -55,7 +55,7 @@ class PatientUpdate(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A31"
     sending_application = "CARECAST"
-    segments = (InpatientPID,)
+    segments = (InpatientPID, PD1)
     gloss_message_type = PatientUpdateMessage
 
     def process_message(self):
@@ -68,8 +68,10 @@ class PatientUpdate(MessageImporter):
             "sex",
             "marital_status",
             "religion",
+            "ethnicity",
+            "post_code",
             "date_of_death",
-            "death_indicator"
+            "death_indicator",
         ]
 
         # if we get an empty field the way the message formatting is, we can
@@ -78,6 +80,8 @@ class PatientUpdate(MessageImporter):
         kwargs = {
             i: getattr(self.pid, i) for i in interesting_fields if getattr(self.pid, i)
         }
+
+        kwargs["gp_practice_code"] = self.pd1.gp_practice_code
 
         if self.pid.death_indicator == False:
             kwargs["date_of_death"] = None
@@ -90,7 +94,7 @@ class PatientUpdate(MessageImporter):
 class InpatientAdmit(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A01"
-    segments = (EVN, InpatientPID, PV1,)
+    segments = (EVN, InpatientPID, PV1, PV2,)
     gloss_message_type = InpatientEpisodeMessage
 
     def process_message(self):
@@ -103,6 +107,7 @@ class InpatientAdmit(MessageImporter):
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
             datetime_of_discharge=self.pv1.datetime_of_discharge,
+            admission_diagnosis=self.pv2.admission_diagnosis,
         )]
 
 
@@ -126,7 +131,7 @@ class InpatientTransfer(MessageImporter):
     # pending us being given an example message
     message_type = "ADT"
     trigger_event = "A02"
-    segments = (EVN, InpatientPID, PV1,)
+    segments = (EVN, InpatientPID, PV1, PV2,)
     gloss_message_type = InpatientEpisodeTransferMessage
 
     def process_message(self):
@@ -140,6 +145,7 @@ class InpatientTransfer(MessageImporter):
             issuing_source="uclh",
             datetime_of_discharge=self.pv1.datetime_of_discharge,
             datetime_of_transfer=self.evn.planned_datetime,
+            admission_diagnosis=self.pv2.admission_diagnosis
         )
         return [message]
 
@@ -186,6 +192,15 @@ class AllergyMessage(MessageImporter):
                 issuing_source="uclh"
             ))
         return all_allergies
+
+
+class WinPathResultsOrder(MessageImporter):
+    message_type = u"ORM"
+    trigger_event = "O01"
+
+    def process_message(self):
+        # we don't process order messages at this time
+        pass
 
 
 
@@ -241,6 +256,7 @@ class WinPathResults(MessageImporter):
                     issuing_source="uclh",
                     lab_number=result.obr.lab_number,
                     profile_code=result.obr.profile_code,
+                    profile_description=result.obr.profile_description,
                     request_datetime=result.obr.request_datetime,
                     observation_datetime=result.obr.observation_datetime,
                     last_edited=result.obr.last_edited,

@@ -102,6 +102,7 @@ def create_or_update_inpatient_episode(message, gloss_ref, base=None):
     inpatient_episode.datetime_of_admission = message.datetime_of_admission
     inpatient_episode.datetime_of_discharge = message.datetime_of_discharge
     inpatient_episode.visit_number = message.visit_number
+    inpatient_episode.admission_diagnosis = message.admission_diagnosis
     return inpatient_episode
 
 
@@ -274,4 +275,5 @@ class WinPathMessage(Subscription, OpalSerialiser):
     winpath stuff to an OPAL instance.
     """
     def notify(self, message_container):
-        self.send_to_opal(message_container)
+        # self.send_to_opal(message_container)
+        pass

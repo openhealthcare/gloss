@@ -29,12 +29,16 @@ class TestInpatientAdmissionFlow(GlossTestCase):
         self.assertEqual(
             datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
         )
+        self.assertEqual(
+            "TEST NON ELECTIVE PATIENT", admission.admission_diagnosis
+        )
         location = self.session.query(InpatientLocation).one()
         self.assertEqual(location.inpatient_episode, admission)
         self.assertEqual(location.ward_code, "BBNU")
         self.assertEqual(location.room_code, "BCOT")
         self.assertEqual(location.bed_code, "BCOT-02B")
         self.assertIsNone(location.datetime_of_transfer)
+
 
 
 class TestInpatientDischarge(GlossTestCase):
@@ -136,6 +140,10 @@ class TestInpatientAmend(GlossTestCase):
         self.assertEqual(
             inpatient_episode.datetime_of_discharge,
             datetime(2012, 12, 8, 14, 30)
+        )
+        self.assertEqual(
+            "ANY FOR TESTING",
+            inpatient_episode.admission_diagnosis
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
@@ -377,6 +385,7 @@ class TestResultsFlow(GlossTestCase):
         currently a shell of a test that makes sure we get no errors
         from repeating fields
     """
+
     def test_message_with_notes(self):
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(RESULTS_MESSAGE))
@@ -454,6 +463,7 @@ class TestResultsFlow(GlossTestCase):
         )
 
         self.assertEqual('ELU', result.profile_code)
+        self.assertEqual('RENAL PROFILE', result.profile_description)
         self.assertEqual('FINAL', result.result_status)
 
     def test_complex_message(self):
@@ -578,6 +588,7 @@ class TestResultsFlow(GlossTestCase):
         )
         self.assertEqual("FINAL", result_1.result_status)
         self.assertEqual("FBCY", result_1.profile_code)
+        self.assertEqual("FULL BLOOD COUNT", result_1.profile_description)
 
         result_2 = results[1]
 
@@ -647,6 +658,7 @@ class TestResultsFlow(GlossTestCase):
         )
         self.assertEqual("FINAL", result_2.result_status)
         self.assertEqual("FBCZ", result_2.profile_code)
+        self.assertEqual("DIFFERENTIAL", result_2.profile_description)
 
 
 class TestPatientUpdate(GlossTestCase):
@@ -663,6 +675,9 @@ class TestPatientUpdate(GlossTestCase):
         self.assertEqual("MEDHCART FIRSTNAME", patient.first_name)
         self.assertEqual("MEDCHART JONES", patient.middle_name)
         self.assertEqual("MR", patient.title)
+        self.assertEqual("N2 9DU", patient.post_code)
+        self.assertEqual("P816881", patient.gp_practice_code)
+        self.assertEqual("British", patient.ethnicity)
         self.assertIsNone(patient.date_of_death)
 
     def test_patient_death(self):

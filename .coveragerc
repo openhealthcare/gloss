@@ -2,3 +2,4 @@
 omit =
      gloss/tests/*
      gloss/settings.py
+     *__main__.py*
