@@ -296,3 +296,61 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
         return gloss_reference
     else:
         return save_identifier(hospital_number, session, issuing_source="uclh")
+
+
+
+def create_or_update_inpatient_episode(message, gloss_ref, base=None):
+    if base:
+        inpatient_episode = base
+    else:
+        inpatient_episode = InpatientEpisode()
+
+    inpatient_episode.gloss_reference = gloss_ref
+    inpatient_episode.datetime_of_admission = message.datetime_of_admission
+    inpatient_episode.datetime_of_discharge = message.datetime_of_discharge
+    inpatient_episode.visit_number = message.visit_number
+    inpatient_episode.admission_diagnosis = message.admission_diagnosis
+    return inpatient_episode
+
+
+def create_or_update_inpatient_location(message, inpatient_episode, base=None):
+    if base:
+        inpatient_location = base
+    else:
+        inpatient_location = InpatientLocation()
+
+    inpatient_location.ward_code = message.ward_code
+    inpatient_location.room_code = message.room_code
+    inpatient_location.bed_code = message.bed_code
+    inpatient_location.inpatient_episode = inpatient_episode
+    return inpatient_location
+
+
+def get_or_create_episode(message, gloss_ref, session):
+    created = False
+    inpatient_episode = session.query(InpatientEpisode).filter(
+        InpatientEpisode.visit_number == message.visit_number
+    ).one_or_none()
+
+    if not inpatient_episode:
+        created = True
+        inpatient_episode = create_or_update_inpatient_episode(
+            message, gloss_ref
+        )
+
+    return inpatient_episode, created,
+
+
+def get_or_create_location(message, inpatient_episode, session):
+    created = False
+    inpatient_location = InpatientLocation.get_location(
+        inpatient_episode, session
+    )
+
+    if not inpatient_location:
+        created = True
+        inpatient_location = create_or_update_inpatient_location(
+            message, inpatient_episode
+        )
+
+    return inpatient_location, created,

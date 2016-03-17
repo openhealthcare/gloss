@@ -1,60 +1,26 @@
+"""
+Subscriptions for production deployment
+"""
 import json
 
-from gloss.serialisers.opal import OpalSerialiser
-
-from gloss.models import (
-    InpatientEpisode, Merge,
-    get_gloss_reference, InpatientLocation, Allergy,
-    Result, is_known, Patient
-)
 from gloss import settings
-from models import atomic_method, get_or_create_identifier
 from gloss.message_type import (
     AllergyMessage, InpatientEpisodeMessage, PatientMergeMessage,
     ResultMessage, InpatientEpisodeTransferMessage,
-    InpatientEpisodeDeleteMessage, PatientUpdateMessage
+    InpatientEpisodeDeleteMessage, PatientUpdateMessage,
 )
-
-
-def db_message_processor(some_fun):
-    def add_gloss_ref(self, message_container, session=None):
-        gloss_ref = get_or_create_identifier(
-            message_container.hospital_number,
-            session,
-            issuing_source=message_container.issuing_source
-        )
-        return some_fun(
-            self,
-            message_container,
-            session=session,
-            gloss_ref=gloss_ref,
-        )
-    return atomic_method(add_gloss_ref)
-
-
-class Subscription(object):
-    @classmethod
-    def cares_about(self, message_container):
-        if message_container.gloss_message_type in cls.subscribtion_types:
-            return True
-        return False
-
-    @property
-    def issuing_source(self):
-        raise NotImplementedError("you need to implement 'issuing source'")
-
-    def serialise(self):
-        raise NotImplementedError("you need to implement 'serialise'")
-
-    def process_data(self):
-        raise NotImplementedError("you need to implement 'post data'")
-
-    def notify(self, message, *args, **kwargs):
-        pass
-
+from gloss.models import (
+    InpatientEpisode, Merge,
+    get_gloss_reference, InpatientLocation, Allergy,
+    Result, is_known, Patient,
+    create_or_update_inpatient_episode, create_or_update_inpatient_location,
+    get_or_create_episode, get_or_create_location
+)
+from gloss.serialisers.opal import OpalSerialiser
+from gloss.subscribe.subscription import Subscription, db_message_processor
 
 class UclhAllergySubscription(Subscription, OpalSerialiser):
-    message_type = AllergyMessage
+    message_types = [AllergyMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -72,10 +38,9 @@ class UclhAllergySubscription(Subscription, OpalSerialiser):
             allergy = Allergy(no_allergies=True, gloss_reference=gloss_ref)
             session.add(allergy)
 
-
 class UclhMergeSubscription(Subscription, OpalSerialiser):
     # TODO we should repoint all gloss subrecords
-    message_type = PatientMergeMessage
+    message_types = [PatientMergeMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -92,69 +57,9 @@ class UclhMergeSubscription(Subscription, OpalSerialiser):
                 session.add(mrg)
 
 
-def create_or_update_inpatient_episode(message, gloss_ref, base=None):
-    if base:
-        inpatient_episode = base
-    else:
-        inpatient_episode = InpatientEpisode()
-
-    inpatient_episode.gloss_reference = gloss_ref
-    inpatient_episode.datetime_of_admission = message.datetime_of_admission
-    inpatient_episode.datetime_of_discharge = message.datetime_of_discharge
-    inpatient_episode.visit_number = message.visit_number
-    inpatient_episode.admission_diagnosis = message.admission_diagnosis
-    return inpatient_episode
-
-
-def create_or_update_inpatient_location(message, inpatient_episode, base=None):
-    if base:
-        inpatient_location = base
-    else:
-        inpatient_location = InpatientLocation()
-
-    inpatient_location.ward_code = message.ward_code
-    inpatient_location.room_code = message.room_code
-    inpatient_location.bed_code = message.bed_code
-    inpatient_location.inpatient_episode = inpatient_episode
-    return inpatient_location
-
-
-def get_or_create_episode(message, gloss_ref, session):
-    created = False
-    inpatient_episode = session.query(InpatientEpisode).filter(
-        InpatientEpisode.visit_number == message.visit_number
-    ).one_or_none()
-
-    if not inpatient_episode:
-        created = True
-        inpatient_episode = create_or_update_inpatient_episode(
-            message, gloss_ref
-        )
-
-    return inpatient_episode, created,
-
-
-def get_or_create_location(message, inpatient_episode, session):
-    created = False
-    inpatient_location = InpatientLocation.get_location(
-        inpatient_episode, session
-    )
-
-    if not inpatient_location:
-        created = True
-        inpatient_location = create_or_update_inpatient_location(
-            message, inpatient_episode
-        )
-
-    return inpatient_location, created,
-
-
-class UclhInpatientSubscription(Subscription, OpalSerialiser):
+class UclhInpatientEpisodeSubscription(Subscription, OpalSerialiser):
     """ Handles Inpatient Admit, Discharge and Amending """
-    message_type = InpatientEpisodeMessage
-
-    def get_or_create_inpatient_episode(self, message, session, gloss_ref):
-        self.session.query()
+    message_types = [InpatientEpisodeMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -163,6 +68,7 @@ class UclhInpatientSubscription(Subscription, OpalSerialiser):
             inpatient_episode, created = get_or_create_episode(
                 message, gloss_ref, session
             )
+            print inpatient_episode, created
 
             if not created:
                 inpatient_episode = create_or_update_inpatient_episode(
@@ -170,7 +76,7 @@ class UclhInpatientSubscription(Subscription, OpalSerialiser):
                 )
 
             session.add(inpatient_episode)
-
+            print 'added', inpatient_episode
             if settings.SAVE_LOCATION:
                 inpatient_location, created = get_or_create_location(
                     message, inpatient_episode, session
@@ -183,10 +89,11 @@ class UclhInpatientSubscription(Subscription, OpalSerialiser):
                         base=inpatient_location
                     )
                 session.add(inpatient_location)
+                print 'added', inpatient_location
 
 
 class UclhInpatientEpisodeDeleteSubscription(Subscription, OpalSerialiser):
-    message_type = InpatientEpisodeDeleteMessage
+    message_types = [InpatientEpisodeDeleteMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -198,7 +105,7 @@ class UclhInpatientEpisodeDeleteSubscription(Subscription, OpalSerialiser):
 
 
 class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):
-    message_type = InpatientEpisodeTransferMessage
+    message_types = [InpatientEpisodeTransferMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -230,7 +137,7 @@ class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):
 
 
 class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
-    message_type = ResultMessage
+    message_types = [ResultMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -244,7 +151,7 @@ class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
 
 
 class UclhPatientUpdateSubscription(Subscription, OpalSerialiser):
-    message_type = PatientUpdateMessage
+    message_types = [PatientUpdateMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
@@ -265,15 +172,3 @@ class UclhPatientUpdateSubscription(Subscription, OpalSerialiser):
                 q.update(
                     vars(message)
                 )
-
-
-class WinPathMessage(Subscription, OpalSerialiser):
-    message_type = ResultMessage
-    """
-    We don't expect this to be a long term strategy.
-    It's a placeholder class to simply pass through
-    winpath stuff to an OPAL instance.
-    """
-    def notify(self, message_container):
-        # self.send_to_opal(message_container)
-        pass
