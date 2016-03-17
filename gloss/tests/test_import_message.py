@@ -38,9 +38,8 @@ class TestMessageImporter(GlossTestCase):
 
 
 class TestOrderMessages(GlossTestCase):
-    @patch("gloss.import_message.notification.notify")
-    def test_no_notification(self, notication_patch):
+
+    def test_no_notification(self):
         msg = read_message(ORDER_MESSAGE)
         message_processor = MessageProcessor()
-        message_processor.process_message(msg)
-        self.assertFalse(notication_patch.called)
+        self.assertEqual(None, message_processor.process_message(msg))

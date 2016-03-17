@@ -1,6 +1,11 @@
+"""
+End to end tests for production UCH subscriptions
+"""
 import json
-from mock import patch, MagicMock
 from datetime import datetime, date
+
+from mock import patch, MagicMock
+
 from gloss.import_message import MessageProcessor
 from gloss.tests.core import GlossTestCase
 from gloss.tests.test_messages import (
@@ -12,8 +17,9 @@ from gloss.tests.test_messages import (
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
     InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
-from gloss.subscriptions import UclhPatientUpdateSubscription, OpalSerialiser
 from gloss.message_type import PatientUpdateMessage, MessageContainer
+
+from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
 
 
 class TestInpatientAdmissionFlow(GlossTestCase):

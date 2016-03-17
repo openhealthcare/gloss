@@ -1,6 +1,9 @@
+"""
+Generic Gloss Utilities
+"""
+
 class AbstractClass(object):
     pass
-
 
 def itersubclasses(cls, _seen=None):
     """
