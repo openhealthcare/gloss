@@ -24,7 +24,7 @@ from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
 
 class TestInpatientAdmissionFlow(GlossTestCase):
     def test_flow(self):
-        subscribe('50099878', self.session, "uclh")
+        subscribe('50099878', "http://some_end_point", self.session, "uclh")
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(INPATIENT_ADMISSION))
         gloss_reference = get_gloss_reference('50099878', self.session)
