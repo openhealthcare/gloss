@@ -55,7 +55,7 @@ class GlossSubrecord(object):
 
     @classmethod
     def list_from_gloss_reference(cls, gloss_reference, session):
-        return cls.query_by_gloss_reference(gloss_reference, session).all()
+        return cls.query_by_gloss_id(gloss_reference, session).all()
 
     @classmethod
     def query_from_identifier(cls, identifier, issuing_source, session):
@@ -165,6 +165,7 @@ class Merge(Base, GlossSubrecord):
 class Subscription(Base, GlossSubrecord):
     system = Column(String(250))
     active = Column(Boolean, default=True)
+    end_point = Column(String(250))
 
 
 class Allergy(Base, GlossSubrecord):
@@ -256,16 +257,39 @@ def is_known(hospital_number, session=None, issuing_source="uclh"):
     ).count()
 
 
-def subscribe(hospital_number, session, issuing_source):
-    gloss_reference = get_or_create_identifier(
-        hospital_number, session, issuing_source
-    )
-    session.add(gloss_reference)
-    subscription = Subscription(
-        gloss_reference=gloss_reference,
-        system=issuing_source,
-    )
-    session.add(subscription)
+def subscribe(hospital_number, end_point, session, issuing_source):
+    """ subscribe an issuing source and hosptial number to an end point
+        don't allow multiple subscriptions
+    """
+    subscription = Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    ).one_or_none()
+
+    if subscription:
+        if not subscription.active:
+            subscription.active = True
+            session.add(subscription)
+    else:
+        gloss_reference = get_or_create_identifier(
+            hospital_number, session, issuing_source
+        )
+        session.add(gloss_reference)
+        subscription = Subscription(
+            gloss_reference=gloss_reference,
+            system=issuing_source,
+            end_point=end_point
+        )
+        session.add(subscription)
+
+
+def unsubscribe(hospital_number, session, issuing_source):
+    subscription = Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    ).one_or_none()
+
+    if subscription:
+        subscription.active = False
+        session.add(subscription)
 
 
 def get_gloss_reference(hospital_number, session, issuing_source="uclh"):
@@ -289,6 +313,7 @@ def save_identifier(hospital_number, session, issuing_source="uclh"):
     session.add(hospital_identifier)
     return glossolalia_reference
 
+
 def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
     gloss_reference = get_gloss_reference(hospital_number, session, issuing_source="uclh")
 
@@ -296,7 +321,6 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
         return gloss_reference
     else:
         return save_identifier(hospital_number, session, issuing_source="uclh")
-
 
 
 def create_or_update_inpatient_episode(message, gloss_ref, base=None):
