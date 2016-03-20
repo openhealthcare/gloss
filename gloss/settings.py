@@ -10,6 +10,7 @@ else:
     DATABASE_STRING = 'postgresql://gloss:gloss@localhost/gloss'
 
 PASSTHROUGH_SUBSCRIPTIONS = {}
+SUBSCRIPTIONS = tuple()
 
 DEBUG = False
 

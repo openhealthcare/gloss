@@ -1,8 +1,6 @@
 """
 gloss.message_type contains the core Gloss Archetypes
 """
-from subscriptions import *
-
 
 def to_dict(some_obj):
     def to_dict_or_not_to_dict(child_obj):
@@ -93,6 +91,13 @@ class ResultMessage(MessageType):
         self.result_status = kwargs.pop("result_status", None)
         self.observations = kwargs.pop("observations")
 
+
+class OrderMessage(MessageType):
+    def __init__(self, **kw):
+        """
+        Even though we don't currently deal with these, e.g.
+        Message Processors expect one to exist.
+        """
 
 class InpatientEpisodeMessage(MessageType):
     def __init__(

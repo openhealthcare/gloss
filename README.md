@@ -81,6 +81,10 @@ subscription might be:
         def notify(self, message_container):
             self.send_to_opal(message_container)
 
+Gloss discovers subscriptions you have defined via the SUBSCRIPTIONS setting. This
+is a tuple of strings representing module paths. Gloss will import any modules
+you place here, and discover any subscriptions in them.
+
 #### Subscription API
 
 ### Archive
@@ -146,7 +150,12 @@ dates. Defaults to:
 Turn on debugging. Defaults to False.
 
 ### PORTS
-gloss will listen one or more ports by default these are 2574 and 2575
+
+Gloss will listen one or more ports by default these are 2574 and 2575
+
+### SUBSCRIPTIONS
+
+Tuple of strings containing module paths containing your subscriptions.
 
 ## Load testing
 
@@ -156,13 +165,15 @@ Our load test script will fire a given amount messages as as many ports as are g
 
 ### Database migrations
 
-database migrations are done using [![alembic]](http://alembic.readthedocs.org/)
+Database migrations use [![alembic]](http://alembic.readthedocs.org/)
 
-to create a migration run "alembic revision --autogenerate"
-to update to head run "alembic upgrade head"
-to upgrade or downgrade you can use upgrade +1 (e.g. "alembic downgrade -1") or it pattern matches with the version number.
+To create a migration run "alembic revision --autogenerate"
 
-ie if its unique you can run "alembic upgrade ad" and it'll upgrade to the version number beginning
+To update to head run "alembic upgrade head"
+
+To upgrade or downgrade you can use upgrade +1 (e.g. "alembic downgrade -1") or it pattern matches with the version number.
+
+For example, if it is unique you can run "alembic upgrade ad" and it'll upgrade to the version number beginning
 "ad"
 
 ## Licence

@@ -3,7 +3,7 @@ Unittests for gloss.api
 """
 import json
 
-from gloss import exceptions
+from gloss import models
 from gloss.tests.core import GlossTestCase
 
 from gloss import api
@@ -65,12 +65,47 @@ class DemographicsQueryTestCase(GlossTestCase):
 
 
 class SubscribeTestCase(GlossTestCase):
-    def test_unimplemented(self):
-        resp = api.subscribe(None)
-        self.assertEqual(NOPE, resp.data)
+    def test_subscription(self):
+        resp = api.subscribe(
+            "1", "http://someOpalApplication/api"
+        )
+        subscription = models.Subscription.query_from_identifier(
+            "1", "uclh", self.session
+        ).one()
+        self.assertEqual(
+            subscription.end_point, "http://someOpalApplication/api"
+        )
+        self.assertTrue(subscription.active)
+        self.assertTrue(json.loads(resp.data)["status"], "success")
 
+        resp = api.unsubscribe("1")
 
-class UnsubscribeTestCase(GlossTestCase):
-    def test_unimplemented(self):
-        resp = api.unsubscribe(None)
-        self.assertEqual(NOPE, resp.data)
+        subscription = models.Subscription.query_from_identifier(
+            "1", "uclh", self.session
+        ).one()
+        self.assertEqual(
+            subscription.end_point, "http://someOpalApplication/api"
+        )
+        self.assertFalse(subscription.active)
+        self.assertTrue(json.loads(resp.data)["status"], "success")
+
+    def test_unsubscribe_when_no_subscription(self):
+        self.assertEqual(0, self.session.query(models.Subscription).count())
+        resp = api.unsubscribe("1")
+        self.assertTrue(json.loads(resp.data)["status"], "success")
+        self.assertEqual(0, self.session.query(models.Subscription).count())
+
+    def test_multiple_subsciptions(self):
+        api.subscribe(
+            "1", "http://someOpalApplication/api"
+        )
+        api.subscribe(
+            "1", "http://someOpalApplication/api"
+        )
+        subscription = models.Subscription.query_from_identifier(
+            "1", "uclh", self.session
+        ).one()
+        self.assertEqual(
+            subscription.end_point, "http://someOpalApplication/api"
+        )
+        self.assertTrue(subscription.active)

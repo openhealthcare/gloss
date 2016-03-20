@@ -6,7 +6,7 @@ from utils import itersubclasses
 from message_type import (
     InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
     InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage,
-    PatientUpdateMessage, AllergyMessage, MessageContainer
+    PatientUpdateMessage, AllergyMessage, MessageContainer, OrderMessage
 )
 from collections import defaultdict
 
@@ -31,7 +31,9 @@ class MessageImporter(HL7Message):
         notification.notify(message_container)
 
     def process_message(self, session=None):
-        pass
+        """
+        We expect this to be overridden by subclasses
+        """
 
 
 class PatientMerge(MessageImporter):
@@ -197,12 +199,15 @@ class AllergyMessage(MessageImporter):
 class WinPathResultsOrder(MessageImporter):
     message_type = u"ORM"
     trigger_event = "O01"
+    gloss_message_type = OrderMessage
+
+    segments = (MSH, ResultsPID)
 
     def process_message(self):
-        # we don't process order messages at this time
-        pass
-
-
+        """
+        we don't process order messages at this time
+        """
+        return []
 
 class WinPathResults(MessageImporter):
     message_type = u"ORU"
@@ -298,6 +303,7 @@ class MessageProcessor(object):
                 "unable to find message type for {}".format(message_type)
             )
             return
+#        message_type(msg).process()
         try:
             message_type(msg).process()
         except Exception as e:
