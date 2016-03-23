@@ -233,12 +233,13 @@ def session_scope():
     finally:
         session.close()
 
+
 def atomic_method(some_fun):
     def wrap_method(*args, **kwargs):
         with session_scope() as session:
             if "session" not in kwargs:
                 kwargs["session"] = session
-            some_fun(*args, **kwargs)
+            return some_fun(*args, **kwargs)
 
     return wrap_method
 
@@ -249,6 +250,16 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
         hospital_number, issuing_source, session
     )
     return subscription.filter(Subscription.active == True).count()
+
+
+def get_subscription_endpoint(hospital_number, session=None, issuing_source="uclh"):
+    subscription = Subscription.query_from_identifier(
+        hospital_number, issuing_source, session
+    )
+    subscription = subscription.filter(Subscription.active == True)
+
+    if subscription.count():
+        return subscription.first().end_point
 
 
 def is_known(hospital_number, session=None, issuing_source="uclh"):

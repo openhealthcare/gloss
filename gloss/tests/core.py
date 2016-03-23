@@ -17,13 +17,16 @@ class GlossTestCase(TestCase):
         self.patch_session = patch(
             'gloss.models.get_session', return_value=self.session
         )
-        self.patch_close = patch.object(self.session, 'close')
         self.patch_session.start()
+        self.patch_close = patch.object(self.session, 'close')
         self.patch_close.start()
+        self.patch_requests_post = patch("requests.post")
+        self.mock_requests_post = self.patch_requests_post.start()
 
     def tearDown(self):
         self.patch_session.stop()
         self.patch_close.stop()
+        self.patch_requests_post.stop()
         self.session.close()
         Base.metadata.drop_all(engine)
 
