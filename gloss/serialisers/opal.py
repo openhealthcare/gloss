@@ -20,7 +20,6 @@ class OpalJSONSerializer(json.JSONEncoder):
 def send_to_opal(message_container, end_point):
     """ sends a message to an opal application
     """
-    url = "{0}".format(end_point, message_container.hospital_number)
     as_dict = message_container.to_dict()
-    requests.post(url, json=json.dumps(as_dict, cls=OpalJSONSerializer))
+    requests.post(end_point, json=json.dumps(as_dict, cls=OpalJSONSerializer))
     return

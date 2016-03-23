@@ -9,8 +9,7 @@ from gloss import message_type
 
 expected = {'hospital_number': u'50031772',
  'issuing_source': 'uclh',
- 'message_type': 'ResultMessage',
- 'messages': [{'lab_number': u'98U000057',
+ 'messages': {"test_results": [{'lab_number': u'98U000057',
                'last_edited': datetime.datetime(2014, 11, 12, 16, 8),
                'observation_datetime': datetime.datetime(2014, 11, 12, 16, 0),
                'observations': [{'comments': None,
@@ -94,8 +93,8 @@ expected = {'hospital_number': u'50031772',
                                  'units': u'fL',
                                  'value_type': u'NM'}],
                'profile_code': u'FBCY',
-               'profile_description': u'FULL BLOOD COUNT',
-               'request_datetime': datetime.datetime(2014, 11, 12, 16, 6),
+                   'profile_description': u'FULL BLOOD COUNT',
+                   'request_datetime': datetime.datetime(2014, 11, 12, 16, 6),
                'result_status': 'FINAL'},
               {'lab_number': u'98U000057',
                'last_edited': datetime.datetime(2014, 11, 12, 16, 9),
@@ -143,11 +142,10 @@ expected = {'hospital_number': u'50031772',
                'profile_code': u'FBCZ',
                'profile_description': u'DIFFERENTIAL',
                'request_datetime': datetime.datetime(2014, 11, 12, 16, 6),
-               'result_status': 'FINAL'}]}
+               'result_status': 'FINAL'}]}}
 
 
 class TestToDict(TestCase):
-
     def test_pathology_to_dict(self):
         msg = read_message(COMPLEX_WINPATH_RESULT)
         message_container = WinPathResults(msg).construct_container()
@@ -157,9 +155,7 @@ class TestToDict(TestCase):
 
 class ResultMessageTestCase(TestCase):
 
-
     def test_result_status_optional(self):
-
         message = message_type.ResultMessage(
             lab_number='555',
             profile_code='BC',

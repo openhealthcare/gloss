@@ -45,9 +45,27 @@ class TestInpatientAdmissionFlow(GlossTestCase):
         self.assertEqual(location.bed_code, "BCOT-02B")
         self.assertIsNone(location.datetime_of_transfer)
         self.assertTrue(self.mock_requests_post.called)
-        self.mock_requests_post.assert_called_once_with(
-            'http://some_end_point/',
-            json='{"hospital_number": "50099878", "issuing_source": "uclh", "messages": [{"room_code": "BCOT", "ward_code": "BBNU", "datetime_of_discharge": null, "admission_diagnosis": "TEST NON ELECTIVE PATIENT", "bed_code": "BCOT-02B", "visit_number": "940358", "datetime_of_admission": "18/11/2015 17:56:00"}], "message_type": "InpatientEpisodeMessage"}'
+
+        expected = {
+            "hospital_number": "50099878",
+            "issuing_source": "uclh",
+            "messages": {
+                "inpatient_locations": [{
+                    "room_code": "BCOT",
+                    "ward_code": "BBNU",
+                    "datetime_of_discharge": None,
+                    "admission_diagnosis": "TEST NON ELECTIVE PATIENT",
+                    "bed_code": "BCOT-02B",
+                    "visit_number": "940358",
+                    "datetime_of_admission": "18/11/2015 17:56:00"
+                }]
+            }
+        }
+
+        found = json.loads(self.mock_requests_post.call_args[1]["json"])
+        self.assertEqual(expected, found)
+        self.assertEqual(
+            self.mock_requests_post.call_args[0][0], 'http://some_end_point/'
         )
 
 
