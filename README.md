@@ -157,6 +157,10 @@ Gloss will listen one or more ports by default these are 2574 and 2575
 
 Tuple of strings containing module paths containing your subscriptions.
 
+### SEND_ALL_MESSAGES (optional)
+
+String containing an OPAL API endopoint. If present, all incoming messages which have a message subscription that inherits from `NotifyOpalWhenSubscribed` will be sent to this endpoint.
+
 ## Load testing
 
 Our load test script will fire a given amount messages as as many ports as are given in settings.
