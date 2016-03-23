@@ -24,7 +24,7 @@ from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
 
 class TestInpatientAdmissionFlow(GlossTestCase):
     def test_flow(self):
-        subscribe('50099878', "http://some_end_point", self.session, "uclh")
+        subscribe('50099878', "http://some_end_point/", self.session, "uclh")
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(INPATIENT_ADMISSION))
         gloss_reference = get_gloss_reference('50099878', self.session)
@@ -44,7 +44,11 @@ class TestInpatientAdmissionFlow(GlossTestCase):
         self.assertEqual(location.room_code, "BCOT")
         self.assertEqual(location.bed_code, "BCOT-02B")
         self.assertIsNone(location.datetime_of_transfer)
-
+        self.assertTrue(self.mock_requests_post.called)
+        self.mock_requests_post.assert_called_once_with(
+            'http://some_end_point/',
+            json='{"hospital_number": "50099878", "issuing_source": "uclh", "messages": [{"room_code": "BCOT", "ward_code": "BBNU", "datetime_of_discharge": null, "admission_diagnosis": "TEST NON ELECTIVE PATIENT", "bed_code": "BCOT-02B", "visit_number": "940358", "datetime_of_admission": "18/11/2015 17:56:00"}], "message_type": "InpatientEpisodeMessage"}'
+        )
 
 
 class TestInpatientDischarge(GlossTestCase):

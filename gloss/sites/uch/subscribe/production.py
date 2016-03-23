@@ -11,15 +11,17 @@ from gloss.message_type import (
 )
 from gloss.models import (
     InpatientEpisode, Merge,
-    get_gloss_reference, InpatientLocation, Allergy,
+    get_gloss_reference, Allergy,
     Result, is_known, Patient,
     create_or_update_inpatient_episode, create_or_update_inpatient_location,
     get_or_create_episode, get_or_create_location
 )
-from gloss.serialisers.opal import OpalSerialiser
-from gloss.subscribe.subscription import Subscription, db_message_processor
+from gloss.subscribe.subscription import (
+    db_message_processor, NotifyOpalWhenSubscribed
+)
 
-class UclhAllergySubscription(Subscription, OpalSerialiser):
+
+class UclhAllergySubscription(NotifyOpalWhenSubscribed):
     message_types = [AllergyMessage]
 
     @db_message_processor
@@ -38,7 +40,8 @@ class UclhAllergySubscription(Subscription, OpalSerialiser):
             allergy = Allergy(no_allergies=True, gloss_reference=gloss_ref)
             session.add(allergy)
 
-class UclhMergeSubscription(Subscription, OpalSerialiser):
+
+class UclhMergeSubscription(NotifyOpalWhenSubscribed):
     # TODO we should repoint all gloss subrecords
     message_types = [PatientMergeMessage]
 
@@ -57,7 +60,7 @@ class UclhMergeSubscription(Subscription, OpalSerialiser):
                 session.add(mrg)
 
 
-class UclhInpatientEpisodeSubscription(Subscription, OpalSerialiser):
+class UclhInpatientEpisodeSubscription(NotifyOpalWhenSubscribed):
     """ Handles Inpatient Admit, Discharge and Amending """
     message_types = [InpatientEpisodeMessage]
 
@@ -92,7 +95,7 @@ class UclhInpatientEpisodeSubscription(Subscription, OpalSerialiser):
                 print 'added', inpatient_location
 
 
-class UclhInpatientEpisodeDeleteSubscription(Subscription, OpalSerialiser):
+class UclhInpatientEpisodeDeleteSubscription(NotifyOpalWhenSubscribed):
     message_types = [InpatientEpisodeDeleteMessage]
 
     @db_message_processor
@@ -104,7 +107,7 @@ class UclhInpatientEpisodeDeleteSubscription(Subscription, OpalSerialiser):
             ).delete()
 
 
-class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):
+class UclhInpatientTransferSubscription(NotifyOpalWhenSubscribed):
     message_types = [InpatientEpisodeTransferMessage]
 
     @db_message_processor
@@ -136,7 +139,7 @@ class UclhInpatientTransferSubscription(Subscription, OpalSerialiser):
                 session.add(inpatient_location)
 
 
-class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
+class UclhWinPathResultSubscription(NotifyOpalWhenSubscribed):
     message_types = [ResultMessage]
 
     @db_message_processor
@@ -150,7 +153,7 @@ class UclhWinPathResultSubscription(Subscription, OpalSerialiser):
             session.add(result)
 
 
-class UclhPatientUpdateSubscription(Subscription, OpalSerialiser):
+class UclhPatientUpdateSubscription(NotifyOpalWhenSubscribed):
     message_types = [PatientUpdateMessage]
 
     @db_message_processor

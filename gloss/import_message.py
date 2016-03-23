@@ -303,7 +303,7 @@ class MessageProcessor(object):
                 "unable to find message type for {}".format(message_type)
             )
             return
-#        message_type(msg).process()
+        # message_type(msg).process()
         try:
             message_type(msg).process()
         except Exception as e:

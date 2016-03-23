@@ -3,12 +3,7 @@ Gloss settings
 """
 import sys
 
-if getattr(sys, '_called_from_test', None):
-    DATABASE_STRING = 'sqlite:///:memory:'
-else:
-    DATABASE_STRING = 'sqlite:///mllpHandler.db'
-    DATABASE_STRING = 'postgresql://gloss:gloss@localhost/gloss'
-
+DATABASE_STRING = 'sqlite:///mllpHandler.db'
 PASSTHROUGH_SUBSCRIPTIONS = {}
 SUBSCRIPTIONS = tuple()
 
@@ -22,8 +17,13 @@ PROCESS_MESSAGES = True
 HOST = "localhost"
 PORTS = [2574, 2575]
 
-
-try:
-    from local_settings import *
-except ImportError:
-    pass
+if getattr(sys, '_called_from_test', None):
+    try:
+        from test_settings import *
+    except ImportError:
+        pass
+else:
+    try:
+        from local_settings import *
+    except ImportError:
+        pass

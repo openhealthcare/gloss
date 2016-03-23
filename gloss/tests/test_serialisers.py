@@ -3,7 +3,7 @@ from datetime import date, datetime
 import json
 from mock import patch, MagicMock
 from gloss.tests.core import GlossTestCase
-from gloss.serialisers.opal import OpalJSONSerializer, OpalSerialiser
+from gloss.serialisers.opal import OpalJSONSerializer, send_to_opal
 
 
 class JsonSerialiserTestCase(TestCase):
@@ -25,26 +25,13 @@ class JsonSerialiserTestCase(TestCase):
 @patch("requests.post")
 class SendDownstreamTestCase(GlossTestCase):
     def test_send_down_stream(self, post_mock, settings_mock):
-        settings_mock.PASSTHROUGH_SUBSCRIPTIONS = {'foo': 'http://fee.com'}
+        settings_mock.PASSTHROUGH_SUBSCRIPTIONS = {'foo': 'http://fee.com/'}
         message_container = MagicMock()
         message_container.issuing_source = "foo"
         message_container.to_dict = MagicMock(return_value={"fee": "fo"})
-        opal_serialiser = OpalSerialiser()
-        opal_serialiser.send_to_opal(message_container)
+        message_container.hospital_number = "1"
+        send_to_opal(message_container, 'http://fee.com/')
         self.assertTrue(message_container.to_dict.called)
         post_mock.assert_called_once_with(
-            'http://fee.com', json='{"fee": "fo"}'
+            'http://fee.com/', json='{"fee": "fo"}'
         )
-
-    def test_error_thrown(self, post_mock, settings_mock):
-        settings_mock.PASSTHROUGH_SUBSCRIPTIONS = {'food': 'http://fee.com'}
-        message_container = MagicMock()
-        message_container.issuing_source = "foo"
-        message_container.to_dict = MagicMock(return_value={"fee": "fo"})
-        opal_serialiser = OpalSerialiser()
-
-
-        with self.assertRaises(ValueError):
-            opal_serialiser.send_to_opal(message_container)
-        self.assertFalse(post_mock.called)
-        self.assertFalse(message_container.to_dict.called)
