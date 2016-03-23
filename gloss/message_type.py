@@ -37,19 +37,32 @@ class MessageContainer(object):
         self.message_type = message_type
 
     def to_dict(self):
-        return to_dict(self)
+        result = to_dict(self)
+        result = {"issuing_source": self.issuing_source}
+        result["hospital_number"] = self.hospital_number
+        result["messages"] = {
+            self.message_type.message_name: to_dict(self.messages)
+        }
+        return result
 
 
 class MessageType(object):
+    message_name = "name me Larry"
+
     def to_dict(self):
         return to_dict(self)
 
+
 class PatientMergeMessage(MessageType):
+    message_name = "duplicate_patient"
+
     def __init__(self, **kwargs):
         self.old_id = kwargs.pop("old_id")
 
 
 class PatientUpdateMessage(MessageType):
+    message_name = "demographics"
+
     def __init__(self, **kwargs):
         fields = [
             "surname", "first_name", "middle_name", "title",
@@ -63,6 +76,8 @@ class PatientUpdateMessage(MessageType):
 
 
 class AllergyMessage(MessageType):
+    message_name = "allergies"
+
     def __init__(
         self, **kwargs
     ):
@@ -81,6 +96,8 @@ class AllergyMessage(MessageType):
 
 
 class ResultMessage(MessageType):
+    message_name = "test_results"
+
     def __init__(self, **kwargs):
         self.lab_number = kwargs.pop("lab_number")
         self.profile_code = kwargs.pop("profile_code")
@@ -93,6 +110,8 @@ class ResultMessage(MessageType):
 
 
 class OrderMessage(MessageType):
+    message_name = "orders"
+
     def __init__(self, **kw):
         """
         Even though we don't currently deal with these, e.g.
@@ -100,6 +119,8 @@ class OrderMessage(MessageType):
         """
 
 class InpatientEpisodeMessage(MessageType):
+    message_name = "inpatient_locations"
+
     def __init__(
         self,
         **kwargs
@@ -123,6 +144,9 @@ class InpatientEpisodeTransferMessage(InpatientEpisodeMessage):
 
 
 class InpatientEpisodeDeleteMessage(MessageType):
+    # not correct, we need to work out how this will work
+    message_name = "inpatient_locations"
+
     def __init__(
         self,
         **kwargs
