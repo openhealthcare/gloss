@@ -1,11 +1,12 @@
 import json
 import datetime
-from twisted.python import log
 import requests
 from gloss import settings
 
 
 class OpalJSONSerializer(json.JSONEncoder):
+    """ Encodes a dictionary to json in the format that OPAL likes it
+    """
     def default(self, o):
         if isinstance(o, datetime.datetime):
             return o.strftime(settings.DATETIME_FORMAT)
@@ -16,17 +17,9 @@ class OpalJSONSerializer(json.JSONEncoder):
         super(OpalJSONSerializer, self).default(o)
 
 
-class OpalSerialiser(object):
-    def send_to_opal(self, message_container):
-        subs = settings.PASSTHROUGH_SUBSCRIPTIONS
-        url = subs.get(message_container.issuing_source, None)
-
-        if not url:
-            raise ValueError('no url for issuing source {}'.format(
-                message_container.issuing_source
-            ))
-        log.msg('Sending Downstream message to {0}'.format(url))
-
-        as_dict = message_container.to_dict()
-        requests.post(url, json=json.dumps(as_dict, cls=OpalJSONSerializer))
-        return
+def send_to_opal(message_container, end_point):
+    """ sends a message to an opal application
+    """
+    as_dict = message_container.to_dict()
+    requests.post(end_point, json=json.dumps(as_dict, cls=OpalJSONSerializer))
+    return
