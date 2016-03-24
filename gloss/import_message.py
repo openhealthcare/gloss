@@ -4,8 +4,8 @@ from gloss import notification
 from gloss.models import session_scope, Error
 from utils import itersubclasses
 from message_type import (
-    InpatientEpisodeMessage, PatientMergeMessage, ResultMessage,
-    InpatientEpisodeTransferMessage, InpatientEpisodeDeleteMessage,
+    InpatientAdmissionMessage, PatientMergeMessage, ResultMessage,
+    InpatientAdmissionTransferMessage, InpatientAdmissionDeleteMessage,
     PatientUpdateMessage, AllergyMessage, MessageContainer, OrderMessage
 )
 from collections import defaultdict
@@ -97,7 +97,7 @@ class InpatientAdmit(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A01"
     segments = (EVN, InpatientPID, PV1, PV2,)
-    gloss_message_type = InpatientEpisodeMessage
+    gloss_message_type = InpatientAdmissionMessage
 
     def process_message(self):
         return [self.gloss_message_type(
@@ -134,7 +134,7 @@ class InpatientTransfer(MessageImporter):
     message_type = "ADT"
     trigger_event = "A02"
     segments = (EVN, InpatientPID, PV1, PV2,)
-    gloss_message_type = InpatientEpisodeTransferMessage
+    gloss_message_type = InpatientAdmissionTransferMessage
 
     def process_message(self):
         message = self.gloss_message_type(
@@ -156,7 +156,7 @@ class InpatientSpellDelete(MessageImporter):
     message_type = "ADT"
     trigger_event = "A07"
     segments = (EVN, InpatientPID, PV1,)
-    gloss_message_type = InpatientEpisodeDeleteMessage
+    gloss_message_type = InpatientAdmissionDeleteMessage
 
     def process_message(self):
         return [self.gloss_message_type(

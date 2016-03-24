@@ -88,7 +88,7 @@ RELIGION_MAPPINGS = {
     "9A": "NotKnown",
 }
 
-EPISODE_TYPES = {
+ADMISSION_TYPES = {
     "A": "DAY CASE",
     "I": "INPATIENT",
     "E": "EMERGENCY",

@@ -2,16 +2,16 @@ import json
 
 from gloss import settings
 from gloss.message_type import (
-    AllergyMessage, InpatientEpisodeMessage, PatientMergeMessage,
-    ResultMessage, InpatientEpisodeTransferMessage,
-    InpatientEpisodeDeleteMessage, PatientUpdateMessage,
+    AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
+    ResultMessage, InpatientAdmissionTransferMessage,
+    InpatientAdmissionDeleteMessage, PatientUpdateMessage,
 )
 from gloss.models import (
-    InpatientEpisode, Merge,
+    InpatientAdmission, Merge,
     get_gloss_reference, InpatientLocation, Allergy,
     Result, is_known, Patient,
-    create_or_update_inpatient_episode, create_or_update_inpatient_location,
-    get_or_create_episode, get_or_create_location
+    create_or_update_inpatient_admission, create_or_update_inpatient_location,
+    get_or_create_admission, get_or_create_location
 )
 from gloss.serialisers.opal import OpalSerialiser
 from gloss.subscribe.subscription import Subscription, db_message_processor

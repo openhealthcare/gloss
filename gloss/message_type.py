@@ -118,7 +118,7 @@ class OrderMessage(MessageType):
         Message Processors expect one to exist.
         """
 
-class InpatientEpisodeMessage(MessageType):
+class InpatientAdmissionMessage(MessageType):
     message_name = "inpatient_locations"
 
     def __init__(
@@ -134,16 +134,16 @@ class InpatientEpisodeMessage(MessageType):
         self.admission_diagnosis = kwargs.pop("admission_diagnosis")
 
 
-class InpatientEpisodeTransferMessage(InpatientEpisodeMessage):
+class InpatientAdmissionTransferMessage(InpatientAdmissionMessage):
     def __init__(
         self,
         **kwargs
     ):
         self.datetime_of_transfer = kwargs.pop("datetime_of_transfer")
-        super(InpatientEpisodeTransferMessage, self).__init__(**kwargs)
+        super(InpatientAdmissionTransferMessage, self).__init__(**kwargs)
 
 
-class InpatientEpisodeDeleteMessage(MessageType):
+class InpatientAdmissionDeleteMessage(MessageType):
     # not correct, we need to work out how this will work
     message_name = "inpatient_locations"
 
