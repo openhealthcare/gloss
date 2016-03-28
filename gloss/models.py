@@ -105,7 +105,7 @@ class Patient(Base, GlossSubrecord):
         }
 
 
-class InpatientEpisode(Base, GlossSubrecord):
+class InpatientAdmission(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
     visit_number = Column(String(250), nullable=False)
@@ -113,9 +113,9 @@ class InpatientEpisode(Base, GlossSubrecord):
 
 
 class InpatientLocation(Base):
-    inpatient_episode_id = Column(Integer, ForeignKey('inpatientepisode.id'))
-    inpatient_episode = relationship(
-        "InpatientEpisode", foreign_keys=[inpatient_episode_id], cascade="all"
+    inpatient_admission_id = Column(Integer, ForeignKey('inpatientadmission.id'))
+    inpatient_admission = relationship(
+        "InpatientAdmission", foreign_keys=[inpatient_admission_id], cascade="all"
     )
 
     # when the patient was transferred from this location
@@ -129,12 +129,12 @@ class InpatientLocation(Base):
     bed_code = Column(String(250))
 
     @classmethod
-    def get_location(cls, inpatient_episode, session):
+    def get_location(cls, inpatient_admission, session):
         """
             get's the location of a patient
         """
         q = session.query(cls).filter(cls.datetime_of_transfer == None)
-        q = q.filter(cls.inpatient_episode == inpatient_episode)
+        q = q.filter(cls.inpatient_admission == inpatient_admission)
         return q.one_or_none()
 
 
@@ -334,21 +334,21 @@ def get_or_create_identifier(hospital_number, session, issuing_source="uclh"):
         return save_identifier(hospital_number, session, issuing_source="uclh")
 
 
-def create_or_update_inpatient_episode(message, gloss_ref, base=None):
+def create_or_update_inpatient_admission(message, gloss_ref, base=None):
     if base:
-        inpatient_episode = base
+        inpatient_admission = base
     else:
-        inpatient_episode = InpatientEpisode()
+        inpatient_admission = InpatientAdmission()
 
-    inpatient_episode.gloss_reference = gloss_ref
-    inpatient_episode.datetime_of_admission = message.datetime_of_admission
-    inpatient_episode.datetime_of_discharge = message.datetime_of_discharge
-    inpatient_episode.visit_number = message.visit_number
-    inpatient_episode.admission_diagnosis = message.admission_diagnosis
-    return inpatient_episode
+    inpatient_admission.gloss_reference = gloss_ref
+    inpatient_admission.datetime_of_admission = message.datetime_of_admission
+    inpatient_admission.datetime_of_discharge = message.datetime_of_discharge
+    inpatient_admission.visit_number = message.visit_number
+    inpatient_admission.admission_diagnosis = message.admission_diagnosis
+    return inpatient_admission
 
 
-def create_or_update_inpatient_location(message, inpatient_episode, base=None):
+def create_or_update_inpatient_location(message, inpatient_admission, base=None):
     if base:
         inpatient_location = base
     else:
@@ -357,35 +357,35 @@ def create_or_update_inpatient_location(message, inpatient_episode, base=None):
     inpatient_location.ward_code = message.ward_code
     inpatient_location.room_code = message.room_code
     inpatient_location.bed_code = message.bed_code
-    inpatient_location.inpatient_episode = inpatient_episode
+    inpatient_location.inpatient_admission = inpatient_admission
     return inpatient_location
 
 
-def get_or_create_episode(message, gloss_ref, session):
+def get_or_create_admission(message, gloss_ref, session):
     created = False
-    inpatient_episode = session.query(InpatientEpisode).filter(
-        InpatientEpisode.visit_number == message.visit_number
+    inpatient_admission = session.query(InpatientAdmission).filter(
+        InpatientAdmission.visit_number == message.visit_number
     ).one_or_none()
 
-    if not inpatient_episode:
+    if not inpatient_admission:
         created = True
-        inpatient_episode = create_or_update_inpatient_episode(
+        inpatient_admission = create_or_update_inpatient_admission(
             message, gloss_ref
         )
 
-    return inpatient_episode, created,
+    return inpatient_admission, created,
 
 
-def get_or_create_location(message, inpatient_episode, session):
+def get_or_create_location(message, inpatient_admission, session):
     created = False
     inpatient_location = InpatientLocation.get_location(
-        inpatient_episode, session
+        inpatient_admission, session
     )
 
     if not inpatient_location:
         created = True
         inpatient_location = create_or_update_inpatient_location(
-            message, inpatient_episode
+            message, inpatient_admission
         )
 
     return inpatient_location, created,
