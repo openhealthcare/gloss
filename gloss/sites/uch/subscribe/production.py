@@ -5,16 +5,16 @@ import json
 
 from gloss import settings
 from gloss.message_type import (
-    AllergyMessage, InpatientEpisodeMessage, PatientMergeMessage,
-    ResultMessage, InpatientEpisodeTransferMessage,
-    InpatientEpisodeDeleteMessage, PatientUpdateMessage,
+    AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
+    ResultMessage, InpatientAdmissionTransferMessage,
+    InpatientAdmissionDeleteMessage, PatientUpdateMessage,
 )
 from gloss.models import (
-    InpatientEpisode, Merge,
+    InpatientAdmission, Merge,
     get_gloss_reference, Allergy,
     Result, is_known, Patient,
-    create_or_update_inpatient_episode, create_or_update_inpatient_location,
-    get_or_create_episode, get_or_create_location
+    create_or_update_inpatient_admission, create_or_update_inpatient_location,
+    get_or_create_admission, get_or_create_location
 )
 from gloss.subscribe.subscription import (
     db_message_processor, NotifyOpalWhenSubscribed
@@ -60,71 +60,71 @@ class UclhMergeSubscription(NotifyOpalWhenSubscribed):
                 session.add(mrg)
 
 
-class UclhInpatientEpisodeSubscription(NotifyOpalWhenSubscribed):
+class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):
     """ Handles Inpatient Admit, Discharge and Amending """
-    message_types = [InpatientEpisodeMessage]
+    message_types = [InpatientAdmissionMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
-            inpatient_episode, created = get_or_create_episode(
+            inpatient_admission, created = get_or_create_admission(
                 message, gloss_ref, session
             )
-            print inpatient_episode, created
+            print inpatient_admission, created
 
             if not created:
-                inpatient_episode = create_or_update_inpatient_episode(
-                    message, gloss_ref, base=inpatient_episode
+                inpatient_admission = create_or_update_inpatient_admission(
+                    message, gloss_ref, base=inpatient_admission
                 )
 
-            session.add(inpatient_episode)
-            print 'added', inpatient_episode
+            session.add(inpatient_admission)
+            print 'added', inpatient_admission
             if settings.SAVE_LOCATION:
                 inpatient_location, created = get_or_create_location(
-                    message, inpatient_episode, session
+                    message, inpatient_admission, session
                 )
 
                 if not created:
                     inpatient_location = create_or_update_inpatient_location(
                         message,
-                        inpatient_episode,
+                        inpatient_admission,
                         base=inpatient_location
                     )
                 session.add(inpatient_location)
                 print 'added', inpatient_location
 
 
-class UclhInpatientEpisodeDeleteSubscription(NotifyOpalWhenSubscribed):
-    message_types = [InpatientEpisodeDeleteMessage]
+class UclhInpatientAdmissionDeleteSubscription(NotifyOpalWhenSubscribed):
+    message_types = [InpatientAdmissionDeleteMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
-            session.query(InpatientEpisode).filter(
-                InpatientEpisode.visit_number == message.visit_number
+            session.query(InpatientAdmission).filter(
+                InpatientAdmission.visit_number == message.visit_number
             ).delete()
 
 
 class UclhInpatientTransferSubscription(NotifyOpalWhenSubscribed):
-    message_types = [InpatientEpisodeTransferMessage]
+    message_types = [InpatientAdmissionTransferMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
-            inpatient_episode, created = get_or_create_episode(
+            inpatient_admission, created = get_or_create_admission(
                 message, gloss_ref, session
             )
             if not created:
-                inpatient_episode = create_or_update_inpatient_location(
-                    message, inpatient_episode, base=inpatient_episode
+                inpatient_admission = create_or_update_inpatient_location(
+                    message, inpatient_admission, base=inpatient_admission
                 )
 
             if settings.SAVE_LOCATION:
                 last_location, created = get_or_create_location(
-                    message, inpatient_episode, session
+                    message, inpatient_admission, session
                 )
 
                 if not created:
@@ -133,7 +133,7 @@ class UclhInpatientTransferSubscription(NotifyOpalWhenSubscribed):
 
                 inpatient_location = create_or_update_inpatient_location(
                     message,
-                    inpatient_episode,
+                    inpatient_admission,
                 )
                 inpatient_location.datetime_of_transfer_to = message.datetime_of_transfer
                 session.add(inpatient_location)

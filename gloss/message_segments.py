@@ -3,7 +3,7 @@ from twisted.python import log
 from collections import namedtuple
 from coded_values import (
     RELIGION_MAPPINGS, SEX_MAPPING, MARITAL_STATUSES_MAPPING,
-    TEST_STATUS_MAPPING, EPISODE_TYPES, OBX_STATUSES,
+    TEST_STATUS_MAPPING, ADMISSION_TYPES, OBX_STATUSES,
     ETHNICITY_MAPPING,
 )
 from copy import copy
@@ -106,7 +106,7 @@ class InpatientPID(Segment):
         self.religion = RELIGION_MAPPINGS.get(segment[17][0], None)
 
         # this is used by spell delete
-        # it seems similar to our episode id
+        # it seems similar to our admission id
         self.patient_account_number = segment[18][0]
         self.marital_status = MARITAL_STATUSES_MAPPING.get(
             segment[16][0], None
@@ -252,9 +252,9 @@ class PV1(Segment):
         )
 
         try:
-            self.episode_type = EPISODE_TYPES[segment[2][0]]
+            self.admission_type = ADMISSION_TYPES[segment[2][0]]
         except:
-            self.episode_types = None
+            self.admission_types = None
 
         if len(segment) > 45 and segment[45] and segment[45][0]:
             self.datetime_of_discharge = datetime.strptime(

@@ -15,7 +15,7 @@ from gloss.tests.test_messages import (
     COMPLEX_WINPATH_RESULT, PATIENT_DEATH, PATIENT_UPDATE, MULTIPLE_ALLERGIES
 )
 from gloss.models import (
-    Merge, get_or_create_identifier, InpatientEpisode, get_gloss_reference,
+    Merge, get_or_create_identifier, InpatientAdmission, get_gloss_reference,
     InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
 from gloss.message_type import PatientUpdateMessage, MessageContainer
 
@@ -29,7 +29,7 @@ class TestInpatientAdmissionFlow(GlossTestCase):
         message_processor.process_message(read_message(INPATIENT_ADMISSION))
         gloss_reference = get_gloss_reference('50099878', self.session)
         self.assertTrue(gloss_reference is not None)
-        admission = InpatientEpisode.get_from_gloss_reference(
+        admission = InpatientAdmission.get_from_gloss_reference(
             gloss_reference, self.session
         )
         self.assertEqual(
@@ -39,7 +39,7 @@ class TestInpatientAdmissionFlow(GlossTestCase):
             "TEST NON ELECTIVE PATIENT", admission.admission_diagnosis
         )
         location = self.session.query(InpatientLocation).one()
-        self.assertEqual(location.inpatient_episode, admission)
+        self.assertEqual(location.inpatient_admission, admission)
         self.assertEqual(location.ward_code, "BBNU")
         self.assertEqual(location.room_code, "BCOT")
         self.assertEqual(location.bed_code, "BCOT-02B")
@@ -78,53 +78,53 @@ class TestInpatientDischarge(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientDischarge, self).setUp()
 
-    def test_with_existing_inpatient_episode(self):
-        old_inpatient_episode = self.get_inpatient_episode(
+    def test_with_existing_inpatient_admission(self):
+        old_inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        old_inpatient_episode.visit_number = self.visit_number
-        old_inpatient_episode.datetime_of_discharge = None
-        old_inpatient_episode.datetime_of_admission = datetime(
+        old_inpatient_admission.visit_number = self.visit_number
+        old_inpatient_admission.datetime_of_discharge = None
+        old_inpatient_admission.datetime_of_admission = datetime(
             2014, 11, 18, 16, 15
         )
 
         old_inpatient_location = self.get_inpatient_location(
-            old_inpatient_episode
+            old_inpatient_admission
         )
-        self.session.add(old_inpatient_episode)
+        self.session.add(old_inpatient_admission)
         self.session.add(old_inpatient_location)
         self.message_processor.process_message(self.message)
-        inpatient_episode = self.session.query(InpatientEpisode).one()
+        inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
-            inpatient_episode.datetime_of_discharge,
+            inpatient_admission.datetime_of_discharge,
             datetime(2015, 11, 18, 16, 15)
         )
         self.assertEqual(
-            inpatient_episode.datetime_of_admission,
+            inpatient_admission.datetime_of_admission,
             datetime(2015, 11, 18, 12, 17)
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
-            inpatient_location.inpatient_episode, inpatient_episode
+            inpatient_location.inpatient_admission, inpatient_admission
         )
         self.assertEqual(inpatient_location.ward_code, "F3NU")
         self.assertEqual(inpatient_location.room_code, "F3SR")
         self.assertEqual(inpatient_location.bed_code, "F3SR-36")
 
-    def test_without_existing_inpatient_episode(self):
+    def test_without_existing_inpatient_admission(self):
         self.message_processor.process_message(self.message)
-        inpatient_episode = self.session.query(InpatientEpisode).one()
+        inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
-            inpatient_episode.datetime_of_discharge,
+            inpatient_admission.datetime_of_discharge,
             datetime(2015, 11, 18, 16, 15)
         )
         self.assertEqual(
-            inpatient_episode.datetime_of_admission,
+            inpatient_admission.datetime_of_admission,
             datetime(2015, 11, 18, 12, 17)
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
-            inpatient_location.inpatient_episode, inpatient_episode
+            inpatient_location.inpatient_admission, inpatient_admission
         )
         self.assertEqual(inpatient_location.ward_code, "F3NU")
         self.assertEqual(inpatient_location.room_code, "F3SR")
@@ -140,61 +140,61 @@ class TestInpatientAmend(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientAmend, self).setUp()
 
-    def test_with_existing_inpatient_episode(self):
-        existing_inpatient_episode = self.get_inpatient_episode(
+    def test_with_existing_inpatient_admission(self):
+        existing_inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        existing_inpatient_episode.datetime_of_admission = datetime(
+        existing_inpatient_admission.datetime_of_admission = datetime(
             2012, 10, 10, 10, 10
         )
-        existing_inpatient_episode.datetime_of_discharge = datetime(
+        existing_inpatient_admission.datetime_of_discharge = datetime(
             2013, 10, 10, 10, 10
         )
-        existing_inpatient_episode.visit_number = self.visit_number
+        existing_inpatient_admission.visit_number = self.visit_number
         existing_inpatient_location = self.get_inpatient_location(
-            existing_inpatient_episode
+            existing_inpatient_admission
         )
         existing_inpatient_location.ward_code = "A03"
         existing_inpatient_location.room_code = "A03"
         existing_inpatient_location.bed_code = "A03"
-        self.session.add(existing_inpatient_episode)
+        self.session.add(existing_inpatient_admission)
         self.session.add(existing_inpatient_location)
         self.message_processor.process_message(self.message)
-        inpatient_episode = self.session.query(InpatientEpisode).one()
+        inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
-            inpatient_episode.datetime_of_admission,
+            inpatient_admission.datetime_of_admission,
             datetime(2012, 9, 19, 18, 22)
         )
         self.assertEqual(
-            inpatient_episode.datetime_of_discharge,
+            inpatient_admission.datetime_of_discharge,
             datetime(2012, 12, 8, 14, 30)
         )
         self.assertEqual(
             "ANY FOR TESTING",
-            inpatient_episode.admission_diagnosis
+            inpatient_admission.admission_diagnosis
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
-            existing_inpatient_episode, inpatient_location.inpatient_episode
+            existing_inpatient_admission, inpatient_location.inpatient_admission
         )
         self.assertEqual(inpatient_location.ward_code, "T03")
         self.assertEqual(inpatient_location.room_code, "T03A")
         self.assertEqual(inpatient_location.bed_code, "T03-14")
 
-    def test_without_existing_inpatient_episode(self):
+    def test_without_existing_inpatient_admission(self):
         self.message_processor.process_message(self.message)
-        inpatient_episode = self.session.query(InpatientEpisode).one()
+        inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
-            inpatient_episode.datetime_of_admission,
+            inpatient_admission.datetime_of_admission,
             datetime(2012, 9, 19, 18, 22)
         )
         self.assertEqual(
-            inpatient_episode.datetime_of_discharge,
+            inpatient_admission.datetime_of_discharge,
             datetime(2012, 12, 8, 14, 30)
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
-            inpatient_episode, inpatient_location.inpatient_episode
+            inpatient_admission, inpatient_location.inpatient_admission
         )
         self.assertEqual(inpatient_location.ward_code, "T03")
         self.assertEqual(inpatient_location.room_code, "T03A")
@@ -210,36 +210,36 @@ class TestInpatientCancelDischarge(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientCancelDischarge, self).setUp()
 
-    def test_with_existing_inpatient_episode(self):
-        self.inpatient_episode = self.get_inpatient_episode(
+    def test_with_existing_inpatient_admission(self):
+        self.inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        self.inpatient_episode.datetime_of_admission = datetime(
+        self.inpatient_admission.datetime_of_admission = datetime(
             2012, 10, 10, 10, 10
         )
-        self.inpatient_episode.datetime_of_discharge = datetime(
+        self.inpatient_admission.datetime_of_discharge = datetime(
             2013, 10, 10, 10, 10
         )
         self.inpatient_location = self.get_inpatient_location(
-            self.inpatient_episode
+            self.inpatient_admission
         )
         self.inpatient_location.ward_code = "A03"
         self.inpatient_location.room_code = "A03"
         self.inpatient_location.bed_code = "A03"
-        self.session.add(self.inpatient_episode)
+        self.session.add(self.inpatient_admission)
         self.session.add(self.inpatient_location)
         self.message_processor.process_message(self.message)
-        inpatient_episode = self.session.query(InpatientEpisode).one()
+        inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
-            inpatient_episode.datetime_of_admission,
+            inpatient_admission.datetime_of_admission,
             datetime(2015, 11, 18, 12, 17)
         )
         self.assertIsNone(
-            inpatient_episode.datetime_of_discharge,
+            inpatient_admission.datetime_of_discharge,
         )
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertEqual(
-            inpatient_episode, inpatient_location.inpatient_episode
+            inpatient_admission, inpatient_location.inpatient_admission
         )
         self.assertEqual(inpatient_location.ward_code, "F3NU")
         self.assertEqual(inpatient_location.room_code, "F3SR")
@@ -255,36 +255,36 @@ class TestInpatientDeleteSpell(GlossTestCase):
         self.message_processor = MessageProcessor()
         super(TestInpatientDeleteSpell, self).setUp()
 
-    def test_without_existing_inpatient_episode(self):
-        self.inpatient_episode = self.get_inpatient_episode(
+    def test_without_existing_inpatient_admission(self):
+        self.inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        self.inpatient_episode.datetime_of_admission = datetime(
+        self.inpatient_admission.datetime_of_admission = datetime(
             2012, 10, 10, 10, 10
         )
-        self.inpatient_episode.datetime_of_discharge = datetime(
+        self.inpatient_admission.datetime_of_discharge = datetime(
             2013, 10, 10, 10, 10
         )
-        self.inpatient_episode.visit_number = self.visit_number
+        self.inpatient_admission.visit_number = self.visit_number
         self.inpatient_location = self.get_inpatient_location(
-            self.inpatient_episode
+            self.inpatient_admission
         )
         self.inpatient_location.ward_code = "A03"
         self.inpatient_location.room_code = "A03"
         self.inpatient_location.bed_code = "A03"
-        self.session.add(self.inpatient_episode)
+        self.session.add(self.inpatient_admission)
         self.session.add(self.inpatient_location)
         self.message_processor.process_message(self.message)
-        num_inpatients = self.session.query(InpatientEpisode).count()
+        num_inpatients = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_inpatients, 0)
-        num_locations = self.session.query(InpatientEpisode).count()
+        num_locations = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_locations, 0)
 
     def test_with(self):
         self.message_processor.process_message(self.message)
-        num_inpatients = self.session.query(InpatientEpisode).count()
+        num_inpatients = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_inpatients, 0)
-        num_locations = self.session.query(InpatientEpisode).count()
+        num_locations = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_locations, 0)
 
 
@@ -300,22 +300,22 @@ class TestInpatientTransfer(GlossTestCase):
     def test_flow_if_with_previous(self):
         transfer_time = datetime(2012, 12, 14, 11, 0)
 
-        self.inpatient_episode = self.get_inpatient_episode(
+        self.inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        self.inpatient_episode.visit_number = '930375'
+        self.inpatient_admission.visit_number = '930375'
         self.inpatient_location = self.get_inpatient_location(
-            self.inpatient_episode
+            self.inpatient_admission
         )
 
-        self.session.add(self.inpatient_episode)
+        self.session.add(self.inpatient_admission)
         self.session.add(self.inpatient_location)
         self.session.commit()
 
         self.message_processor.process_message(self.message)
 
-        # make sure we're not creating multiple episodes
-        self.session.query(InpatientEpisode).one()
+        # make sure we're not creating multiple admissions
+        self.session.query(InpatientAdmission).one()
 
         # we should have 2 locations, the old and the new
         inpatient_locations = self.session.query(InpatientLocation).all()
@@ -324,7 +324,7 @@ class TestInpatientTransfer(GlossTestCase):
         self.assertEqual(old_location.datetime_of_transfer, transfer_time)
 
         self.assertEqual(
-            old_location.inpatient_episode, self.inpatient_episode
+            old_location.inpatient_admission, self.inpatient_admission
         )
         self.assertEqual(
             old_location.room_code, self.inpatient_location.room_code
@@ -344,7 +344,7 @@ class TestInpatientTransfer(GlossTestCase):
 
     def test_flow_if_no_previous(self):
         self.message_processor.process_message(self.message)
-        self.session.query(InpatientEpisode).one()
+        self.session.query(InpatientAdmission).one()
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertIsNone(inpatient_location.datetime_of_transfer)
         self.assertEqual("T06", inpatient_location.ward_code)
