@@ -18,7 +18,6 @@ from gloss.models import (
     Merge, get_or_create_identifier, InpatientAdmission, get_gloss_reference,
     InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
 from gloss.message_type import PatientUpdateMessage, MessageContainer
-
 from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
 
 
@@ -453,7 +452,9 @@ class TestResultsFlow(GlossTestCase):
         from repeating fields
     """
 
-    def test_message_with_notes(self):
+    @patch('gloss.subscribe.subscription.settings')
+    def test_message_with_notes(self, settings_mock):
+        settings_mock.SEND_ALL_MESSAGES = "http:not_real"
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(RESULTS_MESSAGE))
         result = self.session.query(Result).one()
@@ -532,6 +533,18 @@ class TestResultsFlow(GlossTestCase):
         self.assertEqual('ELU', result.profile_code)
         self.assertEqual('RENAL PROFILE', result.profile_description)
         self.assertEqual('FINAL', result.result_status)
+        downstream = json.loads(
+            self.mock_requests_post.call_args[1]["json"],
+        )
+        downstream = downstream["messages"]["result"][0]
+
+        self.assertEqual(
+            downstream["observations"],
+            expected_observations
+        )
+        self.assertEqual('ELU', downstream["profile_code"])
+        self.assertEqual('RENAL PROFILE', downstream["profile_description"])
+        self.assertEqual('FINAL', downstream["result_status"])
 
     def test_complex_message(self):
         message_processor = MessageProcessor()
@@ -539,6 +552,7 @@ class TestResultsFlow(GlossTestCase):
         results = self.session.query(Result).all()
         self.assertEqual(2, len(results))
         result_1 = results[0]
+
         expected_observations_1 = [
             {
                 u'comments': None,

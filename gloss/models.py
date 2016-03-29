@@ -196,17 +196,6 @@ class Result(Base, GlossSubrecord):
     result_status = Column(String(250))
     observations = Column(Text)
 
-    def to_dict(self):
-        return dict(
-            lab_number=self.lab_number,
-            profile_code=self.profile_code,
-            request_datetime=self.request_datetime.strftime(settings.DATE_FORMAT),
-            observation_datetime=self.observation_datetime.strftime(settings.DATE_FORMAT),
-            last_edited=self.last_edited.strftime(settings.DATE_FORMAT),
-            result_status=self.result_status,
-            observations=json.loads(self.observations)
-        )
-
 
 class GlossolaliaReference(Base):
     pass
