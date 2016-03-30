@@ -2,6 +2,7 @@ from twisted.logger import Logger
 from gloss.message_segments import *
 from gloss import notification
 from gloss.models import session_scope, Error
+from gloss import settings
 from utils import itersubclasses
 from message_type import (
     InpatientAdmissionMessage, PatientMergeMessage, ResultMessage,
@@ -303,20 +304,23 @@ class MessageProcessor(object):
                 "unable to find message type for {}".format(message_type)
             )
             return
-        # message_type(msg).process()
-        try:
-            message_type(msg).process()
-        except Exception as e:
-            self.log.error("failed to parse")
-            self.log.error(str(msg).replace("\r", "\n"))
-            self.log.error("with %s" % e)
+
+        if settings.CATCH_ALL_ERRORS:
             try:
-                with session_scope() as session:
-                    err = Error(
-                        error=str(e),
-                        message=str(msg)
-                    )
-                    session.add(err)
+                message_type(msg).process()
             except Exception as e:
-                self.log.error("failed to save error to database")
+                self.log.error("failed to parse")
+                self.log.error(str(msg).replace("\r", "\n"))
                 self.log.error("with %s" % e)
+                try:
+                    with session_scope() as session:
+                        err = Error(
+                            error=str(e),
+                            message=str(msg)
+                        )
+                        session.add(err)
+                except Exception as e:
+                    self.log.error("failed to save error to database")
+                    self.log.error("with %s" % e)
+        else:
+            message_type(msg).process()
