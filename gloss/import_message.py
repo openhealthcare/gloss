@@ -113,7 +113,6 @@ class InpatientAdmit(MessageImporter):
             admission_diagnosis=self.pv2.admission_diagnosis,
         )]
 
-
 class InpatientDischarge(InpatientAdmit):
     message_type = u"ADT"
     trigger_event = "A03"
@@ -241,6 +240,8 @@ class WinPathResults(MessageImporter):
                 comments=comments.get(obxs.obx.set_id, None)
             )
 
+
+
         def get_comments(ntes):
             set_id_to_comment = defaultdict(list)
             for nte_package in ntes:
@@ -305,22 +306,20 @@ class MessageProcessor(object):
             )
             return
 
-        if settings.CATCH_ALL_ERRORS:
-            try:
-                message_type(msg).process()
-            except Exception as e:
-                self.log.error("failed to parse")
-                self.log.error(str(msg).replace("\r", "\n"))
-                self.log.error("with %s" % e)
-                try:
-                    with session_scope() as session:
-                        err = Error(
-                            error=str(e),
-                            message=str(msg)
-                        )
-                        session.add(err)
-                except Exception as e:
-                    self.log.error("failed to save error to database")
-                    self.log.error("with %s" % e)
-        else:
+        try:
             message_type(msg).process()
+        except Exception as e:
+            self.log.error("failed to parse")
+            self.log.error(str(msg).replace("\r", "\n"))
+            self.log.error("with %s" % e)
+            try:
+                with session_scope() as session:
+                    err = Error(
+                        error=str(e),
+                        message=str(msg)
+                    )
+                    session.add(err)
+            except Exception as e:
+                self.log.error("failed to save error to database")
+                self.log.error("with %s" % e)
+            raise

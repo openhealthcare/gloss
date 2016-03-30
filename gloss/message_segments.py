@@ -69,10 +69,11 @@ class ResultsPID(Segment):
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
         self.first_name = segment[5][0][1][0]
-
-        self.date_of_birth = datetime.strptime(
-            segment[7][0][:8], DATE_FORMAT
-        ).date()
+        self.date_of_birth = None
+        if segment[7][0]:
+            self.date_of_birth = datetime.strptime(
+                segment[7][0][:8], DATE_FORMAT
+            ).date()
         self.gender = segment[8][0]
 
 class InpatientPID(Segment):
@@ -144,9 +145,11 @@ class AllergiesPID(Segment):
         self.hospital_number = segment[3][0][0][0]
         self.surname = segment[5][0][0][0]
         self.first_name = segment[5][0][1][0]
-        self.date_of_birth = datetime.strptime(
-            segment[7][0][:8], DATE_FORMAT
-        ).date()
+        self.date_of_birth = None
+        if segment[7][0]:
+            self.date_of_birth = datetime.strptime(
+                segment[7][0][:8], DATE_FORMAT
+            ).date()
         self.gender = segment[8][0]
 
         # sample messages record 2 different types of
