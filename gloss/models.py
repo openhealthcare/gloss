@@ -108,7 +108,7 @@ class Patient(Base, GlossSubrecord):
 class InpatientAdmission(Base, GlossSubrecord):
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
-    visit_number = Column(String(250), nullable=False)
+    external_identifier = Column(String(250), nullable=False)
     admission_diagnosis = Column(String(250))
 
 
@@ -332,7 +332,7 @@ def create_or_update_inpatient_admission(message, gloss_ref, base=None):
     inpatient_admission.gloss_reference = gloss_ref
     inpatient_admission.datetime_of_admission = message.datetime_of_admission
     inpatient_admission.datetime_of_discharge = message.datetime_of_discharge
-    inpatient_admission.visit_number = message.visit_number
+    inpatient_admission.external_identifier = message.external_identifier
     inpatient_admission.admission_diagnosis = message.admission_diagnosis
     return inpatient_admission
 
@@ -353,7 +353,7 @@ def create_or_update_inpatient_location(message, inpatient_admission, base=None)
 def get_or_create_admission(message, gloss_ref, session):
     created = False
     inpatient_admission = session.query(InpatientAdmission).filter(
-        InpatientAdmission.visit_number == message.visit_number
+        InpatientAdmission.external_identifier == message.external_identifier
     ).one_or_none()
 
     if not inpatient_admission:

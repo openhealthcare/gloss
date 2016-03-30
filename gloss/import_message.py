@@ -105,7 +105,7 @@ class InpatientAdmit(MessageImporter):
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
             bed_code=self.pv1.bed_code,
-            visit_number=self.pid.patient_account_number,
+            external_identifier=self.pid.patient_account_number,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
             datetime_of_discharge=self.pv1.datetime_of_discharge,
@@ -142,7 +142,7 @@ class InpatientTransfer(MessageImporter):
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
             bed_code=self.pv1.bed_code,
-            visit_number=self.pid.patient_account_number,
+            external_identifier=self.pid.patient_account_number,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
             datetime_of_discharge=self.pv1.datetime_of_discharge,
@@ -160,7 +160,7 @@ class InpatientSpellDelete(MessageImporter):
 
     def process_message(self):
         return [self.gloss_message_type(
-            visit_number=self.pid.patient_account_number,
+            external_identifier=self.pid.patient_account_number,
             datetime_of_deletion=self.evn.recorded_datetime,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh"
