@@ -5,7 +5,7 @@ from gloss import settings
 from twisted.logger import Logger
 
 
-class OpalJSONSerializer(json.JSONEncoder):
+class OpalJSONSerialiser(json.JSONEncoder):
     """ Encodes a dictionary to json in the format that OPAL likes it
     """
     def default(self, o):
@@ -15,7 +15,7 @@ class OpalJSONSerializer(json.JSONEncoder):
             return datetime.datetime.combine(
                     o, datetime.datetime.min.time()
                 ).strftime(settings.DATE_FORMAT)
-        super(OpalJSONSerializer, self).default(o)
+        super(OpalJSONSerialiser, self).default(o)
 
 
 def send_to_opal(message_container, end_point):
@@ -23,7 +23,7 @@ def send_to_opal(message_container, end_point):
     """
     as_dict = message_container.to_dict()
     response = requests.post(
-        end_point, json=json.dumps(as_dict, cls=OpalJSONSerializer)
+        end_point, json=json.dumps(as_dict, cls=OpalJSONSerialiser)
     )
 
     if response.status_code > 300:

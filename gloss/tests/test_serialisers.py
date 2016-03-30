@@ -3,7 +3,7 @@ from datetime import date, datetime
 import json
 from mock import patch, MagicMock
 from gloss.tests.core import GlossTestCase
-from gloss.serialisers.opal import OpalJSONSerializer, send_to_opal
+from gloss.serialisers.opal import OpalJSONSerialiser, send_to_opal
 
 
 class JsonSerialiserTestCase(TestCase):
@@ -17,7 +17,7 @@ class JsonSerialiserTestCase(TestCase):
             now="11/03/2016 10:10:00"
         )
 
-        input_json = json.dumps(input_dict, cls=OpalJSONSerializer)
+        input_json = json.dumps(input_dict, cls=OpalJSONSerialiser)
         self.assertEqual(expected_dict, json.loads(input_json))
 
 

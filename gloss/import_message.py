@@ -113,7 +113,6 @@ class InpatientAdmit(MessageImporter):
             admission_diagnosis=self.pv2.admission_diagnosis,
         )]
 
-
 class InpatientDischarge(InpatientAdmit):
     message_type = u"ADT"
     trigger_event = "A03"
@@ -240,6 +239,8 @@ class WinPathResults(MessageImporter):
                 result_status=obxs.obx.result_status,
                 comments=comments.get(obxs.obx.set_id, None)
             )
+
+
 
         def get_comments(ntes):
             set_id_to_comment = defaultdict(list)
