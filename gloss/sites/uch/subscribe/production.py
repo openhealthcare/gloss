@@ -2,6 +2,7 @@
 Subscriptions for production deployment
 """
 import json
+from copy import copy
 
 from gloss import settings
 from gloss.message_type import (
@@ -146,7 +147,7 @@ class UclhWinPathResultSubscription(NotifyOpalWhenSubscribed):
     def notify(self, message_container, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
-            model_kwargs = vars(message)
+            model_kwargs = copy(vars(message))
             model_kwargs["observations"] = json.dumps(message.observations)
             result = Result(**model_kwargs)
             result.gloss_reference = gloss_ref
