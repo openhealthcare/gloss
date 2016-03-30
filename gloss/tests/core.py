@@ -57,7 +57,7 @@ class GlossTestCase(TestCase):
             InpatientAdmission, identifier, issuing_source
         )
 
-        inpatient_admission.visit_number = "940347"
+        inpatient_admission.external_identifier = "940347"
         inpatient_admission.datetime_of_admission = datetime(
             2012, 10, 10, 17, 12
         )

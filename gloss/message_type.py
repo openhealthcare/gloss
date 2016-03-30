@@ -118,8 +118,9 @@ class OrderMessage(MessageType):
         Message Processors expect one to exist.
         """
 
+
 class InpatientAdmissionMessage(MessageType):
-    message_name = "inpatient_locations"
+    message_name = "inpatient_admission"
 
     def __init__(
         self,
@@ -128,7 +129,7 @@ class InpatientAdmissionMessage(MessageType):
         self.ward_code = kwargs.pop("ward_code")
         self.room_code = kwargs.pop("room_code")
         self.bed_code = kwargs.pop("bed_code")
-        self.visit_number = kwargs.pop("visit_number")
+        self.external_identifier = kwargs.pop("external_identifier")
         self.datetime_of_admission = kwargs.pop("datetime_of_admission")
         self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
         self.admission_diagnosis = kwargs.pop("admission_diagnosis")
@@ -151,5 +152,5 @@ class InpatientAdmissionDeleteMessage(MessageType):
         self,
         **kwargs
     ):
-        self.visit_number = kwargs.pop("visit_number")
+        self.external_identifier = kwargs.pop("external_identifier")
         self.datetime_of_deletion = kwargs.pop("datetime_of_deletion")

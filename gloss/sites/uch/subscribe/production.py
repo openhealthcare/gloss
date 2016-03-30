@@ -103,7 +103,7 @@ class UclhInpatientAdmissionDeleteSubscription(NotifyOpalWhenSubscribed):
         messages = message_container.messages
         for message in messages:
             session.query(InpatientAdmission).filter(
-                InpatientAdmission.visit_number == message.visit_number
+                InpatientAdmission.external_identifier == message.external_identifier
             ).delete()
 
 
