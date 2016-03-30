@@ -13,13 +13,14 @@ class TestMessageImporter(GlossTestCase):
         get_message_type_mock.return_value = MagicMock(
             return_value=message_type
         )
-        message_type.process = MagicMock(side_effect=ValueError('Fail'))
-        message_processor = MessageProcessor()
-        message_processor.process_message("some string")
-        self.assertTrue(message_type.process)
-        error = self.session.query(Error).one()
-        self.assertEqual(error.message, "some string")
-        self.assertEqual(error.error, "Fail")
+        with self.assertRaises(ValueError):
+            message_type.process = MagicMock(side_effect=ValueError('Fail'))
+            message_processor = MessageProcessor()
+            message_processor.process_message("some string")
+            self.assertTrue(message_type.process)
+            error = self.session.query(Error).one()
+            self.assertEqual(error.message, "some string")
+            self.assertEqual(error.error, "Fail")
 
     @patch.object(MessageProcessor, "get_message_type")
     def test_database_saving_throws_an_error(self, get_message_type_mock):
@@ -29,12 +30,16 @@ class TestMessageImporter(GlossTestCase):
         )
         message_type.process = MagicMock(side_effect=ValueError('Fail'))
         message_processor = MessageProcessor()
+        err = ValueError("DB fail")
         with patch.object(self.session, "add") as add_mock:
-            add_mock.side_effect = ValueError("DB fail")
-            message_processor.process_message("some string")
+            with self.assertRaises(ValueError) as db_error:
+                add_mock.side_effect = err
+                message_processor.process_message("some string")
             self.assertTrue(message_type.process)
             error_count = self.session.query(Error).count()
+            self.assertEqual(db_error.exception, err)
             self.assertEqual(error_count, 0)
+
 
 
 class TestOrderMessages(GlossTestCase):
