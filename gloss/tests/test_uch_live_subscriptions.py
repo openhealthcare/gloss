@@ -18,7 +18,6 @@ from gloss.models import (
     Merge, get_or_create_identifier, InpatientAdmission, get_gloss_reference,
     InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
 from gloss.message_type import PatientUpdateMessage, MessageContainer
-
 from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
 
 
@@ -50,13 +49,13 @@ class TestInpatientAdmissionFlow(GlossTestCase):
             "hospital_number": "50099878",
             "issuing_source": "uclh",
             "messages": {
-                "inpatient_locations": [{
+                "inpatient_admission": [{
                     "room_code": "BCOT",
                     "ward_code": "BBNU",
                     "datetime_of_discharge": None,
                     "admission_diagnosis": "TEST NON ELECTIVE PATIENT",
                     "bed_code": "BCOT-02B",
-                    "visit_number": "940358",
+                    "external_identifier": "940358",
                     "datetime_of_admission": "18/11/2015 17:56:00"
                 }]
             }
@@ -71,7 +70,7 @@ class TestInpatientAdmissionFlow(GlossTestCase):
 
 class TestInpatientDischarge(GlossTestCase):
     hospital_number = "50099886"
-    visit_number = "940347"
+    external_identifier = "940347"
 
     def setUp(self):
         self.message = read_message(INPATIENT_DISCHARGE)
@@ -82,7 +81,7 @@ class TestInpatientDischarge(GlossTestCase):
         old_inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        old_inpatient_admission.visit_number = self.visit_number
+        old_inpatient_admission.external_identifier = self.external_identifier
         old_inpatient_admission.datetime_of_discharge = None
         old_inpatient_admission.datetime_of_admission = datetime(
             2014, 11, 18, 16, 15
@@ -133,7 +132,7 @@ class TestInpatientDischarge(GlossTestCase):
 
 class TestInpatientAmend(GlossTestCase):
     hospital_number = "50030204"
-    visit_number = "930882"
+    external_identifier = "930882"
 
     def setUp(self):
         self.message = read_message(INPATIENT_AMEND)
@@ -150,7 +149,7 @@ class TestInpatientAmend(GlossTestCase):
         existing_inpatient_admission.datetime_of_discharge = datetime(
             2013, 10, 10, 10, 10
         )
-        existing_inpatient_admission.visit_number = self.visit_number
+        existing_inpatient_admission.external_identifier = self.external_identifier
         existing_inpatient_location = self.get_inpatient_location(
             existing_inpatient_admission
         )
@@ -203,7 +202,7 @@ class TestInpatientAmend(GlossTestCase):
 
 class TestInpatientCancelDischarge(GlossTestCase):
     hospital_number = "40716752"
-    visit_number = "4449234"
+    external_identifier = "4449234"
 
     def setUp(self):
         self.message = read_message(INPATIENT_CANCEL_DISCHARGE)
@@ -248,7 +247,7 @@ class TestInpatientCancelDischarge(GlossTestCase):
 
 class TestInpatientDeleteSpell(GlossTestCase):
     hospital_number = "40716752"
-    visit_number = "4449234"
+    external_identifier = "4449234"
 
     def setUp(self):
         self.message = read_message(INPATIENT_SPELL_DELETE)
@@ -265,7 +264,7 @@ class TestInpatientDeleteSpell(GlossTestCase):
         self.inpatient_admission.datetime_of_discharge = datetime(
             2013, 10, 10, 10, 10
         )
-        self.inpatient_admission.visit_number = self.visit_number
+        self.inpatient_admission.external_identifier = self.external_identifier
         self.inpatient_location = self.get_inpatient_location(
             self.inpatient_admission
         )
@@ -303,7 +302,7 @@ class TestInpatientTransfer(GlossTestCase):
         self.inpatient_admission = self.get_inpatient_admission(
             self.hospital_number, "uclh"
         )
-        self.inpatient_admission.visit_number = '930375'
+        self.inpatient_admission.external_identifier = '930375'
         self.inpatient_location = self.get_inpatient_location(
             self.inpatient_admission
         )
@@ -453,7 +452,9 @@ class TestResultsFlow(GlossTestCase):
         from repeating fields
     """
 
-    def test_message_with_notes(self):
+    @patch('gloss.subscribe.subscription.settings')
+    def test_message_with_notes(self, settings_mock):
+        settings_mock.SEND_ALL_MESSAGES = "http:not_real"
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(RESULTS_MESSAGE))
         result = self.session.query(Result).one()
@@ -532,6 +533,18 @@ class TestResultsFlow(GlossTestCase):
         self.assertEqual('ELU', result.profile_code)
         self.assertEqual('RENAL PROFILE', result.profile_description)
         self.assertEqual('FINAL', result.result_status)
+        downstream = json.loads(
+            self.mock_requests_post.call_args[1]["json"],
+        )
+        downstream = downstream["messages"]["result"][0]
+
+        self.assertEqual(
+            downstream["observations"],
+            expected_observations
+        )
+        self.assertEqual('ELU', downstream["profile_code"])
+        self.assertEqual('RENAL PROFILE', downstream["profile_description"])
+        self.assertEqual('FINAL', downstream["result_status"])
 
     def test_complex_message(self):
         message_processor = MessageProcessor()
@@ -539,6 +552,7 @@ class TestResultsFlow(GlossTestCase):
         results = self.session.query(Result).all()
         self.assertEqual(2, len(results))
         result_1 = results[0]
+
         expected_observations_1 = [
             {
                 u'comments': None,

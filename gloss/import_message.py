@@ -2,6 +2,7 @@ from twisted.logger import Logger
 from gloss.message_segments import *
 from gloss import notification
 from gloss.models import session_scope, Error
+from gloss import settings
 from utils import itersubclasses
 from message_type import (
     InpatientAdmissionMessage, PatientMergeMessage, ResultMessage,
@@ -105,7 +106,7 @@ class InpatientAdmit(MessageImporter):
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
             bed_code=self.pv1.bed_code,
-            visit_number=self.pid.patient_account_number,
+            external_identifier=self.pid.patient_account_number,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
             datetime_of_discharge=self.pv1.datetime_of_discharge,
@@ -142,7 +143,7 @@ class InpatientTransfer(MessageImporter):
             ward_code=self.pv1.ward_code,
             room_code=self.pv1.room_code,
             bed_code=self.pv1.bed_code,
-            visit_number=self.pid.patient_account_number,
+            external_identifier=self.pid.patient_account_number,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
             datetime_of_discharge=self.pv1.datetime_of_discharge,
@@ -160,7 +161,7 @@ class InpatientSpellDelete(MessageImporter):
 
     def process_message(self):
         return [self.gloss_message_type(
-            visit_number=self.pid.patient_account_number,
+            external_identifier=self.pid.patient_account_number,
             datetime_of_deletion=self.evn.recorded_datetime,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh"
@@ -303,20 +304,23 @@ class MessageProcessor(object):
                 "unable to find message type for {}".format(message_type)
             )
             return
-        # message_type(msg).process()
-        try:
-            message_type(msg).process()
-        except Exception as e:
-            self.log.error("failed to parse")
-            self.log.error(str(msg).replace("\r", "\n"))
-            self.log.error("with %s" % e)
+
+        if settings.CATCH_ALL_ERRORS:
             try:
-                with session_scope() as session:
-                    err = Error(
-                        error=str(e),
-                        message=str(msg)
-                    )
-                    session.add(err)
+                message_type(msg).process()
             except Exception as e:
-                self.log.error("failed to save error to database")
+                self.log.error("failed to parse")
+                self.log.error(str(msg).replace("\r", "\n"))
                 self.log.error("with %s" % e)
+                try:
+                    with session_scope() as session:
+                        err = Error(
+                            error=str(e),
+                            message=str(msg)
+                        )
+                        session.add(err)
+                except Exception as e:
+                    self.log.error("failed to save error to database")
+                    self.log.error("with %s" % e)
+        else:
+            message_type(msg).process()

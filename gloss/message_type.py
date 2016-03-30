@@ -3,25 +3,23 @@ gloss.message_type contains the core Gloss Archetypes
 """
 
 def to_dict(some_obj):
-    def to_dict_or_not_to_dict(child_obj):
-        if hasattr(child_obj, "__name__"):
-            return child_obj.__name__
-        if hasattr(child_obj, "to_dict"):
-            return child_obj.to_dict()
-        else:
-            return to_dict(child_obj)
+    if hasattr(some_obj, "__name__"):
+        return some_obj.__name__
+
+    if hasattr(some_obj, "to_dict"):
+        return some_obj.to_dict()
 
     if isinstance(some_obj, dict):
         return {
-            field: to_dict_or_not_to_dict(value) for field, value in some_obj.iteritems()
+            field: to_dict(value) for field, value in some_obj.iteritems()
         }
     if hasattr(some_obj, "__dict__"):
         fields = vars(some_obj)
         return {
-            field: to_dict_or_not_to_dict(value) for field, value in fields.iteritems()
+            field: to_dict(value) for field, value in fields.iteritems()
         }
     if hasattr(some_obj, "__iter__"):
-        return [to_dict_or_not_to_dict(i) for i in some_obj]
+        return [to_dict(i) for i in some_obj]
     else:
         # presumably this is nothing complicated
         return some_obj
@@ -37,7 +35,6 @@ class MessageContainer(object):
         self.message_type = message_type
 
     def to_dict(self):
-        result = to_dict(self)
         result = {"issuing_source": self.issuing_source}
         result["hospital_number"] = self.hospital_number
         result["messages"] = {
@@ -48,9 +45,6 @@ class MessageContainer(object):
 
 class MessageType(object):
     message_name = "name me Larry"
-
-    def to_dict(self):
-        return to_dict(self)
 
 
 class PatientMergeMessage(MessageType):
@@ -96,7 +90,7 @@ class AllergyMessage(MessageType):
 
 
 class ResultMessage(MessageType):
-    message_name = "test_results"
+    message_name = "result"
 
     def __init__(self, **kwargs):
         self.lab_number = kwargs.pop("lab_number")
@@ -118,8 +112,9 @@ class OrderMessage(MessageType):
         Message Processors expect one to exist.
         """
 
+
 class InpatientAdmissionMessage(MessageType):
-    message_name = "inpatient_locations"
+    message_name = "inpatient_admission"
 
     def __init__(
         self,
@@ -128,7 +123,7 @@ class InpatientAdmissionMessage(MessageType):
         self.ward_code = kwargs.pop("ward_code")
         self.room_code = kwargs.pop("room_code")
         self.bed_code = kwargs.pop("bed_code")
-        self.visit_number = kwargs.pop("visit_number")
+        self.external_identifier = kwargs.pop("external_identifier")
         self.datetime_of_admission = kwargs.pop("datetime_of_admission")
         self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
         self.admission_diagnosis = kwargs.pop("admission_diagnosis")
@@ -151,5 +146,5 @@ class InpatientAdmissionDeleteMessage(MessageType):
         self,
         **kwargs
     ):
-        self.visit_number = kwargs.pop("visit_number")
+        self.external_identifier = kwargs.pop("external_identifier")
         self.datetime_of_deletion = kwargs.pop("datetime_of_deletion")

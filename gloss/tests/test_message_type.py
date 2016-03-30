@@ -9,7 +9,7 @@ from gloss import message_type
 
 expected = {'hospital_number': u'50031772',
  'issuing_source': 'uclh',
- 'messages': {"test_results": [{'lab_number': u'98U000057',
+ 'messages': {"result": [{'lab_number': u'98U000057',
                'last_edited': datetime.datetime(2014, 11, 12, 16, 8),
                'observation_datetime': datetime.datetime(2014, 11, 12, 16, 0),
                'observations': [{'comments': None,
@@ -151,6 +151,31 @@ class TestToDict(TestCase):
         message_container = WinPathResults(msg).construct_container()
         result = message_container.to_dict()
         self.assertEqual(result, expected)
+
+    def test_to_dict_function(self):
+        class A(object):
+            a = "c"
+            def to_dict(self):
+                return {"a": "b"}
+
+        self.assertEqual(message_type.to_dict(A()), {"a": "b"})
+
+    def test_to_dict_array(self):
+        class A(object):
+            def __init__(self, some_value):
+                self.x = some_value
+
+        all_a = [A(1), A(2)]
+        self.assertEqual(message_type.to_dict(all_a), [{"x": 1}, {"x": 2}])
+
+    def test_nested_dicts(self):
+        class A(object):
+            def __init__(self, some_dict):
+                self.x = some_dict
+
+        a = A({"b": 1})
+
+        self.assertEqual(message_type.to_dict(a), {"x": {"b": 1}})
 
 
 class ResultMessageTestCase(TestCase):
