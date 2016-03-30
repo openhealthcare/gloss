@@ -2,6 +2,7 @@ import json
 import datetime
 import requests
 from gloss import settings
+from twisted.logger import Logger
 
 
 class OpalJSONSerializer(json.JSONEncoder):
@@ -21,5 +22,14 @@ def send_to_opal(message_container, end_point):
     """ sends a message to an opal application
     """
     as_dict = message_container.to_dict()
-    requests.post(end_point, json=json.dumps(as_dict, cls=OpalJSONSerializer))
+    response = requests.post(
+        end_point, json=json.dumps(as_dict, cls=OpalJSONSerializer)
+    )
+
+    if response.status_code > 300:
+        log = Logger(namespace="to_opal")
+        log.error(
+            "failed to send to elcid with {}".format(response.status_code)
+        )
+
     return

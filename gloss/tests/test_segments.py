@@ -1,6 +1,9 @@
 from gloss.message_segments import *
 from unittest import TestCase
-from gloss.tests.test_messages import FULL_BLOOD_COUNT, read_message
+from gloss.tests.test_messages import (
+    FULL_BLOOD_COUNT, read_message, CYTOPATHOLOGY_RESULTS_MESSAGE,
+    ALLERGY
+)
 from gloss.message_segments import HL7Message
 
 
@@ -32,3 +35,21 @@ class TestWithWrongMessage(TestCase):
 
         with self.assertRaises(KeyError):
             SomeMsg(read_message(FULL_BLOOD_COUNT))
+
+class TestResultsPID(TestCase):
+    def test_with_no_date_of_birth(self):
+        class SomeMsg(HL7Message):
+            segments = (MSH, ResultsPID,)
+
+        no_dob = CYTOPATHOLOGY_RESULTS_MESSAGE.replace("19881107", "")
+        result = SomeMsg(read_message(no_dob))
+        self.assertIsNone(result.pid.date_of_birth)
+
+class TestAllergiesPID(TestCase):
+    def test_with_no_date_of_birth(self):
+        class SomeMsg(HL7Message):
+            segments = (MSH, AllergiesPID,)
+
+        no_dob = ALLERGY.replace("19720221", "")
+        result = SomeMsg(read_message(no_dob))
+        self.assertIsNone(result.pid.date_of_birth)
