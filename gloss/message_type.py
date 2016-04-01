@@ -1,30 +1,6 @@
 """
 gloss.message_type contains the core Gloss Archetypes
 """
-
-def to_dict(some_obj):
-    if hasattr(some_obj, "__name__"):
-        return some_obj.__name__
-
-    if hasattr(some_obj, "to_dict"):
-        return some_obj.to_dict()
-
-    if isinstance(some_obj, dict):
-        return {
-            field: to_dict(value) for field, value in some_obj.iteritems()
-        }
-    if hasattr(some_obj, "__dict__"):
-        fields = vars(some_obj)
-        return {
-            field: to_dict(value) for field, value in fields.iteritems()
-        }
-    if hasattr(some_obj, "__iter__"):
-        return [to_dict(i) for i in some_obj]
-    else:
-        # presumably this is nothing complicated
-        return some_obj
-
-
 class MessageContainer(object):
     def __init__(
         self, messages, hospital_number, issuing_source, message_type
@@ -37,14 +13,40 @@ class MessageContainer(object):
     def to_dict(self):
         result = {"issuing_source": self.issuing_source}
         result["hospital_number"] = self.hospital_number
+        messages = [i.to_dict() for i in self.messages]
         result["messages"] = {
-            self.message_type.message_name: to_dict(self.messages)
+            self.message_type.message_name: messages
         }
         return result
 
 
 class MessageType(object):
     message_name = "name me Larry"
+
+    def to_dict(self):
+        result = {}
+
+        def to_dict_or_not_to_dict(some_value):
+            if hasattr(some_value, "to_dict"):
+                return some_value.to_dict()
+            else:
+                return some_value
+
+        if hasattr(self, "__name__"):
+            return self.__name__
+
+        for key, value in vars(self).iteritems():
+            if isinstance(value, dict):
+                result[key] = {
+                    i: to_dict_or_not_to_dict(v) for i, v in value.iteritems()
+                }
+            elif hasattr(value, "__iter__"):
+                result[key] = []
+                result[key] = [to_dict_or_not_to_dict(i) for i in value]
+            else:
+                result[key] = to_dict_or_not_to_dict(value)
+
+        return result
 
 
 class PatientMergeMessage(MessageType):
@@ -101,6 +103,14 @@ class ResultMessage(MessageType):
         self.last_edited = kwargs.pop("last_edited")
         self.result_status = kwargs.pop("result_status", None)
         self.observations = kwargs.pop("observations")
+
+    def to_dict(self):
+        as_dict = super(ResultMessage, self).to_dict()
+        as_dict["external_identifier"] = "{0}.{1}".format(
+            self.lab_number,
+            self.profile_code
+        )
+        return as_dict
 
 
 class OrderMessage(MessageType):
