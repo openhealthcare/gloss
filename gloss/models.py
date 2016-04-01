@@ -16,6 +16,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
 from gloss import settings
+from message_type import PatientMessage
 engine = create_engine(settings.DATABASE_STRING)
 
 
@@ -95,14 +96,10 @@ class Patient(Base, GlossSubrecord):
     # (also might give us an indicator and the max time of death)
     death_indicator = Column(Boolean, default=False)
 
-    def to_dict(self):
-        return {
-            'surname': self.surname,
-            'first_name': self.first_name,
-            'middle_name': self.middle_name,
-            'title': self.title,
-            'date_of_birth': self.date_of_birth.strftime(settings.DATE_FORMAT),
-        }
+    def to_message_type(self):
+        excluding = {"id", "updated", "created"}
+        kwargs = {k: v for k, v in vars(self).iteritems() if k  not in excluding}
+        return PatientMessage(**kwargs)
 
 
 class InpatientAdmission(Base, GlossSubrecord):
@@ -197,6 +194,10 @@ class Result(Base, GlossSubrecord):
     observations = Column(Text)
 
 
+class OutgoingMessage(Base):
+    pass
+
+
 class GlossolaliaReference(Base):
     pass
 
@@ -231,6 +232,13 @@ def atomic_method(some_fun):
             return some_fun(*args, **kwargs)
 
     return wrap_method
+
+
+@atomic_method
+def get_outgoing_message(session):
+    outgoing_message = OutgoingMessage()
+    session.add(outgoing_message)
+    return outgoing_message
 
 
 # we need to get subscription from hospital number

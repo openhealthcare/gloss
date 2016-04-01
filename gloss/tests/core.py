@@ -5,7 +5,7 @@ from gloss.models import (
 )
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
-from mock import patch
+from mock import patch, MagicMock
 
 
 class GlossTestCase(TestCase):
@@ -22,12 +22,28 @@ class GlossTestCase(TestCase):
         self.patch_close.start()
         self.patch_requests_post = patch("requests.post")
         self.mock_requests_post = self.patch_requests_post.start()
+        self.patch_socket = patch("socket.socket")
+        self.mock_socket = self.patch_socket.start()
+
+        self.patch_mllp_client = patch("hl7.client.MLLPClient")
+        self.mock_mllp_client = self.patch_mllp_client.start()
+
+        self.mock_mllp_send = MagicMock()
+        client_instance = MagicMock()
+        client_instance.send_message = self.mock_mllp_send;
+        enter = MagicMock(return_value=client_instance)
+        self.mock_mllp_client.name = "client"
+        mllp_api_client_instance = MagicMock()
+        self.mock_mllp_client.return_value = mllp_api_client_instance
+        mllp_api_client_instance.__enter__ = enter
 
     def tearDown(self):
         self.patch_session.stop()
         self.patch_close.stop()
         self.patch_requests_post.stop()
+        self.patch_socket.stop()
         self.session.close()
+        self.patch_mllp_client.stop()
         Base.metadata.drop_all(engine)
 
     def create_subrecord(self, some_class):

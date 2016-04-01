@@ -1,15 +1,14 @@
 """
 Unittests for gloss.models
 """
-import json
 from mock import patch
 
 from gloss.tests.core import GlossTestCase
 
-from gloss import models
-from ..models import (
+from gloss.models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
-    is_subscribed, get_gloss_reference, session_scope
+    is_subscribed, get_gloss_reference, session_scope,
+    OutgoingMessage, get_outgoing_message
 )
 
 
@@ -83,3 +82,12 @@ class GetGlossIdTestCase(GlossTestCase):
 
     def test_return_none(self):
         self.assertTrue(get_gloss_reference("2342334", self.session) is None)
+
+
+class GetOutgoingMessageIdTestCase(GlossTestCase):
+    def test_creates_a_unique_id(self):
+        self.assertEqual(self.session.query(OutgoingMessage).count(), 0)
+        self.assertEqual(get_outgoing_message().id, 1)
+        self.assertEqual(self.session.query(OutgoingMessage).count(), 1)
+        self.assertEqual(get_outgoing_message().id, 2)
+        self.assertEqual(self.session.query(OutgoingMessage).count(), 2)

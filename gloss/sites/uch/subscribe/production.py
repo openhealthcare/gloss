@@ -8,7 +8,7 @@ from gloss import settings
 from gloss.message_type import (
     AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
     ResultMessage, InpatientAdmissionTransferMessage,
-    InpatientAdmissionDeleteMessage, PatientUpdateMessage,
+    InpatientAdmissionDeleteMessage, PatientMessage,
 )
 from gloss.models import (
     InpatientAdmission, Merge,
@@ -155,7 +155,7 @@ class UclhWinPathResultSubscription(NotifyOpalWhenSubscribed):
 
 
 class UclhPatientUpdateSubscription(NotifyOpalWhenSubscribed):
-    message_types = [PatientUpdateMessage]
+    message_types = [PatientMessage]
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):

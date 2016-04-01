@@ -3,10 +3,13 @@ The Public Gloss API
 """
 import functools
 import json
-import os
 import sys
+from flask import Flask, Response
+from gloss.external_api import (
+    post_message_for_identifier, construct_message_container,
+)
+from gloss.serialisers.opal import OpalJSONSerialiser
 
-from flask import Flask, Response, request
 
 sys.path.append('.')
 
@@ -14,6 +17,7 @@ from gloss import exceptions, models, settings
 
 app = Flask('gloss.api')
 app.debug = settings.DEBUG
+
 
 def json_api(route, **kwargs):
     def wrapper(fn):
@@ -24,9 +28,15 @@ def json_api(route, **kwargs):
                     # TODO this should not be hardcoded
                     issuing_source = "uclh"
                     data = fn(session, issuing_source, *args, **kwargs)
-                    return Response(json.dumps({'status': 'success', 'data': data}))
+                    data["status"] = "success"
+                    return Response(json.dumps(data, cls=OpalJSONSerialiser))
+
             except exceptions.APIError as err:
-                return Response(json.dumps({'status': 'error', 'data': err.msg}))
+                data = {'status': 'error', 'data': err.msg}
+                return Response(json.dumps(
+                    data,
+                    cls=OpalJSONSerialiser
+                ))
         # Flask is full of validation for things like function names so let's fake it
         as_json.__name__ = fn.__name__
         return app.route(route, **kwargs)(as_json)
@@ -63,17 +73,22 @@ def demographics_query(session, issuing_source, identifier):
     ).one_or_none()
 
     if not patient:
-        raise exceptions.APIError("We can't find any patients with that identifier")
-    return {'demographics': [ patient.to_dict() ] }
+        container = post_message_for_identifier(identifier)
+    else:
+        container = construct_message_container(
+            patient.to_message_type(), identifier
+        )
+
+    return container.to_dict()
 
 
 @json_api('/api/subscribe/<identifier>')
 def subscribe(session, issuing_source, identifier, end_point):
     models.subscribe(identifier, end_point, session, issuing_source)
-    return []
+    return {}
 
 
 @json_api('/api/unsubscribe/<identifier>')
 def unsubscribe(session, issuing_source, identifier):
     models.unsubscribe(identifier, session, issuing_source)
-    return []
+    return {}

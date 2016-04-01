@@ -56,7 +56,7 @@ class PatientMergeMessage(MessageType):
         self.old_id = kwargs.pop("old_id")
 
 
-class PatientUpdateMessage(MessageType):
+class PatientMessage(MessageType):
     message_name = "demographics"
 
     def __init__(self, **kwargs):
