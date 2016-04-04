@@ -2,14 +2,12 @@
 Unittests for gloss.api
 """
 import json, datetime
-from mock import patch, MagicMock
 
 from gloss import models
 from gloss.tests import test_messages
 from gloss.tests.core import GlossTestCase
-from gloss import external_api
+from gloss import external_api, api, settings
 
-from gloss import api
 
 NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
 
@@ -66,8 +64,8 @@ class DemographicsQueryTestCase(GlossTestCase):
         self.assertEqual(self.session.query(models.Patient).count(), 1)
 
         self.mock_mllp_client.assert_called_once_with(
-            external_api.DEMOGRAPHICS_HOST,
-            external_api.DEMOGRAPHICS_PORT
+            settings.DEMOGRAPHICS_HOST,
+            settings.DEMOGRAPHICS_PORT
         )
 
         call_args = self.mock_mllp_send.call_args[0][0]

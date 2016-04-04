@@ -5,12 +5,9 @@ from hl7 import client
 from hl7.containers import Message
 import hl7
 
-from gloss import models, exceptions
+from gloss import models, exceptions, settings
 from gloss.message_segments import MSH, InpatientPID, QueryPD1, MSA, HL7Message
 from gloss.message_type import PatientMessage, MessageContainer
-
-DEMOGRAPHICS_HOST = "USOAAPT"
-DEMOGRAPHICS_PORT = 8155
 
 
 class DemographicsQueryResponse(HL7Message):
@@ -58,9 +55,7 @@ def generate_demographics_query_message(identifier):
 
 
 def send_message(some_message):
-    DEMOGRAPHICS_HOST = "USOAAPT"
-    DEMOGRAPHICS_PORT = 8155
-    with client.MLLPClient(DEMOGRAPHICS_HOST, DEMOGRAPHICS_PORT) as c:
+    with client.MLLPClient(settings.DEMOGRAPHICS_HOST, settings.DEMOGRAPHICS_PORT) as c:
         response = c.send_message(some_message)
     return response
 

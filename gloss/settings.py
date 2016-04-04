@@ -17,6 +17,9 @@ PROCESS_MESSAGES = True
 HOST = "localhost"
 PORTS = [2574, 2575]
 
+DEMOGRAPHICS_HOST = "USOAAPT"
+DEMOGRAPHICS_PORT = 8155
+
 if getattr(sys, '_called_from_test', None):
     try:
         from test_settings import *
