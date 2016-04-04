@@ -34,9 +34,18 @@ class MSH(Segment):
         self.message_type = segment[9][0][0][0]
         # allergy information contains milli seconds, lets strip that
         # off for the time being
+
         self.message_datetime = datetime.strptime(segment[7][0][:12], DATETIME_FORMAT)
         self.sending_application = segment[3][0]
         self.sending_facility = segment[4][0]
+
+
+class MSA(Segment):
+    def __init__(self, segment):
+        if not segment[3][0] == "Call Successful":
+            self.error_code = segment[3][0]
+        else:
+            self.error_code = None
 
 
 class MRG(Segment):
@@ -49,9 +58,22 @@ class ORC(Segment):
         pass
 
 
-class PD1(Segment):
+class UpdatePD1(Segment):
+    @classmethod
+    def name(cls):
+        return "PD1"
+
     def __init__(self, segment):
         self.gp_practice_code = segment[4][1][0][0]
+
+
+class QueryPD1(Segment):
+    @classmethod
+    def name(cls):
+        return "PD1"
+
+    def __init__(self, segment):
+        self.gp_practice_code = segment[3][0][2][0]
 
 
 class ResultsPID(Segment):

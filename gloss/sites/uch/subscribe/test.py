@@ -4,7 +4,7 @@ from gloss import settings
 from gloss.message_type import (
     AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
     ResultMessage, InpatientAdmissionTransferMessage,
-    InpatientAdmissionDeleteMessage, PatientUpdateMessage,
+    InpatientAdmissionDeleteMessage, PatientMessage,
 )
 from gloss.models import (
     InpatientAdmission, Merge,

@@ -2,12 +2,11 @@ from twisted.logger import Logger
 from gloss.message_segments import *
 from gloss import notification
 from gloss.models import session_scope, Error
-from gloss import settings
 from utils import itersubclasses
 from message_type import (
     InpatientAdmissionMessage, PatientMergeMessage, ResultMessage,
     InpatientAdmissionTransferMessage, InpatientAdmissionDeleteMessage,
-    PatientUpdateMessage, AllergyMessage, MessageContainer, OrderMessage
+    PatientMessage, AllergyMessage, MessageContainer, OrderMessage
 )
 from collections import defaultdict
 
@@ -58,8 +57,8 @@ class PatientUpdate(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A31"
     sending_application = "CARECAST"
-    segments = (InpatientPID, PD1)
-    gloss_message_type = PatientUpdateMessage
+    segments = (InpatientPID, UpdatePD1)
+    gloss_message_type = PatientMessage
 
     def process_message(self):
         interesting_fields = [
@@ -90,7 +89,7 @@ class PatientUpdate(MessageImporter):
             kwargs["date_of_death"] = None
 
         return [
-            PatientUpdateMessage(**kwargs)
+            PatientMessage(**kwargs)
         ]
 
 
@@ -208,6 +207,7 @@ class WinPathResultsOrder(MessageImporter):
         we don't process order messages at this time
         """
         return []
+
 
 class WinPathResults(MessageImporter):
     message_type = u"ORU"
