@@ -128,6 +128,7 @@ class DemographicsQueryTestCase(GlossTestCase):
 
         self.assertEqual('success', data['status'])
         self.assertEqual(demographics, data['messages']['demographics'])
+        self.assertEqual(self.mock_mllp_send.call_count, 0)
 
 
 class SubscribeTestCase(GlossTestCase):
