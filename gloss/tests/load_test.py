@@ -71,7 +71,7 @@ def post_to_mllp_client(config):
     port, duration, throughput = config
     tstart = time.time()
     count = 0
-
+    throughputsec = throughput / 60
     with MLLPClient('elcid-uch-test.openhealthcare.org.uk', port) as client:
 
         tbatch = time.time()
@@ -82,18 +82,19 @@ def post_to_mllp_client(config):
             print "sending {0} ({1} {2}) to {3}".format(
                     count, typ, name, port
             )
-            if count % throughput == 0:
-                print 'Made {0}'.format(throughput)
+            if count % throughputsec == 0:
+                print 'Made {0}'.format(throughputsec)
                 tbatchend = time.time() - tbatch
-                if tbatchend < 60:
-                  print 'Sleeping for {0} on {1}'.format(
-                          59-tbatchend, port
-                  )
-                  print 'Througphut for this worker was {0}msgs in {1}s'.format(
-                          throughput, tbatchend
-                  )
-                  time.sleep(59-tbatchend)
-                  tbatch = time.time()
+                if tbatchend < 1:
+                    print 'Sleeping for {0} on {1}'.format(
+                        1-tbatchend, port
+                    )
+                    print 'Througphut for this worker was {0}msgs in {1}s'.format(
+                        throughputsec, tbatchend
+                    )
+                    time.sleep(1-tbatchend)
+
+                tbatch = time.time()
 
         return
 
