@@ -395,25 +395,3 @@ def get_or_create_location(message, inpatient_admission, session):
         )
 
     return inpatient_location, created,
-
-
-# @atomic_method
-# def get_create_patient(session):
-#     example = {
-#         'first_name': 'Jane',
-#         'surname': 'Smith',
-#         'middle_name': None,
-#         'title': 'Ms',
-#         'gp_practice_code': None,
-#         'post_code': None,
-#         'ethnicity': None,
-#         'sex': None,
-#         'marital_status': None,
-#         'death_indicator': False,
-#         'date_of_birth': '12/12/1983',
-#         'date_of_death': None,
-#     }
-#     gloss_reference = get_or_create_identifier("12341234", session)
-#     example["gloss_reference"] = gloss_reference
-#     patient = Patient(**example)
-#     session.add(patient)
