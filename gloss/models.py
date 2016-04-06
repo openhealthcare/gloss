@@ -9,7 +9,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import func
 
 from sqlalchemy import (
-    Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text
+    Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text,
+    BigInteger
 )
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
@@ -195,7 +196,7 @@ class Result(Base, GlossSubrecord):
 
 
 class OutgoingMessage(Base):
-    pass
+    count = Column(BigInteger)
 
 
 class GlossolaliaReference(Base):
@@ -235,10 +236,18 @@ def atomic_method(some_fun):
 
 
 @atomic_method
-def get_outgoing_message(session):
-    outgoing_message = OutgoingMessage()
-    session.add(outgoing_message)
-    return outgoing_message
+def get_next_message_id(session):
+    outgoing_message = session.query(OutgoingMessage).one_or_none()
+
+    if not outgoing_message:
+        message_id = 1
+        session.add(OutgoingMessage(count=message_id))
+    else:
+        message_id = outgoing_message.count + 1
+        outgoing_message.count = message_id
+        session.add(outgoing_message)
+
+    return message_id
 
 
 # we need to get subscription from hospital number

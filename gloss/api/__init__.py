@@ -45,6 +45,7 @@ def json_api(route, **kwargs):
 
 @json_api('/api/patient/<identifier>')
 def patient_query(session, issuing_source, identifier):
+
     patient = models.Patient.query_from_identifier(identifier, issuing_source, session).first()
     if not patient:
         raise exceptions.APIError("We can't find any patients with that identifier")

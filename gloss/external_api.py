@@ -19,7 +19,7 @@ class DemographicsErrorResponse(HL7Message):
 
 
 def generate_message_id():
-    unique_id = models.get_outgoing_message().id
+    unique_id = models.get_next_message_id()
     unique_id_length = len(str(unique_id))
     return "ELC%s%s" % (("0" * (17 - unique_id_length)), unique_id)
 
