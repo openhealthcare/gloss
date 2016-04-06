@@ -8,7 +8,7 @@ from gloss.tests.core import GlossTestCase
 from gloss.models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
     is_subscribed, get_gloss_reference, session_scope,
-    OutgoingMessage, get_outgoing_message
+    OutgoingMessage, get_next_message_id
 )
 
 
@@ -87,7 +87,7 @@ class GetGlossIdTestCase(GlossTestCase):
 class GetOutgoingMessageIdTestCase(GlossTestCase):
     def test_creates_a_unique_id(self):
         self.assertEqual(self.session.query(OutgoingMessage).count(), 0)
-        self.assertEqual(get_outgoing_message().id, 1)
+        self.assertEqual(get_next_message_id(), 1)
         self.assertEqual(self.session.query(OutgoingMessage).count(), 1)
-        self.assertEqual(get_outgoing_message().id, 2)
-        self.assertEqual(self.session.query(OutgoingMessage).count(), 2)
+        self.assertEqual(get_next_message_id(), 2)
+        self.assertEqual(self.session.query(OutgoingMessage).count(), 1)
