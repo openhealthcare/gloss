@@ -5,8 +5,8 @@ from gloss.models import session_scope, Error
 from utils import itersubclasses
 from message_type import (
     InpatientAdmissionMessage, PatientMergeMessage, ResultMessage,
-    InpatientAdmissionTransferMessage, InpatientAdmissionDeleteMessage,
-    PatientMessage, AllergyMessage, MessageContainer, OrderMessage
+    InpatientAdmissionDeleteMessage, PatientMessage, AllergyMessage,
+    MessageContainer, OrderMessage
 )
 from collections import defaultdict
 
@@ -132,7 +132,7 @@ class InpatientTransfer(MessageImporter):
     message_type = "ADT"
     trigger_event = "A02"
     segments = (EVN, InpatientPID, PV1, PV2,)
-    gloss_message_type = InpatientAdmissionTransferMessage
+    gloss_message_type = InpatientAdmissionMessage
 
     def process_message(self):
         message = self.gloss_message_type(

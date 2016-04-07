@@ -77,6 +77,7 @@ class GlossTestCase(TestCase):
         inpatient_admission.datetime_of_admission = datetime(
             2012, 10, 10, 17, 12
         )
+        inpatient_admission.admission_diagnosis = "vertigo"
         return inpatient_admission
 
     def get_inpatient_location(self, inpatient_admission):

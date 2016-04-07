@@ -122,9 +122,11 @@ class InpatientAdmission(Base, GlossSubrecord):
         """ inpatient admission is a composite model of inpatient admission and
             location
         """
-        inpatient_admission = session.query(InpatientLocation).filter(inpatient_admission=self).last()
         kwargs = vars(self)
-        kwargs.update(vars(inpatient_admission))
+        location = InpatientLocation.get_latest_location(self, session)
+
+        if location:
+            kwargs.update(vars(location))
         return self.message_type(**kwargs)
 
 
@@ -145,6 +147,21 @@ class InpatientLocation(Base):
     bed_code = Column(String(250))
 
     @classmethod
+    def get_latest_location(cls, inpatient_admission, session):
+        latest = cls.get_location(inpatient_admission, session)
+        if latest:
+            return latest
+        else:
+            q = session.query(cls).filter(
+                cls.inpatient_admission == inpatient_admission
+            )
+
+            q = q.order_by(cls.datetime_of_transfer.desc())
+
+            if q.count():
+                return q[0]
+
+    @classmethod
     def get_location(cls, inpatient_admission, session):
         """
             get's the location of a patient
@@ -157,7 +174,7 @@ class InpatientLocation(Base):
     def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container and just uses inpatient admission
         """
-        return None
+        return []
 
 
 class PatientIdentifier(Base, GlossSubrecord):
@@ -180,7 +197,7 @@ class PatientIdentifier(Base, GlossSubrecord):
     def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container
         """
-        return None
+        return []
 
 
 class Merge(Base, GlossSubrecord):
@@ -193,7 +210,7 @@ class Merge(Base, GlossSubrecord):
     def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container
         """
-        return None
+        return []
 
 
 class Subscription(Base, GlossSubrecord):
@@ -205,10 +222,12 @@ class Subscription(Base, GlossSubrecord):
     def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container
         """
-        return None
+        return []
 
 
 class Allergy(Base, GlossSubrecord):
+    message_type = message_type.AllergyMessage
+
     # ask the docs which fields they'd want
     # for the moment, lets just save allergy reference name
     allergy_type = Column(String(250))
@@ -442,8 +461,8 @@ def get_or_create_location(message, inpatient_admission, session):
 def patient_to_message_container(hospital_number, issuing_source, session):
     messages = []
     for subRecord in itersubclasses(GlossSubrecord):
-        messages.extend(GlossSubrecord.to_messages(
+        messages.extend(subRecord.to_messages(
             hospital_number, issuing_source, session
         ))
 
-    return message_type.construct_message_container(hospital_number, messages)
+    return message_type.construct_message_container(messages, hospital_number)

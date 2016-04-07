@@ -2,16 +2,16 @@
 Subscriptions for production deployment
 """
 import json
+from datetime import datetime
 from copy import copy
 
 from gloss import settings
 from gloss.message_type import (
     AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
-    ResultMessage, InpatientAdmissionTransferMessage,
-    InpatientAdmissionDeleteMessage, PatientMessage,
+    ResultMessage, InpatientAdmissionDeleteMessage, PatientMessage,
 )
 from gloss.models import (
-    InpatientAdmission, Merge,
+    InpatientAdmission, Merge, InpatientLocation
     get_gloss_reference, Allergy,
     Result, is_known, Patient,
     create_or_update_inpatient_admission, create_or_update_inpatient_location,
@@ -79,9 +79,21 @@ class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):
             session.add(inpatient_admission)
             print 'added', inpatient_admission
             if settings.SAVE_LOCATION:
+                if not created:
+                    last_inpatient_location = InpatientLocation.get_latest_location(
+                        inpatient_admission, session
+                    )
+
                 inpatient_location, created = get_or_create_location(
                     message, inpatient_admission, session
                 )
+
+                if not inpatient_location == last_inpatient_location:
+                    if message.datetime_of_transfer:
+                        last_inpatient_location.datetime_of_transfer = message.datetime_of_transfer
+                    else:
+                        last_inpatient_location.datetime_of_transfer = datetime.now()
+                    self.session.add(last_inpatient_location)
 
                 if not created:
                     inpatient_location = create_or_update_inpatient_location(

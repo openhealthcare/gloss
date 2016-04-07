@@ -45,20 +45,15 @@ def json_api(route, **kwargs):
 
 @json_api('/api/patient/<identifier>')
 def patient_query(session, issuing_source, identifier):
-    patient = models.Patient.query_from_identifier(identifier, issuing_source, session).first()
-    if not patient:
-        raise exceptions.APIError("We can't find any patients with that identifier")
-    return {
-        'demographics': [
-            models.Patient.get_from_gloss_reference(patient.gloss_reference, session).to_dict()
-        ],
-        'results': [
-            r.to_dict() for r in
-            models.Result.list_from_gloss_reference(
-                patient.gloss_reference, session
-            )
-        ]
-    }
+    patient_exists = models.Patient.query_from_identifier(
+        identifier, issuing_source, session
+    ).count()
+    if not patient_exists:
+        post_message_for_identifier(identifier)
+
+    return models.patient_to_message_container(
+        identifier, issuing_source, session
+    ).to_dict()
 
 
 @json_api('/api/demographics/', methods=['POST'])
@@ -74,6 +69,10 @@ def demographics_query(session, issuing_source, identifier):
 
     if not patient:
         container = post_message_for_identifier(identifier)
+        if not container.messages:
+            raise exceptions.APIError(
+                "We can't find any patients with that identifier"
+            )
     else:
         container = construct_message_container(
             Patient.to_messages(identifier, issuing_source, session),
