@@ -8,7 +8,7 @@ from gloss.tests.core import GlossTestCase
 from gloss.models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
     is_subscribed, get_gloss_reference, session_scope,
-    OutgoingMessage, get_next_message_id
+    OutgoingMessage, get_next_message_id, patient_to_message_container
 )
 
 
@@ -95,5 +95,9 @@ class GetOutgoingMessageIdTestCase(GlossTestCase):
 
 class PatientToMessageContainersTestCase(GlossTestCase):
 
-    def test_creates_multiple_containers(self):
-        pass
+    def test_creates_only_patient_container(self):
+        """ creates only a container with no allergies, only patient details
+        """
+        patient = self.create_patient("50092915", "uclh")
+        self.session.add(patient)
+        patient_to_message_container("50092915", "uclh", self.session)

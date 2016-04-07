@@ -6,6 +6,7 @@ import json
 import sys
 from flask import Flask, Response
 from gloss.message_type import construct_message_container
+from gloss.models import Patient
 from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
 
@@ -69,13 +70,14 @@ def demographics_create(session, issuing_source):
 def demographics_query(session, issuing_source, identifier):
     patient = models.Patient.query_from_identifier(
         identifier, issuing_source, session
-    ).one_or_none()
+    ).count()
 
     if not patient:
         container = post_message_for_identifier(identifier)
     else:
         container = construct_message_container(
-            [patient.to_message_type(session)], identifier
+            Patient.to_messages(identifier, issuing_source, session),
+            identifier
         )
 
     return container.to_dict()

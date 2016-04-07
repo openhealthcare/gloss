@@ -66,20 +66,19 @@ class GlossSubrecord(object):
         filter(PatientIdentifier.issuing_source == issuing_source).\
         filter(PatientIdentifier.identifier == identifier)
 
-    def to_message_type(self, session):
+    def to_message(self, session):
         return self.message_type(**vars(self))
 
     @classmethod
-    def to_message_container(cls, identifier, issuing_source, session):
+    def to_messages(cls, identifier, issuing_source, session):
         qry = cls.query_from_identifier(
             identifier, issuing_source, session
         ).all()
         messages = []
 
         for subrecord in qry:
-            messages.append(subrecord.to_message_type(session))
-
-        return message_type.construct_message_container(messages, identifier)
+            messages.append(subrecord.to_message(session))
+        return messages
 
 
 class Error(Base):
@@ -119,7 +118,7 @@ class InpatientAdmission(Base, GlossSubrecord):
     external_identifier = Column(String(250), nullable=False)
     admission_diagnosis = Column(String(250))
 
-    def to_message_type(self, session):
+    def to_message(self, session):
         """ inpatient admission is a composite model of inpatient admission and
             location
         """
@@ -155,7 +154,7 @@ class InpatientLocation(Base):
         return q.one_or_none()
 
     @classmethod
-    def to_message_container(cls, identifier, issuing_source, session):
+    def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container and just uses inpatient admission
         """
         return None
@@ -178,7 +177,7 @@ class PatientIdentifier(Base, GlossSubrecord):
         )
 
     @classmethod
-    def to_message_container(cls, identifier, issuing_source, session):
+    def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container
         """
         return None
@@ -191,7 +190,7 @@ class Merge(Base, GlossSubrecord):
     )
 
     @classmethod
-    def to_message_container(cls, identifier, issuing_source, session):
+    def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container
         """
         return None
@@ -203,7 +202,7 @@ class Subscription(Base, GlossSubrecord):
     end_point = Column(String(250))
 
     @classmethod
-    def to_message_container(cls, identifier, issuing_source, session):
+    def to_messages(cls, identifier, issuing_source, session):
         """ this does not actually create a container
         """
         return None
@@ -440,6 +439,11 @@ def get_or_create_location(message, inpatient_admission, session):
     return inpatient_location, created,
 
 
-def patient_to_message_containers(gloss_reference, session):
+def patient_to_message_container(hospital_number, issuing_source, session):
+    messages = []
     for subRecord in itersubclasses(GlossSubrecord):
-        GlossSubrecord.to_message_container(gloss_reference, session)
+        messages.extend(GlossSubrecord.to_messages(
+            hospital_number, issuing_source, session
+        ))
+
+    return message_type.construct_message_container(hospital_number, messages)
