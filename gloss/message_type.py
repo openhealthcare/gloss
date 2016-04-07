@@ -20,6 +20,16 @@ class MessageContainer(object):
         return result
 
 
+def construct_message_container(someMessages, hospital_number):
+    message_container = MessageContainer(
+        messages=someMessages,
+        hospital_number=hospital_number,
+        issuing_source="uclh",
+        message_type=someMessages[0].__class__
+    )
+    return message_container
+
+
 class MessageType(object):
     message_name = "name me Larry"
 

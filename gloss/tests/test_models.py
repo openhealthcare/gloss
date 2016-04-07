@@ -91,3 +91,9 @@ class GetOutgoingMessageIdTestCase(GlossTestCase):
         self.assertEqual(self.session.query(OutgoingMessage).count(), 1)
         self.assertEqual(get_next_message_id(), 2)
         self.assertEqual(self.session.query(OutgoingMessage).count(), 1)
+
+
+class PatientToMessageContainersTestCase(GlossTestCase):
+
+    def test_creates_multiple_containers(self):
+        pass

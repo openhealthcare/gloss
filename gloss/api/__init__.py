@@ -5,9 +5,8 @@ import functools
 import json
 import sys
 from flask import Flask, Response
-from gloss.external_api import (
-    post_message_for_identifier, construct_message_container,
-)
+from gloss.message_type import construct_message_container
+from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
 
 
@@ -45,7 +44,6 @@ def json_api(route, **kwargs):
 
 @json_api('/api/patient/<identifier>')
 def patient_query(session, issuing_source, identifier):
-
     patient = models.Patient.query_from_identifier(identifier, issuing_source, session).first()
     if not patient:
         raise exceptions.APIError("We can't find any patients with that identifier")
@@ -77,7 +75,7 @@ def demographics_query(session, issuing_source, identifier):
         container = post_message_for_identifier(identifier)
     else:
         container = construct_message_container(
-            patient.to_message_type(), identifier
+            [patient.to_message_type()], identifier
         )
 
     return container.to_dict()
