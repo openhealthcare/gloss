@@ -75,7 +75,7 @@ def demographics_query(session, issuing_source, identifier):
         container = post_message_for_identifier(identifier)
     else:
         container = construct_message_container(
-            [patient.to_message_type()], identifier
+            [patient.to_message_type(session)], identifier
         )
 
     return container.to_dict()

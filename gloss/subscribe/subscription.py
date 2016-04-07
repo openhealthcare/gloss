@@ -31,9 +31,8 @@ class Subscription(object):
 
     @classmethod
     def cares_about(cls, message_container):
-        if message_container.message_type in cls.message_types:
-            return True
-        return False
+        message_types = {i.__class__ for i in message_container.messages}
+        return message_types.intersection(cls.message_types)
 
     @property
     def issuing_source(self):
@@ -74,6 +73,6 @@ class NotifyOpalWhenSubscribed(Subscription, AbstractClass):
 
         if end_point:
             self.log.info("posting {0} to {1}".format(
-                message_container.message_type, end_point
+                [i.__class__ for i in message_container.messages], end_point
             ))
             send_to_opal(message_container, end_point)

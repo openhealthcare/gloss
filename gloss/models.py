@@ -14,11 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
-from gloss import settings
+from gloss import settings, message_type
 from gloss.utils import itersubclasses
-from gloss.message_type import PatientMessage, construct_message_container
 engine = create_engine(settings.DATABASE_STRING)
 
 
@@ -79,9 +77,9 @@ class GlossSubrecord(object):
         messages = []
 
         for subrecord in qry:
-            messages.append(subrecord.to_record_type(), session)
+            messages.append(subrecord.to_message_type(session))
 
-        return construct_message_container(messages, identifier)
+        return message_type.construct_message_container(messages, identifier)
 
 
 class Error(Base):
@@ -90,7 +88,7 @@ class Error(Base):
 
 
 class Patient(Base, GlossSubrecord):
-    message_type = PatientMessage
+    message_type = message_type.PatientMessage
 
     surname = Column(String(250), nullable=False)
     first_name = Column(String(250), nullable=False)
@@ -114,7 +112,7 @@ class Patient(Base, GlossSubrecord):
 
 
 class InpatientAdmission(Base, GlossSubrecord):
-    message_type = InpatientAdmissionMessage
+    message_type = message_type.InpatientAdmissionMessage
 
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)

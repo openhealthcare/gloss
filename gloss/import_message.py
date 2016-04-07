@@ -22,7 +22,6 @@ class MessageImporter(HL7Message):
             messages=msgs,
             hospital_number=self.pid.hospital_number,
             issuing_source="uclh",
-            message_type=self.gloss_message_type
         )
         return message_container
 
@@ -190,8 +189,13 @@ class AllergyMessage(MessageImporter):
                 diagnosis_datetime=allergy.al1.diagnosis_datetime,
                 allergy_start_datetime=allergy.al1.allergy_start_datetime,
                 hospital_number=self.pid.hospital_number,
-                issuing_source="uclh"
+                issuing_source="uclh",
+                no_allergies=False
             ))
+
+        if not all_allergies:
+            all_allergies.append(self.gloss_message_type(no_allergies=True))
+
         return all_allergies
 
 

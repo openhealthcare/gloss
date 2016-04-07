@@ -37,9 +37,6 @@ class UclhAllergySubscription(NotifyOpalWhenSubscribed):
                 allergy = Allergy(**vars(message))
                 allergy.gloss_reference = gloss_ref
                 session.add(allergy)
-        else:
-            allergy = Allergy(no_allergies=True, gloss_reference=gloss_ref)
-            session.add(allergy)
 
 
 class UclhMergeSubscription(NotifyOpalWhenSubscribed):

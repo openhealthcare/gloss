@@ -786,7 +786,6 @@ class TestPatientUpdate(GlossTestCase):
             first_name="Mary"
         )]
         container = MessageContainer(
-            message_type=PatientMessage,
             messages=messages,
             hospital_number="50092915",
             issuing_source="uclh"

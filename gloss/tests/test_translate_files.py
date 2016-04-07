@@ -209,4 +209,3 @@ class RFHBloodCulturesFileTypeTestCase(GlossTestCase):
             for container in filetype.process_file():
                 self.assertEqual('RFH', container.issuing_source)
                 self.assertEqual('555345', container.hospital_number)
-                self.assertEqual(message_type.ResultMessage, container.message_type)
