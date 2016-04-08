@@ -151,7 +151,15 @@ class InpatientAdmissionMessage(MessageType):
         self.datetime_of_admission = kwargs.pop("datetime_of_admission")
         self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
         self.admission_diagnosis = kwargs.pop("admission_diagnosis")
-        self.datetime_of_transfer = kwargs.pop("datetime_of_transfer", None)
+
+
+class InpatientAdmissionTransferMessage(InpatientAdmissionMessage):
+    def __init__(
+        self,
+        **kwargs
+    ):
+        self.datetime_of_transfer = kwargs.pop("datetime_of_transfer")
+        super(InpatientAdmissionTransferMessage, self).__init__(**kwargs)
 
 
 class InpatientAdmissionDeleteMessage(MessageType):

@@ -246,6 +246,8 @@ class Allergy(Base, GlossSubrecord):
 
 
 class Result(Base, GlossSubrecord):
+    message_type = message_type.ResultMessage
+
     lab_number = Column(String(250))
     profile_code = Column(String(250))
     profile_description = Column(String(250))

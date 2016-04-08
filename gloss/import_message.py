@@ -4,6 +4,7 @@ from gloss import notification
 from gloss.models import session_scope, Error
 from utils import itersubclasses
 from message_type import (
+    InpatientAdmissionTransferMessage,
     InpatientAdmissionMessage, PatientMergeMessage, ResultMessage,
     InpatientAdmissionDeleteMessage, PatientMessage, AllergyMessage,
     MessageContainer, OrderMessage
@@ -126,13 +127,13 @@ class InpatientCancelDischarge(InpatientAdmit):
     trigger_event = "A13"
 
 
-class InpatientTransfer(MessageImporter):
+class InpatientTransfer(InpatientAdmit):
     # currently untested and incomplete
     # pending us being given an example message
     message_type = "ADT"
     trigger_event = "A02"
     segments = (EVN, InpatientPID, PV1, PV2,)
-    gloss_message_type = InpatientAdmissionMessage
+    gloss_message_type = InpatientAdmissionTransferMessage
 
     def process_message(self):
         message = self.gloss_message_type(
