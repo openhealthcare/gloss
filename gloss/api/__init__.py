@@ -4,7 +4,7 @@ The Public Gloss API
 import functools
 import json
 import sys
-from flask import Flask, Response
+from flask import Flask, Response, request
 from gloss.message_type import construct_message_container
 from gloss.models import Patient
 from gloss.external_api import post_message_for_identifier
@@ -39,6 +39,7 @@ def json_api(route, **kwargs):
                 ))
         # Flask is full of validation for things like function names so let's fake it
         as_json.__name__ = fn.__name__
+        kwargs["methods"]=["GET", "POST"]
         return app.route(route, **kwargs)(as_json)
     return wrapper
 
@@ -51,9 +52,11 @@ def patient_query(session, issuing_source, identifier):
     if not patient_exists:
         post_message_for_identifier(identifier)
 
-    return models.patient_to_message_container(
+    result = models.patient_to_message_container(
         identifier, issuing_source, session
     ).to_dict()
+
+    return result
 
 
 @json_api('/api/demographics/', methods=['POST'])
@@ -83,7 +86,8 @@ def demographics_query(session, issuing_source, identifier):
 
 
 @json_api('/api/subscribe/<identifier>')
-def subscribe(session, issuing_source, identifier, end_point):
+def subscribe(session, issuing_source, identifier):
+    end_point = request.form["end_point"]
     models.subscribe(identifier, end_point, session, issuing_source)
     return {}
 
