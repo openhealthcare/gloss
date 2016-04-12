@@ -28,7 +28,6 @@ def deploy_test(key_file_name="../ec2.pem"):
             run("git pull origin {}".format(git_branch_name))
             run("pip install -r requirements.txt")
             run("alembic upgrade head")
-            run("pkill twistd||true")
-            run("pkill gloss||true")
-            run("twistd multiple_mllp --receiver gloss.ohc_receiver.OhcReceiver")
-            run("gunicorn -w 1 -b 0.0.0:6767 -D gloss.api:app")
+        with prefix("workon elcid"):
+            run("supervisorctl -c etc/test.conf restart gloss")
+            run("supervisorctl -c etc/test.conf restart gloss_flask")
