@@ -8,6 +8,7 @@ from gloss import models
 from gloss.tests import test_messages
 from gloss.tests.core import GlossTestCase
 from gloss import api, settings
+from gloss import exceptions
 
 
 NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
@@ -129,6 +130,17 @@ class DemographicsQueryTestCase(GlossTestCase):
         resp = api.demographics_query('555-nope')
         self.assertEqual(msg, resp.data)
         self.assertEqual(self.session.query(models.Patient).count(), 0)
+
+    @patch("gloss.api.settings")
+    def test_dont_use_external_lookup(self, settings_mock):
+        settings_mock.USE_EXTERNAL_LOOKUP = False
+
+        response = api.demographics_query('50013000')
+        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
+        self.assertFalse(self.mock_mllp_send.called)
+        self.assertEqual(msg, response.data)
+        self.assertEqual(self.session.query(models.Patient).count(), 0)
+
 
     def test_found_on_api(self):
         self.mock_mllp_send.return_value = test_messages.PATIENT_QUERY_RESPONSE
