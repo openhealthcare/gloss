@@ -1,23 +1,34 @@
+from collections import defaultdict
+
+
 """
 gloss.message_type contains the core Gloss Archetypes
 """
 class MessageContainer(object):
-    def __init__(
-        self, messages, hospital_number, issuing_source, message_type
-    ):
+    def __init__(self, messages, hospital_number, issuing_source):
         self.messages = messages
         self.hospital_number = hospital_number
         self.issuing_source = issuing_source
-        self.message_type = message_type
 
     def to_dict(self):
+        serialised_messages = defaultdict(list)
+
+        for message in self.messages:
+            serialised_messages[message.message_name].append(message.to_dict())
+
         result = {"issuing_source": self.issuing_source}
         result["hospital_number"] = self.hospital_number
-        messages = [i.to_dict() for i in self.messages]
-        result["messages"] = {
-            self.message_type.message_name: messages
-        }
+        result["messages"] = serialised_messages
         return result
+
+
+def construct_message_container(someMessages, hospital_number):
+    message_container = MessageContainer(
+        messages=someMessages,
+        hospital_number=hospital_number,
+        issuing_source="uclh",
+    )
+    return message_container
 
 
 class MessageType(object):
@@ -77,18 +88,21 @@ class AllergyMessage(MessageType):
     def __init__(
         self, **kwargs
     ):
-        self.allergy_type = kwargs.pop("allergy_type")
-        self.allergy_type_description = kwargs.pop("allergy_type_description")
-        self.certainty_id = kwargs.pop("certainty_id")
-        self.certainty_description = kwargs.pop("certainty_description")
-        self.allergy_reference_name = kwargs.pop("allergy_reference_name")
-        self.allergy_description = kwargs.pop("allergy_description")
-        self.allergen_reference_system = kwargs.pop("allergen_reference_system")
-        self.allergen_reference = kwargs.pop("allergen_reference")
-        self.status_id = kwargs.pop("status_id")
-        self.status_description = kwargs.pop("status_description")
-        self.diagnosis_datetime = kwargs.pop("diagnosis_datetime")
-        self.allergy_start_datetime = kwargs.pop("allergy_start_datetime")
+        self.no_allergies = kwargs.pop("no_allergies")
+
+        if not self.no_allergies:
+            self.allergy_type = kwargs.pop("allergy_type")
+            self.allergy_type_description = kwargs.pop("allergy_type_description")
+            self.certainty_id = kwargs.pop("certainty_id")
+            self.certainty_description = kwargs.pop("certainty_description")
+            self.allergy_reference_name = kwargs.pop("allergy_reference_name")
+            self.allergy_description = kwargs.pop("allergy_description")
+            self.allergen_reference_system = kwargs.pop("allergen_reference_system")
+            self.allergen_reference = kwargs.pop("allergen_reference")
+            self.status_id = kwargs.pop("status_id")
+            self.status_description = kwargs.pop("status_description")
+            self.diagnosis_datetime = kwargs.pop("diagnosis_datetime")
+            self.allergy_start_datetime = kwargs.pop("allergy_start_datetime")
 
 
 class ResultMessage(MessageType):

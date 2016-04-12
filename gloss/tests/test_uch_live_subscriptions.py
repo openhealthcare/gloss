@@ -16,7 +16,8 @@ from gloss.tests.test_messages import (
 )
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientAdmission, get_gloss_reference,
-    InpatientLocation, subscribe, Allergy, Result, Patient, Subscription)
+    InpatientLocation, subscribe, Allergy, Result, Patient, Subscription
+)
 from gloss.message_type import PatientMessage, MessageContainer
 from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
 
@@ -786,7 +787,6 @@ class TestPatientUpdate(GlossTestCase):
             first_name="Mary"
         )]
         container = MessageContainer(
-            message_type=PatientMessage,
             messages=messages,
             hospital_number="50092915",
             issuing_source="uclh"

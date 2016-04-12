@@ -7,7 +7,9 @@ import hl7
 
 from gloss import models, exceptions, settings
 from gloss.message_segments import MSH, InpatientPID, QueryPD1, MSA, HL7Message
-from gloss.message_type import PatientMessage, MessageContainer
+from gloss.message_type import (
+    PatientMessage, construct_message_container
+)
 
 try:
     from flask import current_app
@@ -87,7 +89,7 @@ def post_message_for_identifier(some_identifier):
     message = construct_internal_message(hl7_message)
     save_message(message, hl7_message.pid.hospital_number)
     return construct_message_container(
-        message, hl7_message.pid.hospital_number
+        [message], hl7_message.pid.hospital_number
     )
 
 
@@ -101,15 +103,6 @@ def save_message(demographics_message, hospital_number, session):
     patient = models.Patient(**kwargs)
     session.add(patient)
 
-
-def construct_message_container(someMessage, hospital_number):
-    message_container = MessageContainer(
-        messages=[someMessage],
-        hospital_number=hospital_number,
-        issuing_source="uclh",
-        message_type=someMessage.__class__
-    )
-    return message_container
 
 
 def construct_internal_message(hl7Message):

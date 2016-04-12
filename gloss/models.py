@@ -14,10 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy import create_engine
-from gloss import settings
-from message_type import PatientMessage
+from gloss import settings, message_type
+from gloss.utils import itersubclasses
 engine = create_engine(settings.DATABASE_STRING)
 
 
@@ -67,8 +66,19 @@ class GlossSubrecord(object):
         filter(PatientIdentifier.issuing_source == issuing_source).\
         filter(PatientIdentifier.identifier == identifier)
 
-    def to_dict(self):
-        pass
+    def to_message(self, session):
+        return self.message_type(**vars(self))
+
+    @classmethod
+    def to_messages(cls, identifier, issuing_source, session):
+        qry = cls.query_from_identifier(
+            identifier, issuing_source, session
+        ).all()
+        messages = []
+
+        for subrecord in qry:
+            messages.append(subrecord.to_message(session))
+        return messages
 
 
 class Error(Base):
@@ -77,6 +87,8 @@ class Error(Base):
 
 
 class Patient(Base, GlossSubrecord):
+    message_type = message_type.PatientMessage
+
     surname = Column(String(250), nullable=False)
     first_name = Column(String(250), nullable=False)
     middle_name = Column(String(250))
@@ -97,17 +109,25 @@ class Patient(Base, GlossSubrecord):
     # (also might give us an indicator and the max time of death)
     death_indicator = Column(Boolean, default=False)
 
-    def to_message_type(self):
-        excluding = {"id", "updated", "created"}
-        kwargs = {k: v for k, v in vars(self).iteritems() if k  not in excluding}
-        return PatientMessage(**kwargs)
-
 
 class InpatientAdmission(Base, GlossSubrecord):
+    message_type = message_type.InpatientAdmissionMessage
+
     datetime_of_admission = Column(DateTime, nullable=False)
     datetime_of_discharge = Column(DateTime)
     external_identifier = Column(String(250), nullable=False)
     admission_diagnosis = Column(String(250))
+
+    def to_message(self, session):
+        """ inpatient admission is a composite model of inpatient admission and
+            location
+        """
+        kwargs = vars(self)
+        location = InpatientLocation.get_latest_location(self, session)
+
+        if location:
+            kwargs.update(vars(location))
+        return self.message_type(**kwargs)
 
 
 class InpatientLocation(Base):
@@ -127,6 +147,21 @@ class InpatientLocation(Base):
     bed_code = Column(String(250))
 
     @classmethod
+    def get_latest_location(cls, inpatient_admission, session):
+        latest = cls.get_location(inpatient_admission, session)
+        if latest:
+            return latest
+        else:
+            q = session.query(cls).filter(
+                cls.inpatient_admission == inpatient_admission
+            )
+
+            q = q.order_by(cls.datetime_of_transfer.desc())
+
+            if q.count():
+                return q[0]
+
+    @classmethod
     def get_location(cls, inpatient_admission, session):
         """
             get's the location of a patient
@@ -134,6 +169,12 @@ class InpatientLocation(Base):
         q = session.query(cls).filter(cls.datetime_of_transfer == None)
         q = q.filter(cls.inpatient_admission == inpatient_admission)
         return q.one_or_none()
+
+    @classmethod
+    def to_messages(cls, identifier, issuing_source, session):
+        """ this does not actually create a container and just uses inpatient admission
+        """
+        return []
 
 
 class PatientIdentifier(Base, GlossSubrecord):
@@ -152,6 +193,12 @@ class PatientIdentifier(Base, GlossSubrecord):
             foreign_keys=[getattr(cls, "gloss_reference_id")]
         )
 
+    @classmethod
+    def to_messages(cls, identifier, issuing_source, session):
+        """ this does not actually create a container
+        """
+        return []
+
 
 class Merge(Base, GlossSubrecord):
     old_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
@@ -159,14 +206,28 @@ class Merge(Base, GlossSubrecord):
         "GlossolaliaReference", foreign_keys=[old_reference_id]
     )
 
+    @classmethod
+    def to_messages(cls, identifier, issuing_source, session):
+        """ this does not actually create a container
+        """
+        return []
+
 
 class Subscription(Base, GlossSubrecord):
     system = Column(String(250))
     active = Column(Boolean, default=True)
     end_point = Column(String(250))
 
+    @classmethod
+    def to_messages(cls, identifier, issuing_source, session):
+        """ this does not actually create a container
+        """
+        return []
+
 
 class Allergy(Base, GlossSubrecord):
+    message_type = message_type.AllergyMessage
+
     # ask the docs which fields they'd want
     # for the moment, lets just save allergy reference name
     allergy_type = Column(String(250))
@@ -185,6 +246,8 @@ class Allergy(Base, GlossSubrecord):
 
 
 class Result(Base, GlossSubrecord):
+    message_type = message_type.ResultMessage
+
     lab_number = Column(String(250))
     profile_code = Column(String(250))
     profile_description = Column(String(250))
@@ -395,3 +458,13 @@ def get_or_create_location(message, inpatient_admission, session):
         )
 
     return inpatient_location, created,
+
+
+def patient_to_message_container(hospital_number, issuing_source, session):
+    messages = []
+    for subRecord in itersubclasses(GlossSubrecord):
+        messages.extend(subRecord.to_messages(
+            hospital_number, issuing_source, session
+        ))
+
+    return message_type.construct_message_container(messages, hospital_number)

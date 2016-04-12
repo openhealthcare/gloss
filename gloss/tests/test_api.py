@@ -2,11 +2,12 @@
 Unittests for gloss.api
 """
 import json, datetime
+from mock import patch
 
 from gloss import models
 from gloss.tests import test_messages
 from gloss.tests.core import GlossTestCase
-from gloss import external_api, api, settings
+from gloss import api, settings
 
 
 NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
@@ -14,14 +15,14 @@ NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
 
 class PatientQueryTestCase(GlossTestCase):
     def test_not_found(self):
+        self.mock_mllp_send.return_value = test_messages.PATIENT_NOT_FOUND
         msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
         resp = api.patient_query('555-nope')
         self.assertEqual(msg, resp.data)
 
     def test_with_patient(self):
         self.session.add(self.create_patient('555-yeppers', 'uclh'))
-
-        resp = api.demographics_query('555-yeppers')
+        resp = api.patient_query('555-yeppers')
         data = json.loads(resp.data)
 
         demographics = [{
@@ -40,6 +41,77 @@ class PatientQueryTestCase(GlossTestCase):
         }]
 
         self.assertEqual('success', data['status'])
+        self.assertEqual(len(data['messages']), 1)
+        self.assertEqual(demographics, data['messages']['demographics'])
+
+    def test_with_allergies(self):
+        self.session.add(self.create_patient('555-yeppers', 'uclh'))
+        self.session.add(self.get_allergy('555-yeppers', 'uclh'))
+        resp = api.patient_query('555-yeppers')
+        data = json.loads(resp.data)
+        allergies = [dict(
+            allergy_type="1",
+            allergy_type_description="Product Allergy",
+            certainty_id="CERT-1",
+            certainty_description="Definite",
+            allergy_reference_name="Penecillin",
+            allergy_description="Penecillin",
+            allergen_reference_system="UDM",
+            allergen_reference="8e75c6d8-45b7-4b40-913f-8ca1f59b5350",
+            status_id="1",
+            status_description="Active",
+            diagnosis_datetime="19/11/2015 09:15:00",
+            allergy_start_datetime="19/11/2015 09:14:00",
+            no_allergies=False
+        )]
+
+        self.assertEqual('success', data['status'])
+        self.assertEqual(len(data['messages']), 2)
+        self.assertEqual(allergies, data['messages']['allergies'])
+        self.assertNotIn("results", data["messages"])
+
+
+    @patch("gloss.api.post_message_for_identifier")
+    def test_remote_get_demographics(self, post_message):
+        self.session.add(self.get_allergy('555-yeppers', 'uclh'))
+        patient = self.create_patient('555-yeppers', 'uclh')
+        post_message.side_effect = lambda x: self.session.add(patient)
+        resp = api.patient_query('555-yeppers')
+        data = json.loads(resp.data)
+        allergies = [dict(
+            allergy_type="1",
+            allergy_type_description="Product Allergy",
+            certainty_id="CERT-1",
+            certainty_description="Definite",
+            allergy_reference_name="Penecillin",
+            allergy_description="Penecillin",
+            allergen_reference_system="UDM",
+            allergen_reference="8e75c6d8-45b7-4b40-913f-8ca1f59b5350",
+            status_id="1",
+            status_description="Active",
+            diagnosis_datetime="19/11/2015 09:15:00",
+            allergy_start_datetime="19/11/2015 09:14:00",
+            no_allergies=False
+        )]
+
+        demographics = [{
+            'first_name': 'Jane',
+            'surname': 'Smith',
+            'middle_name': None,
+            'title': 'Ms',
+            'gp_practice_code': None,
+            'post_code': None,
+            'ethnicity': None,
+            'sex': None,
+            'marital_status': None,
+            'death_indicator': False,
+            'date_of_birth': '12/12/1983',
+            'date_of_death': None,
+        }]
+
+        self.assertEqual('success', data['status'])
+        self.assertEqual(len(data['messages']), 2)
+        self.assertEqual(allergies, data['messages']['allergies'])
         self.assertEqual(demographics, data['messages']['demographics'])
         self.assertNotIn("results", data["messages"])
 

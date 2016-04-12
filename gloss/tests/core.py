@@ -1,7 +1,8 @@
+import json
 from unittest import TestCase
 from gloss.models import (
     engine, GlossolaliaReference, PatientIdentifier, InpatientAdmission,
-    Subscription, Patient, Allergy, InpatientLocation, Base
+    Subscription, Patient, Allergy, InpatientLocation, Base, Result
 )
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
@@ -77,6 +78,7 @@ class GlossTestCase(TestCase):
         inpatient_admission.datetime_of_admission = datetime(
             2012, 10, 10, 17, 12
         )
+        inpatient_admission.admission_diagnosis = "vertigo"
         return inpatient_admission
 
     def get_inpatient_location(self, inpatient_admission):
@@ -87,24 +89,74 @@ class GlossTestCase(TestCase):
         inpatient_location.inpatient_admission = inpatient_admission
         return inpatient_location
 
+    def get_allergy_dict(self):
+        return dict(
+            allergy_type="1",
+            allergy_type_description="Product Allergy",
+            certainty_id="CERT-1",
+            certainty_description="Definite",
+            allergy_reference_name="Penecillin",
+            allergy_description="Penecillin",
+            allergen_reference_system="UDM",
+            allergen_reference="8e75c6d8-45b7-4b40-913f-8ca1f59b5350",
+            status_id="1",
+            status_description="Active",
+            diagnosis_datetime=datetime(2015, 11, 19, 9, 15),
+            allergy_start_datetime=datetime(2015, 11, 19, 9, 14)
+        )
+
     def get_allergy(self, identifier, issuing_source):
         allergy = self.create_subrecord_with_id(
             Allergy, identifier, issuing_source
         )
-        allergy.allergy_type = "1"
-        allergy.allergy_type_description = "Product Allergy"
-        allergy.certainty_id = "CERT-1"
-        allergy.certainty_description = "Definite"
-        allergy.allergy_reference_name = "Penecillin"
-        allergy.allergy_description = "Penecillin"
-        allergy.allergen_reference_system = "UDM"
-        allergy.allergen_reference = "8e75c6d8-45b7-4b40-913f-8ca1f59b5350"
-        allergy.status_id = "1"
-        allergy.status_description = "Active"
-        allergy.diagnosis_datetime = datetime(2015, 11, 19, 9, 15)
-        allergy.allergy_start_datetime = datetime(2015, 11, 19, 9, 14)
+        allergy_dict = self.get_allergy_dict()
+        for k, v in allergy_dict.iteritems():
+            setattr(allergy, k, v)
         return allergy
 
+    def get_result_dict(self):
+        comments = " ".join([
+            "Units: mL/min/1.73sqm Multiply eGFR by 1.21 for people of",
+        ])
+
+        observations = [
+            {
+                "result_status": "FINAL",
+                "observation_value": "143",
+                "comments": comments,
+                "test_code": "NA",
+                "value_type": "NM",
+                "test_name": "Sodium",
+                "units": "mmol/L",
+                "reference_range": "135-145"
+            },
+            {
+                "result_status": "FINAL",
+                "observation_value": "3.9",
+                "comments": None,
+                "test_code": "K",
+                "value_type": "NM",
+                "test_name": "Potassium",
+                "units": "mmol/L",
+                "reference_range": "3.5-5.1"
+            }
+        ]
+
+        return {
+            "profile_code": "ELU",
+            "profile_description": "RENAL PROFILE",
+            "result_status": "FINAL",
+            "observations": json.dumps(observations)
+        }
+
+    def get_result(self, identifier, issuing_source):
+        result = self.create_subrecord_with_id(
+            Result, identifier, issuing_source
+        )
+        result_dict = self.get_result_dict()
+        for k, v in result_dict.iteritems():
+            setattr(result, k, v)
+        return result
 
     def create_patient(self, identifier, issuing_source):
         patient = self.create_subrecord_with_id(

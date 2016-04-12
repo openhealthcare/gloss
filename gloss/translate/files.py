@@ -135,5 +135,4 @@ class RFHBloodCulturesFileType(FileType):
                     messages=[self.row_to_result_message(row)],
                     hospital_number=row.hospno,
                     issuing_source='RFH',
-                    message_type=message_type.ResultMessage
                 )

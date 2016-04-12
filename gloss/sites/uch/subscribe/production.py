@@ -2,16 +2,17 @@
 Subscriptions for production deployment
 """
 import json
+from datetime import datetime
 from copy import copy
 
 from gloss import settings
 from gloss.message_type import (
     AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
-    ResultMessage, InpatientAdmissionTransferMessage,
-    InpatientAdmissionDeleteMessage, PatientMessage,
+    ResultMessage, InpatientAdmissionDeleteMessage, PatientMessage,
+    InpatientAdmissionTransferMessage
 )
 from gloss.models import (
-    InpatientAdmission, Merge,
+    InpatientAdmission, Merge, InpatientLocation,
     get_gloss_reference, Allergy,
     Result, is_known, Patient,
     create_or_update_inpatient_admission, create_or_update_inpatient_location,
@@ -37,9 +38,6 @@ class UclhAllergySubscription(NotifyOpalWhenSubscribed):
                 allergy = Allergy(**vars(message))
                 allergy.gloss_reference = gloss_ref
                 session.add(allergy)
-        else:
-            allergy = Allergy(no_allergies=True, gloss_reference=gloss_ref)
-            session.add(allergy)
 
 
 class UclhMergeSubscription(NotifyOpalWhenSubscribed):
@@ -72,7 +70,6 @@ class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):
             inpatient_admission, created = get_or_create_admission(
                 message, gloss_ref, session
             )
-            print inpatient_admission, created
 
             if not created:
                 inpatient_admission = create_or_update_inpatient_admission(
@@ -80,7 +77,6 @@ class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):
                 )
 
             session.add(inpatient_admission)
-            print 'added', inpatient_admission
             if settings.SAVE_LOCATION:
                 inpatient_location, created = get_or_create_location(
                     message, inpatient_admission, session
@@ -93,7 +89,6 @@ class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):
                         base=inpatient_location
                     )
                 session.add(inpatient_location)
-                print 'added', inpatient_location
 
 
 class UclhInpatientAdmissionDeleteSubscription(NotifyOpalWhenSubscribed):
