@@ -54,14 +54,19 @@ def patient_query(session, issuing_source, identifier):
     patient_exists = models.Patient.query_from_identifier(
         identifier, issuing_source, session
     ).count()
-    if not patient_exists:
+    if not patient_exists and settings.USE_EXTERNAL_LOOKUP:
         post_message_for_identifier(identifier)
 
     result = models.patient_to_message_container(
         identifier, issuing_source, session
-    ).to_dict()
+    )
 
-    return result
+    if not result.messages:
+        raise exceptions.APIError(
+            "We can't find any patients with that identifier"
+        )
+
+    return result.to_dict()
 
 
 @json_api('/api/demographics/', methods=['POST'])
@@ -76,12 +81,13 @@ def demographics_query(session, issuing_source, identifier):
         identifier
     )
 
-    if not container.messages:
+    if not container.messages and settings.USE_EXTERNAL_LOOKUP:
         container = post_message_for_identifier(identifier)
-        if not container.messages:
-            raise exceptions.APIError(
-                "We can't find any patients with that identifier"
-            )
+
+    if not settings.USE_EXTERNAL_LOOKUP or not container.messages:
+        raise exceptions.APIError(
+            "We can't find any patients with that identifier"
+        )
 
     return container.to_dict()
 
