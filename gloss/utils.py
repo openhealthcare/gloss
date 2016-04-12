@@ -1,6 +1,7 @@
 """
 Generic Gloss Utilities
 """
+import importlib
 
 class AbstractClass(object):
     pass
@@ -26,3 +27,9 @@ def itersubclasses(cls, _seen=None):
             for sub in itersubclasses(sub, _seen):
                 if sub not in abstract_classes:
                     yield sub
+
+
+def import_function(some_str):
+    module, func = some_str.rsplit(".", 1)
+    imported_module = importlib.import_module(module)
+    return getattr(imported_module, func)
