@@ -11,7 +11,7 @@ from gloss.models import (
     GlossolaliaReference, Subscription, PatientIdentifier,
     is_subscribed, get_gloss_reference, session_scope,
     OutgoingMessage, get_next_message_id, patient_to_message_container,
-    InpatientLocation, subscribe, Merge
+    InpatientLocation, subscribe, Merge, Patient
 )
 
 
@@ -268,3 +268,23 @@ class PatientToMessageContainersTestCase(GlossTestCase):
         #
         # for k, v in expected_dict.iteritems():
         #     self.assertEqual(getattr(found_result, k), v)
+
+
+
+def get_messages(cls, identifier, issuing_source, session):
+    import pdb; pdb.set_trace()
+    pass
+
+
+class TestGetMessagesOverride(GlossTestCase):
+
+    @patch("gloss.models.settings")
+    def test_message_override(self, settings_mock):
+        settings_mock.MOCK_API = "gloss.tests.test_models.get_messages"
+        mock_str = "gloss.tests.test_models.get_messages"
+        with patch(mock_str) as messages_mock:
+            Patient.to_messages("123", "uclh", self.session)
+
+        messages_mock.assert_called_once_with(
+            Patient, "123", "uclh", self.session
+        )

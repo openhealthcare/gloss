@@ -16,7 +16,7 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from gloss import settings, message_type
-from gloss.utils import itersubclasses
+from gloss.utils import itersubclasses, import_function
 engine = create_engine(settings.DATABASE_STRING)
 
 
@@ -35,6 +35,11 @@ class Base(object):
 
 
 class GlossSubrecord(object):
+    # this field is used when we convert a whole patient to its messages
+    # e.g. we don't need to know about any upstream merges that happened
+    PART_OF_BULK_DOWNLOAD = True
+
+
     @declared_attr
     def gloss_reference_id(cls):
         return Column(Integer, ForeignKey('glossolaliareference.id'))
@@ -71,6 +76,18 @@ class GlossSubrecord(object):
 
     @classmethod
     def to_messages(cls, identifier, issuing_source, session):
+        """ to messages translates all models about the class into message
+            types, it can be overridden with settings.MOCK_API to
+            return custom results for a specific class if requested
+        """
+        if settings.MOCK_API:
+            some_func = import_function(settings.MOCK_API)
+            return some_func(cls, identifier, issuing_source, session)
+        else:
+            return cls._to_messages(identifier, issuing_source, session)
+
+    @classmethod
+    def _to_messages(cls, identifier, issuing_source, session):
         qry = cls.query_from_identifier(
             identifier, issuing_source, session
         ).all()
@@ -131,6 +148,8 @@ class InpatientAdmission(Base, GlossSubrecord):
 
 
 class InpatientLocation(Base):
+    PART_OF_BULK_DOWNLOAD = False
+
     inpatient_admission_id = Column(Integer, ForeignKey('inpatientadmission.id'))
     inpatient_admission = relationship(
         "InpatientAdmission", foreign_keys=[inpatient_admission_id], cascade="all"
@@ -170,14 +189,10 @@ class InpatientLocation(Base):
         q = q.filter(cls.inpatient_admission == inpatient_admission)
         return q.one_or_none()
 
-    @classmethod
-    def to_messages(cls, identifier, issuing_source, session):
-        """ this does not actually create a container and just uses inpatient admission
-        """
-        return []
-
 
 class PatientIdentifier(Base, GlossSubrecord):
+    PART_OF_BULK_DOWNLOAD = False
+
     identifier = Column(String(250))
     issuing_source = Column(String(250))
     active = Column(Boolean, default=True)
@@ -193,36 +208,23 @@ class PatientIdentifier(Base, GlossSubrecord):
             foreign_keys=[getattr(cls, "gloss_reference_id")]
         )
 
-    @classmethod
-    def to_messages(cls, identifier, issuing_source, session):
-        """ this does not actually create a container
-        """
-        return []
-
 
 class Merge(Base, GlossSubrecord):
+    PART_OF_BULK_DOWNLOAD = False
+
     old_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
     old_reference = relationship(
         "GlossolaliaReference", foreign_keys=[old_reference_id]
     )
 
-    @classmethod
-    def to_messages(cls, identifier, issuing_source, session):
-        """ this does not actually create a container
-        """
-        return []
-
 
 class Subscription(Base, GlossSubrecord):
+    PART_OF_BULK_DOWNLOAD = False
+
     system = Column(String(250))
     active = Column(Boolean, default=True)
     end_point = Column(String(250))
 
-    @classmethod
-    def to_messages(cls, identifier, issuing_source, session):
-        """ this does not actually create a container
-        """
-        return []
 
 
 class Allergy(Base, GlossSubrecord):
@@ -463,8 +465,9 @@ def get_or_create_location(message, inpatient_admission, session):
 def patient_to_message_container(hospital_number, issuing_source, session):
     messages = []
     for subRecord in itersubclasses(GlossSubrecord):
-        messages.extend(subRecord.to_messages(
-            hospital_number, issuing_source, session
-        ))
+        if subRecord.PART_OF_BULK_DOWNLOAD:
+            messages.extend(subRecord.to_messages(
+                hospital_number, issuing_source, session
+            ))
 
     return message_type.construct_message_container(messages, hospital_number)

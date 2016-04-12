@@ -20,6 +20,10 @@ PORTS = [2574, 2575]
 DEMOGRAPHICS_HOST = "USOAAPT"
 DEMOGRAPHICS_PORT = 8155
 
+# if this is created we will send dummy data from the defined function
+MOCK_API = "gloss.sites.uch.mock_api.get_mock_data"
+
+
 if getattr(sys, '_called_from_test', None):
     try:
         from test_settings import *

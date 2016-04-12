@@ -71,21 +71,17 @@ def demographics_create(session, issuing_source):
 
 @json_api('/api/demographics/<identifier>')
 def demographics_query(session, issuing_source, identifier):
-    patient = models.Patient.query_from_identifier(
-        identifier, issuing_source, session
-    ).count()
+    container = construct_message_container(
+        Patient.to_messages(identifier, issuing_source, session),
+        identifier
+    )
 
-    if not patient:
+    if not container.messages:
         container = post_message_for_identifier(identifier)
         if not container.messages:
             raise exceptions.APIError(
                 "We can't find any patients with that identifier"
             )
-    else:
-        container = construct_message_container(
-            Patient.to_messages(identifier, issuing_source, session),
-            identifier
-        )
 
     return container.to_dict()
 
