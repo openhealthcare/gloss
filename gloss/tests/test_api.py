@@ -204,10 +204,12 @@ class DemographicsQueryTestCase(GlossTestCase):
 
 
 class SubscribeTestCase(GlossTestCase):
-    def test_subscription(self):
-        resp = api.subscribe(
-            "1", "http://someOpalApplication/api"
+    @patch("gloss.api.request")
+    def test_subscription(self, mock_request):
+        mock_request.form = dict(
+            end_point="http://someOpalApplication/api"
         )
+        resp = api.subscribe("1")
         subscription = models.Subscription.query_from_identifier(
             "1", "uclh", self.session
         ).one()
@@ -234,13 +236,13 @@ class SubscribeTestCase(GlossTestCase):
         self.assertTrue(json.loads(resp.data)["status"], "success")
         self.assertEqual(0, self.session.query(models.Subscription).count())
 
-    def test_multiple_subsciptions(self):
-        api.subscribe(
-            "1", "http://someOpalApplication/api"
+    @patch("gloss.api.request")
+    def test_multiple_subsciptions(self, mock_request):
+        mock_request.form = dict(
+            end_point="http://someOpalApplication/api"
         )
-        api.subscribe(
-            "1", "http://someOpalApplication/api"
-        )
+        api.subscribe("1")
+        api.subscribe("1")
         subscription = models.Subscription.query_from_identifier(
             "1", "uclh", self.session
         ).one()
