@@ -4,6 +4,7 @@ The Public Gloss API
 import functools
 import json
 import sys
+import logging
 from flask import Flask, Response, request
 from gloss.message_type import construct_message_container
 from gloss.models import Patient
@@ -15,8 +16,12 @@ sys.path.append('.')
 
 from gloss import exceptions, models, settings
 
+
 app = Flask('gloss.api')
 app.debug = settings.DEBUG
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+app.logger.addHandler(stream_handler)
 
 
 def json_api(route, **kwargs):

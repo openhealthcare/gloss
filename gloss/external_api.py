@@ -11,6 +11,13 @@ from gloss.message_type import (
     PatientMessage, construct_message_container
 )
 
+try:
+    from flask import current_app
+    logger = current_app.logger
+except:
+    import logging
+    logger = logging
+
 
 class DemographicsQueryResponse(HL7Message):
     segments = (MSH, MSA, InpatientPID, QueryPD1,)
@@ -64,12 +71,19 @@ def send_message(some_message):
 
 def post_message_for_identifier(some_identifier):
     msg = generate_demographics_query_message(some_identifier)
-    response = send_message(msg)
+    try:
+        response = send_message(msg)
+    except Exception as err:
+        logger.error(err)
+        raise exceptions.APIError("Unable to reach the external system")
+
     unparsed_message = hl7.parse(response)
     errored = DemographicsErrorResponse(unparsed_message)
 
     if errored.msa.error_code:
-        raise exceptions.APIError("We can't find any patients with that identifier")
+        raise exceptions.APIError(
+            "We can't find any patients with that identifier"
+        )
 
     hl7_message = DemographicsQueryResponse(unparsed_message)
     message = construct_internal_message(hl7_message)
