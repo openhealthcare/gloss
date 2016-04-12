@@ -73,6 +73,16 @@ class PatientQueryTestCase(GlossTestCase):
 
 
     @patch("gloss.api.post_message_for_identifier")
+    @patch("gloss.api.settings")
+    def test_dont_get_if_settings(self, settings, post_message):
+        settings.USE_EXTERNAL_LOOKUP = False
+        resp = api.patient_query('555-yeppers')
+        self.assertFalse(post_message.called)
+        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
+        self.assertEqual(resp.data, msg)
+
+
+    @patch("gloss.api.post_message_for_identifier")
     def test_remote_get_demographics(self, post_message):
         self.session.add(self.get_allergy('555-yeppers', 'uclh'))
         patient = self.create_patient('555-yeppers', 'uclh')
