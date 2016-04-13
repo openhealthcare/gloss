@@ -8,7 +8,6 @@ from gloss import models
 from gloss.tests import test_messages
 from gloss.tests.core import GlossTestCase
 from gloss import api, settings
-from gloss import exceptions
 
 
 NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
@@ -151,7 +150,6 @@ class DemographicsQueryTestCase(GlossTestCase):
         self.assertEqual(msg, response.data)
         self.assertEqual(self.session.query(models.Patient).count(), 0)
 
-
     def test_found_on_api(self):
         self.mock_mllp_send.return_value = test_messages.PATIENT_QUERY_RESPONSE
         resp = json.loads(api.demographics_query('50013000').data)
@@ -272,3 +270,40 @@ class SubscribeTestCase(GlossTestCase):
             subscription.end_point, "http://someOpalApplication/api"
         )
         self.assertTrue(subscription.active)
+
+
+class HL7TemplateView(GlossTestCase):
+    @patch("gloss.api.render_template")
+    def test_hl7_send_template_view(self, mock_render_template):
+        api.hl7pretendomatic()
+        self.assertTrue(mock_render_template.called)
+        call_args = mock_render_template.call_args
+        self.assertTrue(call_args[0], "send_hl7.html")
+
+        for i in json.loads(call_args[1]["message"]).iterkeys():
+            self.assertTrue("_" not in i)
+
+
+class HL7PostApiView(GlossTestCase):
+    @patch("gloss.api.request")
+    def test_hl7_message_send(self, mock_request):
+        mock_hl7 = """MSH|^~&amp|CARECAST|UCLH|ELCID||201412061201||ADT^A31|PLW21228462730556545|P|2.2|||AL|NE
+        EVN|A31|201412061201||CREG|U440208^KHATRI^BHAVIN|
+        PID|||50092915^^^^UID~^^^^NHS||TESTING MEDCHART^MEDHCART FIRSTNAME^MEDCHART JONES^^MR||19870612|M|||12 THE DUNTINGDON ROAD,&^SECOND STREET, ADDRESS&^LINE 3, FORTH^ADDRESS, LONDON^N2 9DU^^^^EAST FINCHLEY^~12 THE DUNTINGDON ROAD&SECOND STREET^ADDRESS LINE 3&FORTH ADDRESS^LONDON^^N2 9DU^^^^EAST FINCHLEY^||020811128383~07000111122~EMAI@MEDCHART.COM|02048817722|F1^^^I|M|1A|||||A||||||||
+        PD1|||NU^^^^^&&^^&&|375883^CURZON^RN^^^DR^^^&&^^^^^G8903132&&~P816881^43 DERBE ROAD^ST.ANNES-ON-SEA^LANCASHIRE^^^^FY8 1NJ^^01253 725811^^^^P81688&1&~410605^PATEL^A^^^^^^^^^^^D2639749&&~V263972^234 DENTAL CARE^234 EDGEWARE ROAD^LONDON^^^^W2  1DW^^^^^^V26397&2||9||||||
+        NK1|1|MEDCHART BROTHERNOK^NOK FIRST NAME^NOK SECONDNAME^^|BROTHER|65 ADDRESS ONE, ADDRESS&^TWO, NOK ADDRESS THREE,&^NOK ADDRESS FOUR,^LONDON,^N2 9DU^^^^MIDDLESEX^~65 ADDRESS ONE&ADDRESS TWO^NOK ADDRESS THREE&NOK ADDRESS FOUR^LONDON^^N2 9DU^^^^MIDDLESEX^|0809282822|0899282727|"""
+        mock_request.form = dict(
+            message=mock_hl7
+        )
+        expected_hl7 = """\rMSH|^~\\&|CARECAST|UCLH|ELCID||201412061201||ADT^A31|PLW21228462730556545|P|2.2|||AL|NE
+        EVN|A31|201412061201||CREG|U440208^KHATRI^BHAVIN|
+        PID|||50092915^^^^UID~^^^^NHS||TESTING MEDCHART^MEDHCART FIRSTNAME^MEDCHART JONES^^MR||19870612|M|||12 THE DUNTINGDON ROAD,&^SECOND STREET, ADDRESS&^LINE 3, FORTH^ADDRESS, LONDON^N2 9DU^^^^EAST FINCHLEY^~12 THE DUNTINGDON ROAD&SECOND STREET^ADDRESS LINE 3&FORTH ADDRESS^LONDON^^N2 9DU^^^^EAST FINCHLEY^||020811128383~07000111122~EMAI@MEDCHART.COM|02048817722|F1^^^I|M|1A|||||A||||||||
+        PD1|||NU^^^^^&&^^&&|375883^CURZON^RN^^^DR^^^&&^^^^^G8903132&&~P816881^43 DERBE ROAD^ST.ANNES-ON-SEA^LANCASHIRE^^^^FY8 1NJ^^01253 725811^^^^P81688&1&~410605^PATEL^A^^^^^^^^^^^D2639749&&~V263972^234 DENTAL CARE^234 EDGEWARE ROAD^LONDON^^^^W2  1DW^^^^^^V26397&2||9||||||
+        NK1|1|MEDCHART BROTHERNOK^NOK FIRST NAME^NOK SECONDNAME^^|BROTHER|65 ADDRESS ONE, ADDRESS&^TWO, NOK ADDRESS THREE,&^NOK ADDRESS FOUR,^LONDON,^N2 9DU^^^^MIDDLESEX^~65 ADDRESS ONE&ADDRESS TWO^NOK ADDRESS THREE&NOK ADDRESS FOUR^LONDON^^N2 9DU^^^^MIDDLESEX^|0809282822|0899282727|\r"""
+
+        expected_hl7 = expected_hl7.replace("\n", "\r")
+
+        with patch("gloss.api.MLLPClient") as mllp_client:
+            mllp_client.return_value = self.mllp_api_client_instance
+            api.send_mllp_to_self()
+        self.mock_mllp_send.assert_called_once_with(expected_hl7)

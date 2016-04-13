@@ -285,19 +285,24 @@ NK1|1|^^^^|^|^^^^||
 PV1|
 """.replace("\n", "\r")
 
+MESSAGE_TYPES = dict(
+    patient_update=PATIENT_UPDATE,
+    patient_death=PATIENT_DEATH,
+    patient_merge=PATIENT_MERGE,
+    inpatient_admission=INPATIENT_ADMISSION,
+    inpatient_discharge=INPATIENT_DISCHARGE,
+    allergy=ALLERGY,
+    inpatient_cancel_discharge=INPATIENT_CANCEL_DISCHARGE,
+    results_message=RESULTS_MESSAGE,
+    complex_winpath_result=COMPLEX_WINPATH_RESULT,
+    gynaecology=GYNAECOLOGY,
+)
 
-MESSAGES = [i.replace("\n", "\r") for i in [
-    PATIENT_UPDATE,
-    PATIENT_DEATH,
-    PATIENT_MERGE,
-    INPATIENT_ADMISSION,
-    INPATIENT_DISCHARGE,
-    ALLERGY,
-    INPATIENT_CANCEL_DISCHARGE,
-    RESULTS_MESSAGE,
-    COMPLEX_WINPATH_RESULT,
-    GYNAECOLOGY
-]]
+MESSAGE_TYPES = {
+    k: v.replace("\n", "\r") for k, v in MESSAGE_TYPES.iteritems()
+}
+
+MESSAGES = MESSAGE_TYPES.values()
 
 
 def send_messages(messages):

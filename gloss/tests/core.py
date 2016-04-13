@@ -34,9 +34,9 @@ class GlossTestCase(TestCase):
         client_instance.send_message = self.mock_mllp_send;
         enter = MagicMock(return_value=client_instance)
         self.mock_mllp_client.name = "client"
-        mllp_api_client_instance = MagicMock()
-        self.mock_mllp_client.return_value = mllp_api_client_instance
-        mllp_api_client_instance.__enter__ = enter
+        self.mllp_api_client_instance = MagicMock()
+        self.mock_mllp_client.return_value = self.mllp_api_client_instance
+        self.mllp_api_client_instance.__enter__ = enter
 
     def tearDown(self):
         self.patch_session.stop()
