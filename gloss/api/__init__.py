@@ -5,11 +5,13 @@ import functools
 import json
 import sys
 import logging
-from flask import Flask, Response, request
+from flask import Flask, Response, request, render_template
 from gloss.message_type import construct_message_container
 from gloss.models import Patient
 from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
+from gloss.settings import HOST, PORTS
+from hl7.client import MLLPClient
 
 
 sys.path.append('.')
@@ -103,3 +105,22 @@ def subscribe(session, issuing_source, identifier):
 def unsubscribe(session, issuing_source, identifier):
     models.unsubscribe(identifier, session, issuing_source)
     return {}
+
+
+if settings.SEND_MESSAGES_CONSOLE:
+    @app.route("/hl7pretendomatic")
+    def hl7pretendomatic():
+        from gloss.tests.test_messages import MESSAGE_TYPES
+        messages = {k.replace("_", " "): v for k, v in MESSAGE_TYPES.iteritems()}
+        return render_template("send_hl7.html", message=json.dumps(messages))
+
+
+    @json_api('/api/mllp_send/data')
+    def send_mllp_to_self(session, issuing_source):
+        port = PORTS[0]
+        message = request.form["message"]
+        messages = message.split("|", 2)
+        message = "\rMSH|^~\\&|{}\r".format(messages[-1]).replace("\n", "\r")
+        with MLLPClient(HOST, port) as client:
+            client.send_message(message)
+        return {}

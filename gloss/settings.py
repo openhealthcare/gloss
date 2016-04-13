@@ -8,6 +8,7 @@ PASSTHROUGH_SUBSCRIPTIONS = {}
 SUBSCRIPTIONS = tuple()
 
 DEBUG = False
+SEND_MESSAGES_CONSOLE = True
 
 DATE_FORMAT = '%d/%m/%Y'
 DATETIME_FORMAT = '%d/%m/%Y %H:%M:%S'
@@ -24,6 +25,8 @@ USE_EXTERNAL_LOOKUP = True
 # if this is created we will send dummy data from the defined function
 MOCK_API = "gloss.sites.uch.mock_api.get_mock_data"
 
+GLOSS_API_PORT = 6767
+GLOSS_API_HOST = "0.0.0.0"
 
 if getattr(sys, '_called_from_test', None):
     try:

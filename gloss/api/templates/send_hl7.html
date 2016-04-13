@@ -1,0 +1,68 @@
+<html>
+  <head>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.0/knockout-min.js"></script>
+      <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.css">
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <h1>HL7 Impersonator</h1>
+      </div>
+      <div class="row">
+        <label for="messageTypeSelector">select a message type</label>
+        <select class="u-full-width" id="messageTypeSelector" data-bind="options: messageTypes, value: currentMessageType, optionsCaption: 'select message type'"></select>
+      </div>
+         <form method="POST" data-bind="submit: postData" action="">
+          <div class="row" data-bind="foreach: messages">
+            <div data-bind="text: $data"></div>
+          </div>
+          <div class="row">
+            <input type="submit" class="button-primary" value="Post Message">
+          </div>
+      </form>
+      <div>
+
+      </div>
+    </div>
+
+
+    <script>
+
+      // expects a raw js object of message name to to hl7 message
+      var mappingObject = {{ message|safe }};
+      mappingObject = _.mapObject(mappingObject, function(value){
+          return value.trim().split("\r");
+      });
+
+      var messageTypes = _.keys(mappingObject);
+      var currentMessageType = ko.observable(messageTypes[0]);
+      var messages = ko.observableArray(mappingObject[currentMessageType()]);
+      var toSend = messages().join("\r");
+
+      currentMessageType.subscribe(function(x){
+          messages(mappingObject[x]);
+      });
+
+      messages.subscribe(function(newValue){
+          toSend = newValue.join("\r");
+      });
+
+      var postData = function(){
+          var url = "/api/mllp_send/data"
+          $.post(url, {message: toSend}).then(function(x){
+             alert("got back " + JSON.stringify(x));
+          });
+      };
+
+      var mpv = {
+        messages: messages,
+        postData: postData,
+        currentMessageType: currentMessageType,
+        toSend: toSend
+      };
+      ko.applyBindings(mpv);
+    </script>
+  </body>
+</html>
