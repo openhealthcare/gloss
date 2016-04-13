@@ -111,9 +111,22 @@ if settings.SEND_MESSAGES_CONSOLE:
     @app.route("/hl7pretendomatic")
     def hl7pretendomatic():
         from gloss.tests.test_messages import MESSAGE_TYPES
-        messages = {k.replace("_", " "): v for k, v in MESSAGE_TYPES.iteritems()}
-        return render_template("send_hl7.html", message=json.dumps(messages))
+        from gloss.import_message import MessageProcessor
+        import hl7
+        messages = {k.replace("_", " "): v.replace("\r", "\n") for k, v in MESSAGE_TYPES.iteritems()}
+        fields = {}
 
+        for k, v in MESSAGE_TYPES.iteritems():
+            y = hl7.parse(v)
+            message_type = MessageProcessor().get_message_type(y)
+            converted_messages = message_type(y)
+            fields[k.replace("_", " ")] = converted_messages.pid.hospital_number
+
+        return render_template(
+            "send_hl7.html",
+            message=json.dumps(messages),
+            fields=json.dumps(fields)
+        )
 
     @json_api('/api/mllp_send/data')
     def send_mllp_to_self(session, issuing_source):
