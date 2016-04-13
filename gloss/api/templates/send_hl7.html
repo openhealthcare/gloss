@@ -11,7 +11,7 @@
         <h1>HL7 Impersonator</h1>
       </div>
       <div>
-        <input type="text", data-bind="value: hospitalNumber"></input>
+        <input type="text", data-bind="value: hospitalNumber, valueUpdate: 'keyup'"></input>
       </div>
       <div class="row">
         <label for="messageTypeSelector">select a message type</label>
@@ -60,7 +60,7 @@
 
           _.each(raw_messages, function(x, i){
               if(x.startsWith(("PID"))){
-                  raw_messages[i] = x.replace(oldValue, newValue);
+                  raw_messages[i] = x.split(oldValue).join(newValue);
               }
           });
 
