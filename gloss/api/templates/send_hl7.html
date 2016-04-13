@@ -10,6 +10,9 @@
       <div class="row">
         <h1>HL7 Impersonator</h1>
       </div>
+      <div>
+        <input type="text", data-bind="value: hospitalNumber"></input>
+      </div>
       <div class="row">
         <label for="messageTypeSelector">select a message type</label>
         <select class="u-full-width" id="messageTypeSelector" data-bind="options: messageTypes, value: currentMessageType, optionsCaption: 'select message type'"></select>
@@ -33,20 +36,45 @@
       // expects a raw js object of message name to to hl7 message
       var mappingObject = {{ message|safe }};
       mappingObject = _.mapObject(mappingObject, function(value){
-          return value.trim().split("\r");
+          return value.trim().split("\n");
       });
+      var fields = {{ fields| safe }};
+
+      var getHospitalNumber = function(x){
+          return fields[currentMessageType()]
+      }
 
       var messageTypes = _.keys(mappingObject);
       var currentMessageType = ko.observable(messageTypes[0]);
       var messages = ko.observableArray(mappingObject[currentMessageType()]);
       var toSend = messages().join("\r");
+      var hospitalNumber = ko.observable(getHospitalNumber(messages()));
+
+      hospitalNumber.subscribe(function(newValue){
+          var oldValue = fields[currentMessageType()];
+          fields[currentMessageType()] = newValue;
+          var pid = _.filter(messages(), function(x){
+             return x.startsWith("PID")
+          })
+          var raw_messages = messages();
+
+          _.each(raw_messages, function(x, i){
+              if(x.startsWith(("PID"))){
+                  raw_messages[i] = x.replace(oldValue, newValue);
+              }
+          });
+
+          messages(raw_messages);
+      });
 
       currentMessageType.subscribe(function(x){
           messages(mappingObject[x]);
+          hospitalNumber(fields[currentMessageType()])
       });
 
       messages.subscribe(function(newValue){
           toSend = newValue.join("\r");
+          hospitalNumber(getHospitalNumber(messages()));
       });
 
       var postData = function(){
@@ -60,6 +88,7 @@
         messages: messages,
         postData: postData,
         currentMessageType: currentMessageType,
+        hospitalNumber: hospitalNumber,
         toSend: toSend
       };
       ko.applyBindings(mpv);
