@@ -286,16 +286,27 @@ PV1|
 """.replace("\n", "\r")
 
 MESSAGE_TYPES = dict(
+    # Demographics updates
     patient_update=PATIENT_UPDATE,
     patient_death=PATIENT_DEATH,
     patient_merge=PATIENT_MERGE,
+    patient_amend=INPATIENT_AMEND,
+    # Admission, Discharge and Transfer
     inpatient_admission=INPATIENT_ADMISSION,
     inpatient_discharge=INPATIENT_DISCHARGE,
-    allergy=ALLERGY,
     inpatient_cancel_discharge=INPATIENT_CANCEL_DISCHARGE,
-    results_message=RESULTS_MESSAGE,
-    complex_winpath_result=COMPLEX_WINPATH_RESULT,
+    inpatient_transfer=INPATIENT_TRANSFER,
+    # Allergies
+    allergy=ALLERGY,
+    multiple_allergies=MULTIPLE_ALLERGIES,
+    no_allergy=NO_ALLERGY,
+    # Results
+    renal_profile=RESULTS_MESSAGE,
+    urine_culture=URINE_CULTURE_RESULT_MESSAGE,
+    cytopathology=CYTOPATHOLOGY_RESULTS_MESSAGE,
+    fbc_and_fbcz_differential=COMPLEX_WINPATH_RESULT,
     gynaecology=GYNAECOLOGY,
+    hepd=HEPD
 )
 
 MESSAGE_TYPES = {
