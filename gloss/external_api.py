@@ -88,9 +88,6 @@ def post_message_for_identifier(some_identifier):
     hl7_message = DemographicsQueryResponse(unparsed_message)
     message = construct_internal_message(hl7_message)
     save_message(message, hl7_message.pid.hospital_number)
-    return construct_message_container(
-        [message], hl7_message.pid.hospital_number
-    )
 
 
 @models.atomic_method
@@ -102,7 +99,7 @@ def save_message(demographics_message, hospital_number, session):
     kwargs["gloss_reference"] = gloss_ref
     patient = models.Patient(**kwargs)
     session.add(patient)
-
+    return patient
 
 
 def construct_internal_message(hl7Message):

@@ -80,7 +80,7 @@ class GlossSubrecord(object):
             types, it can be overridden with settings.MOCK_API to
             return custom results for a specific class if requested
         """
-        if settings.MOCK_API:
+        if getattr(settings, "MOCK_API", None):
             some_func = import_function(settings.MOCK_API)
             return some_func(cls, identifier, issuing_source, session)
         else:
@@ -218,7 +218,7 @@ class Merge(Base, GlossSubrecord):
     )
 
     @classmethod
-    def get_latest_merge_message(cls, session, issuing_source, identifier):
+    def _to_messages(cls, identifier, issuing_source, session):
         merge = cls.get_latest_merge(session, issuing_source, identifier)
 
         if merge:

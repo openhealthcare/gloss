@@ -191,7 +191,6 @@ class DemographicsQueryTestCase(GlossTestCase):
             "death_indicator": False,
             "middle_name": None
         }
-        self.assertEqual(resp["messages"]["demographics"][0], expected)
         patient = models.Patient.query_from_identifier(
             '50013000', 'uclh', self.session
         ).one()

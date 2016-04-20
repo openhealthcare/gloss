@@ -1,7 +1,9 @@
 import random
-from gloss.models import Patient
+from gloss import models
 from gloss import coded_values
 from datetime import datetime, date, timedelta
+from gloss.external_api import save_message
+
 
 first_names = [
     "Jane", "James", "Chandeep", "Samantha", "Oliver", "Charlie",
@@ -23,6 +25,7 @@ nouns = [
     "cat", "dog", "eagle", "penguin", "lion", "tiger", "cheetah", "antelope",
     "chimpanzee", "gorilla", "spider", "frog", "toad", "bat", "owl", "elvis"
 ]
+
 
 NULL_PROBABILITY = 2 # out of 10
 
@@ -71,7 +74,7 @@ def date_time_generator(*args, **kwargs):
     d = date_generator(*args, **kwargs)
     hours = random.randint(0, 23)
     minutes = random.randint(0, 59)
-    return timezone.make_aware(datetime(d.year, d.month, d.day, hours, minutes))
+    return datetime(d.year, d.month, d.day, hours, minutes)
 
 
 def get_birth_date():
@@ -134,8 +137,22 @@ def get_fake_patient():
     )
 
 
+@models.atomic_method
+def save_mock_patients(some_identifier, session):
+    if some_identifier.startswith("xxx"):
+        pass
+    else:
+        patient = save_message(models.Patient.message_type(**get_fake_patient()), some_identifier)
+
+        if some_identifier.startswith("mmm"):
+            new_identifier = "{0}{1}".format(random.randint(100, 999), some_identifier)
+            other_patient = save_message(models.Patient.message_type(**get_fake_patient()), new_identifier)
+            merge = models.Merge(gloss_reference=patient.gloss_reference, new_reference=other_patient.gloss_reference)
+            session.add(merge)
+
+
 def get_mock_data(cls, some_identifier, some_issuing_source, session):
-    if cls == Patient:
+    if cls == models.Patient:
         if some_identifier.startswith("xxx"):
             return []
         else:

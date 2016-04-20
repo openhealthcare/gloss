@@ -271,7 +271,7 @@ class PatientToMessageContainersTestCase(GlossTestCase):
 
 
 class TestMergeToMessage(GlossTestCase):
-    def test_multiple_merges(self):
+    def test_to_messages(self):
         patient_1 = self.create_patient("50092915", "uclh")
         patient_2 = self.create_patient("50092916", "uclh")
         patient_3 = self.create_patient("50092917", "uclh")
@@ -290,8 +290,8 @@ class TestMergeToMessage(GlossTestCase):
         ]:
             self.session.add(obj)
 
-        messages = Merge.get_latest_merge_message(
-            self.session, "uclh", "50092915"
+        messages = Merge._to_messages(
+            "50092915", "uclh", self.session
         )
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0].new_id, "50092917")

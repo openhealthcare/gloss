@@ -1,7 +1,7 @@
 from mock import patch, MagicMock
 from gloss.sites.uch import mock_api
 from gloss.tests.core import GlossTestCase
-from gloss.models import Patient, Allergy
+from gloss.models import Patient, Allergy, Merge
 from gloss.message_type import AllergyMessage, PatientMessage
 
 
@@ -58,3 +58,31 @@ class TestMockPatient(GlossTestCase):
         )
         self.assertEqual(len(result), 0)
         self.assertFalse(to_messages_mock.called)
+
+    def test_create_mock(self):
+        mock_api.save_mock_patients("1000000")
+        c = Patient.query_from_identifier(
+            "1000000", "uclh", self.session
+        )
+        self.assertEqual(c.count(), 1)
+
+    def test_dont_create_mock_with_xxx(self):
+        mock_api.save_mock_patients("xxx1000000")
+        c = self.session.query(Patient)
+
+        self.assertEqual(c.count(), 0)
+
+    def test_create_merge_with_mmm(self):
+        mock_api.save_mock_patients("mmm1000000")
+        c = Patient.query_from_identifier(
+            "mmm1000000", "uclh", self.session
+        ).one()
+
+        m = self.session.query(Merge).filter(
+            Merge.gloss_reference == c.gloss_reference
+        ).one()
+
+        new_exists = self.session.query(Patient).filter(
+            Patient.gloss_reference == m.new_reference
+        ).count()
+        self.assertTrue(new_exists, 1)
