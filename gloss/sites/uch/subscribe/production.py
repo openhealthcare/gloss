@@ -12,11 +12,9 @@ from gloss.message_type import (
     InpatientAdmissionTransferMessage
 )
 from gloss.models import (
-    InpatientAdmission, Merge, InpatientLocation,
-    get_gloss_reference, Allergy,
-    Result, is_known, Patient,
+    InpatientAdmission, Merge, Allergy, Result, is_known, Patient,
     create_or_update_inpatient_admission, create_or_update_inpatient_location,
-    get_or_create_admission, get_or_create_location
+    get_or_create_admission, get_or_create_location, get_or_create_identifier
 )
 from gloss.subscribe.subscription import (
     db_message_processor, NotifyOpalWhenSubscribed
@@ -46,17 +44,24 @@ class UclhMergeSubscription(NotifyOpalWhenSubscribed):
 
     @db_message_processor
     def notify(self, message_container, session=None, gloss_ref=None):
+        # we're storing all merges, in theory we shouldn't have to
+        # if we don't know about the gloss reference already, why
+        # record a merge?
+        # Given we have multiple systems bringing in messages however
+        # we can't be sure about the consistency of when something is merged
+        # accross all systems
         messages = message_container.messages
         for message in messages:
-            old_gloss_ref = get_gloss_reference(
-                message.old_id,
+            new_gloss_ref = get_or_create_identifier(
+                message.new_id,
                 session=session,
                 issuing_source="uclh"
             )
 
-            if old_gloss_ref:
-                mrg = Merge(old_reference=old_gloss_ref, gloss_reference=gloss_ref)
-                session.add(mrg)
+            mrg = Merge(
+                new_reference=new_gloss_ref, gloss_reference=gloss_ref
+            )
+            session.add(mrg)
 
 
 class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):

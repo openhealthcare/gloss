@@ -77,7 +77,7 @@ class PatientQueryTestCase(GlossTestCase):
         settings.USE_EXTERNAL_LOOKUP = False
         resp = api.patient_query('555-yeppers')
         self.assertFalse(post_message.called)
-        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
+        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier 555-yeppers"}'
         self.assertEqual(resp.data, msg)
 
 
@@ -145,7 +145,7 @@ class DemographicsQueryTestCase(GlossTestCase):
         settings_mock.USE_EXTERNAL_LOOKUP = False
 
         response = api.demographics_query('50013000')
-        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
+        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier 50013000"}'
         self.assertFalse(self.mock_mllp_send.called)
         self.assertEqual(msg, response.data)
         self.assertEqual(self.session.query(models.Patient).count(), 0)
@@ -186,7 +186,10 @@ class DemographicsQueryTestCase(GlossTestCase):
             "marital_status": "Single",
             "sex": "Male",
             "date_of_birth": "15/02/1980",
-            "ethnicity": "Irish"
+            "date_of_death": None,
+            "ethnicity": "Irish",
+            "death_indicator": False,
+            "middle_name": None
         }
         self.assertEqual(resp["messages"]["demographics"][0], expected)
         patient = models.Patient.query_from_identifier(
@@ -196,6 +199,22 @@ class DemographicsQueryTestCase(GlossTestCase):
         expected["date_of_birth"] = datetime.date(1980, 2, 15)
         for k, v in expected.iteritems():
             self.assertEqual(getattr(patient, k), v)
+
+    def test_found_with_a_merge(self):
+        patient = self.create_patient('555-yeppers', 'uclh')
+        new_patient = self.create_patient('556-yeppers', 'uclh')
+        self.session.add(patient)
+        self.session.add(new_patient)
+        merge = self.create_subrecord_with_id(
+            models.Merge, '555-yeppers', 'uclh'
+        )
+        merge.new_reference = new_patient.gloss_reference
+        self.session.add(merge)
+        data = json.loads(api.demographics_query('555-yeppers').data)
+        expected = {
+            "new_id": '556-yeppers'
+        }
+        self.assertEqual(data["messages"]["duplicate_patient"], [expected])
 
     def test_with_patient(self):
         self.session.add(self.create_patient('555-yeppers', 'uclh'))

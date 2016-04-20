@@ -17,11 +17,14 @@ class MessageImporter(HL7Message):
     def gloss_message_type(self):
         raise NotImplementedError("we need a gloss message type")
 
-    def construct_container(self):
+    def construct_container(self, hospital_number=None):
+        if not hospital_number:
+            hospital_number = self.pid.hospital_number
+
         msgs = self.process_message()
         message_container = MessageContainer(
             messages=msgs,
-            hospital_number=self.pid.hospital_number,
+            hospital_number=hospital_number,
             issuing_source="uclh",
         )
         return message_container
@@ -45,10 +48,19 @@ class PatientMerge(MessageImporter):
         MSH, InpatientPID, MRG
     )
 
+    def process(self):
+        # we only really care about the old hospital number as we need
+        # to know whether to merge it. Therefore we construct the
+        # merge data around that number
+        message_container = self.construct_container(
+            hospital_number=self.mrg.duplicate_hospital_number
+        )
+        notification.notify(message_container)
+
     def process_message(self, session=None):
         return [self.gloss_message_type(
-            old_id=self.mrg.duplicate_hospital_number,
-            hospital_number=self.pid.hospital_number,
+            new_id=self.pid.hospital_number,
+            hospital_number=self.mrg.duplicate_hospital_number,
             issuing_source="uclh"
         )]
 
