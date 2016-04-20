@@ -60,13 +60,6 @@ class MessageType(object):
         return result
 
 
-class PatientMergeMessage(MessageType):
-    message_name = "duplicate_patient"
-
-    def __init__(self, **kwargs):
-        self.old_id = kwargs.pop("old_id")
-
-
 class PatientMessage(MessageType):
     message_name = "demographics"
 
@@ -80,6 +73,13 @@ class PatientMessage(MessageType):
         for field in fields:
             if field in kwargs:
                 setattr(self, field, kwargs[field])
+
+
+class PatientMergeMessage(PatientMessage):
+    message_name = "duplicate_patient"
+
+    def __init__(self, **kwargs):
+        self.new_id = kwargs.pop("new_id")
 
 
 class AllergyMessage(MessageType):

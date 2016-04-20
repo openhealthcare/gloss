@@ -16,7 +16,8 @@ from gloss.tests.test_messages import (
 )
 from gloss.models import (
     Merge, get_or_create_identifier, InpatientAdmission, get_gloss_reference,
-    InpatientLocation, subscribe, Allergy, Result, Patient, Subscription
+    InpatientLocation, subscribe, Allergy, Result, Patient, Subscription,
+    PatientIdentifier
 )
 from gloss.message_type import PatientMessage, MessageContainer
 from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
@@ -355,17 +356,23 @@ class TestInpatientTransfer(GlossTestCase):
 class TestMergeFlow(GlossTestCase):
     def test_complete_flow(self):
         old_hospital_id = "50028000"
-        old_gloss_reference = get_or_create_identifier(
-            hospital_number=old_hospital_id,
-            session=self.session,
-            issuing_source="uclh"
-        )
+        new_hospital_id = "MV 19823"
         message_processor = MessageProcessor()
         message_processor.process_message(read_message(PATIENT_MERGE))
-        session = self.session
-        result = session.query(Merge).one()
-        old_gloss_id = result.old_reference_id
-        self.assertEqual(old_gloss_reference.id, old_gloss_id)
+        old_gloss_reference = self.session.query(PatientIdentifier).filter(
+            PatientIdentifier.identifier == old_hospital_id
+        ).one().gloss_reference
+
+        new_gloss_reference = self.session.query(PatientIdentifier).filter(
+            PatientIdentifier.identifier == new_hospital_id
+        ).one().gloss_reference
+
+
+        exists = self.session.query(Merge).filter(
+            Merge.gloss_reference == old_gloss_reference,
+            Merge.new_reference == new_gloss_reference
+        ).count()
+        self.assertEqual(exists, 1)
 
 
 class TestAllergyFlow(GlossTestCase):

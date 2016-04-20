@@ -212,10 +212,54 @@ class PatientIdentifier(Base, GlossSubrecord):
 class Merge(Base, GlossSubrecord):
     PART_OF_BULK_DOWNLOAD = False
 
-    old_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
-    old_reference = relationship(
-        "GlossolaliaReference", foreign_keys=[old_reference_id]
+    new_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
+    new_reference = relationship(
+        "GlossolaliaReference", foreign_keys=[new_reference_id]
     )
+
+    @classmethod
+    def get_latest_merge_message(cls, session, issuing_source, identifier):
+        merge = cls.get_latest_merge(session, issuing_source, identifier)
+
+        if merge:
+            identifier = session.query(PatientIdentifier).filter(
+                PatientIdentifier.gloss_reference == merge.new_reference
+            ).filter(
+                PatientIdentifier.issuing_source == issuing_source
+            ).one_or_none()
+
+            if not identifier:
+                err = "unable to find a patient identifier for gloss reference {}"
+                raise err.format(identifier)
+            return [message_type.PatientMergeMessage(
+                new_id=identifier.identifier
+            )]
+
+        return []
+
+    @classmethod
+    def get_latest_merge(cls, session, issuing_source, identifier):
+        """ although an identifier can only have a single merge, that merge
+            can have multiple merges, so lets only return the most recent merge
+        """
+        merge = cls.query_from_identifier(
+            identifier, issuing_source, session
+        ).one_or_none()
+
+        while merge:
+            if merge.gloss_reference == merge.new_reference:
+                raise ValueError(
+                    "incorrect merge {} points to itself".format(merge.id)
+                )
+
+            new_merge = session.query(cls).filter(
+                cls.gloss_reference == merge.new_reference
+            ).one_or_none()
+
+            if not new_merge:
+                return merge
+            else:
+                merge = new_merge
 
 
 class Subscription(Base, GlossSubrecord):

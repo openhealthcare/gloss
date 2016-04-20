@@ -212,9 +212,9 @@ class PatientToMessageContainersTestCase(GlossTestCase):
         patient = self.create_patient("50092915", "uclh")
         patient.first_name = "Sue"
         self.session.add(patient)
-        old_patient = self.create_patient("500929150-old", "uclh")
-        self.session.add(old_patient)
-        merge = Merge(old_reference=old_patient.gloss_reference)
+        new_patient = self.create_patient("500929150-old", "uclh")
+        self.session.add(new_patient)
+        merge = Merge(new_reference=new_patient.gloss_reference)
         self.session.add(merge)
         subscribe("50092915", "some_end_point", self.session, "uclh")
 
@@ -270,9 +270,34 @@ class PatientToMessageContainersTestCase(GlossTestCase):
         #     self.assertEqual(getattr(found_result, k), v)
 
 
+class TestMergeToMessage(GlossTestCase):
+    def test_multiple_merges(self):
+        patient_1 = self.create_patient("50092915", "uclh")
+        patient_2 = self.create_patient("50092916", "uclh")
+        patient_3 = self.create_patient("50092917", "uclh")
+
+        merge_1 = Merge(
+            gloss_reference=patient_1.gloss_reference,
+            new_reference=patient_2.gloss_reference
+        )
+        merge_2 = Merge(
+            gloss_reference=patient_2.gloss_reference,
+            new_reference=patient_3.gloss_reference
+        )
+
+        for obj in [
+            patient_1, patient_2, patient_3, merge_1, merge_2
+        ]:
+            self.session.add(obj)
+
+        messages = Merge.get_latest_merge_message(
+            self.session, "uclh", "50092915"
+        )
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].new_id, "50092917")
+
 
 def get_messages(cls, identifier, issuing_source, session):
-    import pdb; pdb.set_trace()
     pass
 
 

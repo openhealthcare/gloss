@@ -7,7 +7,7 @@ import sys
 import logging
 from flask import Flask, Response, request, render_template
 from gloss.message_type import construct_message_container
-from gloss.models import Patient
+from gloss.models import Patient, Merge
 from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
 from gloss.settings import HOST, PORTS
@@ -51,22 +51,34 @@ def json_api(route, **kwargs):
     return wrapper
 
 
-@json_api('/api/patient/<identifier>')
-def patient_query(session, issuing_source, identifier):
+def get_demographics(session, issuing_source, identifier):
+    """ a utility that fetches demographics data remotely if its not
+        present locally
+    """
     patient_exists = models.Patient.query_from_identifier(
         identifier, issuing_source, session
     ).count()
+
+    if patient_exists:
+        return
+
     if not patient_exists and settings.USE_EXTERNAL_LOOKUP:
         post_message_for_identifier(identifier)
+    else:
+        raise exceptions.APIError(
+            "We can't find any patients with that identifier {}".format(
+                identifier
+            )
+        )
+
+
+@json_api('/api/patient/<identifier>')
+def patient_query(session, issuing_source, identifier):
+    get_demographics(session, issuing_source, identifier)
 
     result = models.patient_to_message_container(
         identifier, issuing_source, session
     )
-
-    if not result.messages:
-        raise exceptions.APIError(
-            "We can't find any patients with that identifier"
-        )
 
     return result.to_dict()
 
@@ -78,18 +90,20 @@ def demographics_create(session, issuing_source):
 
 @json_api('/api/demographics/<identifier>')
 def demographics_query(session, issuing_source, identifier):
-    container = construct_message_container(
-        Patient.to_messages(identifier, issuing_source, session),
-        identifier
-    )
+    get_demographics(session, issuing_source, identifier)
 
-    if not container.messages and settings.USE_EXTERNAL_LOOKUP:
-        container = post_message_for_identifier(identifier)
-
-    if not settings.USE_EXTERNAL_LOOKUP or not container.messages:
-        raise exceptions.APIError(
-            "We can't find any patients with that identifier"
+    try:
+        messages = Merge.get_latest_merge_message(
+            session, issuing_source, identifier
         )
+    except Exception as e:
+        raise exceptions.APIError(e)
+
+    messages.extend(Patient.to_messages(identifier, issuing_source, session))
+
+    container = construct_message_container(
+        messages, identifier
+    )
 
     return container.to_dict()
 
