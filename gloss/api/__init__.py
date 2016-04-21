@@ -42,12 +42,12 @@ def json_api(route, **kwargs):
                     issuing_source = "uclh"
                     data = fn(session, issuing_source, *args, **kwargs)
                     data["status"] = "success"
-                    app.logger.info(data)
+                    app.logger.critical(data)
                     return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
             except exceptions.APIError as err:
                 data = {'status': 'error', 'data': err.msg}
-                app.logger.info(data)
+                app.logger.critical(data)
                 return Response(json.dumps(
                     data,
                     cls=OpalJSONSerialiser

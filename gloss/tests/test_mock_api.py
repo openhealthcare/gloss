@@ -65,6 +65,7 @@ class TestMockPatient(GlossTestCase):
             "1000000", "uclh", self.session
         )
         self.assertEqual(c.count(), 1)
+        self.assertEqual(self.session.query(Merge).count(), 0)
 
     def test_dont_create_mock_with_xxx(self):
         mock_api.save_mock_patients("xxx1000000")

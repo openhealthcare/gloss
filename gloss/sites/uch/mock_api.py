@@ -142,13 +142,26 @@ def save_mock_patients(some_identifier, session):
     if some_identifier.startswith("xxx"):
         pass
     else:
-        patient = save_message(models.Patient.message_type(**get_fake_patient()), some_identifier)
-
+        patient = save_message(
+            models.Patient.message_type(**get_fake_patient()), some_identifier,
+            session=session
+        )
         if some_identifier.startswith("mmm"):
-            new_identifier = "{0}{1}".format(random.randint(100, 999), some_identifier)
-            other_patient = save_message(models.Patient.message_type(**get_fake_patient()), new_identifier)
-            merge = models.Merge(gloss_reference=patient.gloss_reference, new_reference=other_patient.gloss_reference)
-            session.add(merge)
+            create_merge(patient, some_identifier, session=session)
+
+
+@models.atomic_method
+def create_merge(patient, some_identifier, session):
+    new_identifier = "{0}{1}".format(random.randint(100, 999), some_identifier)
+    other_patient = save_message(
+        models.Patient.message_type(**get_fake_patient()), new_identifier,
+        session=session
+    )
+    merge = models.Merge(
+        gloss_reference=patient.gloss_reference,
+        new_reference=other_patient.gloss_reference
+    )
+    session.add(merge)
 
 
 def get_mock_data(cls, some_identifier, some_issuing_source, session):
