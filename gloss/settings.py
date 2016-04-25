@@ -23,7 +23,8 @@ DEMOGRAPHICS_PORT = 8155
 USE_EXTERNAL_LOOKUP = True
 
 # if this is created we will send dummy data from the defined function
-MOCK_API = "gloss.sites.uch.mock_api.get_mock_data"
+# MOCK_API = "gloss.sites.uch.mock_api.get_mock_data"
+MOCK_EXTERNAL_API = "gloss.sites.uch.mock_api.save_mock_patients"
 
 GLOSS_API_PORT = 6767
 GLOSS_API_HOST = "0.0.0.0"

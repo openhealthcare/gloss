@@ -12,6 +12,7 @@ from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
 from gloss.settings import HOST, PORTS
 from hl7.client import MLLPClient
+from gloss.utils import import_function
 
 
 sys.path.append('.')
@@ -19,11 +20,16 @@ sys.path.append('.')
 from gloss import exceptions, models, settings
 
 
+
+
 app = Flask('gloss.api')
 app.debug = settings.DEBUG
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.INFO)
 app.logger.addHandler(stream_handler)
+
+if getattr(settings, "MOCK_EXTERNAL_API", None):
+    post_message_for_identifier = import_function(settings.MOCK_EXTERNAL_API)
 
 
 def json_api(route, **kwargs):
@@ -36,10 +42,12 @@ def json_api(route, **kwargs):
                     issuing_source = "uclh"
                     data = fn(session, issuing_source, *args, **kwargs)
                     data["status"] = "success"
+                    app.logger.critical(data)
                     return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
             except exceptions.APIError as err:
                 data = {'status': 'error', 'data': err.msg}
+                app.logger.critical(data)
                 return Response(json.dumps(
                     data,
                     cls=OpalJSONSerialiser
@@ -93,8 +101,8 @@ def demographics_query(session, issuing_source, identifier):
     get_demographics(session, issuing_source, identifier)
 
     try:
-        messages = Merge.get_latest_merge_message(
-            session, issuing_source, identifier
+        messages = Merge.to_messages(
+            identifier, issuing_source, session
         )
     except Exception as e:
         raise exceptions.APIError(e)
