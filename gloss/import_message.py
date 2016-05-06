@@ -189,7 +189,6 @@ class AllergyMessage(MessageImporter):
         all_allergies = []
         for allergy in self.allergies:
             all_allergies.append(self.gloss_message_type(
-                allergy_type=allergy.al1.allergy_type,
                 allergy_type_description=allergy.al1.allergy_type_description,
                 certainty_id=allergy.al1.certainty_id,
                 certainty_description=allergy.al1.certainty_description,

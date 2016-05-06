@@ -91,7 +91,6 @@ class GlossTestCase(TestCase):
 
     def get_allergy_dict(self):
         return dict(
-            allergy_type="1",
             allergy_type_description="Product Allergy",
             certainty_id="CERT-1",
             certainty_description="Definite",

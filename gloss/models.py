@@ -276,7 +276,6 @@ class Allergy(Base, GlossSubrecord):
 
     # ask the docs which fields they'd want
     # for the moment, lets just save allergy reference name
-    allergy_type = Column(String(250))
     allergy_type_description = Column(String(250))
     certainty_id = Column(String(250))
     certainty_description = Column(String(250))

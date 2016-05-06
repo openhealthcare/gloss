@@ -91,7 +91,6 @@ class AllergyMessage(MessageType):
         self.no_allergies = kwargs.pop("no_allergies")
 
         if not self.no_allergies:
-            self.allergy_type = kwargs.pop("allergy_type")
             self.allergy_type_description = kwargs.pop("allergy_type_description")
             self.certainty_id = kwargs.pop("certainty_id")
             self.certainty_description = kwargs.pop("certainty_description")
