@@ -386,7 +386,6 @@ class TestAllergyFlow(GlossTestCase):
         self.session.add(allergy)
         self.message_processor.process_message(read_message(ALLERGY))
         found_allergy = self.session.query(Allergy).one()
-        self.assertEqual('1', found_allergy.allergy_type)
         self.assertEqual('Product Allergy', found_allergy.allergy_type_description)
         self.assertEqual('CERT-1', found_allergy.certainty_id)
         self.assertEqual('Definite', found_allergy.certainty_description)
@@ -447,7 +446,6 @@ class TestAllergyFlow(GlossTestCase):
         self.assertEqual('Active', allergy_2.status_description)
         self.assertEqual(False, allergy_2.no_allergies)
         self.assertEqual('Definite', allergy_2.certainty_description)
-        self.assertEqual('4', allergy_2.allergy_type)
         self.assertEqual(
             '7896c6a0-f69b-4a97-aa4a-13ca28812713',
             allergy_2.allergen_reference

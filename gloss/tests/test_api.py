@@ -50,7 +50,6 @@ class PatientQueryTestCase(GlossTestCase):
         resp = api.patient_query('555-yeppers')
         data = json.loads(resp.data)
         allergies = [dict(
-            allergy_type="1",
             allergy_type_description="Product Allergy",
             certainty_id="CERT-1",
             certainty_description="Definite",
@@ -89,7 +88,6 @@ class PatientQueryTestCase(GlossTestCase):
         resp = api.patient_query('555-yeppers')
         data = json.loads(resp.data)
         allergies = [dict(
-            allergy_type="1",
             allergy_type_description="Product Allergy",
             certainty_id="CERT-1",
             certainty_description="Definite",
