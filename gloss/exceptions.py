@@ -9,3 +9,6 @@ class APIError(Error):
     def __init__(self, msg, *a, **kw):
         self.msg = msg
         super(APIError, self).__init__(*a, **kw)
+
+class TranslatorError(Exception):
+    pass

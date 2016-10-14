@@ -1,4 +1,37 @@
 from collections import defaultdict
+import six
+import itertools
+
+
+class Field(object):
+    def __init__(self, required=False):
+        self.required = required
+
+
+class GlossMessageMeta(type):
+    def __new__(cls, name, bases, attrs):
+        omf = set()
+        rmf = set()
+        # get all fields from parent classes
+        parents = [b for b in bases if isinstance(b, GlossMessageMeta)]
+        for kls in parents:
+            omf.update(kls._optional_message_fields)
+            rmf.update(kls._required_message_fields)
+
+        # Get all the fields from this class.
+        for field_name, val in attrs.items():
+            if isinstance(val, Field):
+                if val.required:
+                    omf.discard(field_name)
+                    rmf.add(field_name)
+                else:
+                    rmf.discard(field_name)
+                    omf.add(field_name)
+        attrs["_optional_message_fields"] = omf
+        attrs["_required_message_fields"] = rmf
+
+        return super(GlossMessageMeta, cls).__new__(cls, name, bases, attrs)
+
 
 
 """
@@ -22,17 +55,35 @@ class MessageContainer(object):
         return result
 
 
-def construct_message_container(someMessages, hospital_number):
+def construct_message_container(
+    someMessages, hospital_number, issuing_source="uclh"
+):
     message_container = MessageContainer(
         messages=someMessages,
         hospital_number=hospital_number,
-        issuing_source="uclh",
+        issuing_source=issuing_source,
     )
     return message_container
 
 
-class MessageType(object):
+class MessageType(six.with_metaclass(GlossMessageMeta)):
     message_name = "name me Larry"
+
+    def __init__(self, **kwargs):
+        key_names = kwargs.keys()
+        missing_required_fields = self._required_message_fields - set(key_names)
+
+        if len(missing_required_fields):
+            raise ValueError(
+                "We are missing the fields %s" % missing_required_fields
+            )
+        all_fields = itertools.chain(
+            self._optional_message_fields,
+            self._required_message_fields
+        )
+
+        for field in all_fields:
+            setattr(self, field, kwargs.get(field))
 
     def to_dict(self):
         result = {}
@@ -63,23 +114,24 @@ class MessageType(object):
 class PatientMessage(MessageType):
     message_name = "demographics"
 
-    def __init__(self, **kwargs):
-        fields = [
-            "surname", "first_name", "middle_name", "title",
-            "date_of_birth", "sex", "marital_status", "religsion", "ethnicity",
-            "date_of_death", "death_indicator", "post_code", "gp_practice_code"
-        ]
+    surname = Field()
+    first_name = Field()
+    middle_name = Field()
+    title = Field()
+    date_of_birth = Field()
+    sex = Field()
+    marital_status = Field()
+    religion = Field()
+    ethnicity = Field()
+    date_of_death = Field()
+    death_indicator = Field()
+    post_code = Field()
+    gp_practice_code = Field()
 
-        for field in fields:
-            if field in kwargs:
-                setattr(self, field, kwargs[field])
 
-
-class PatientMergeMessage(PatientMessage):
+class PatientMergeMessage(MessageType):
     message_name = "duplicate_patient"
-
-    def __init__(self, **kwargs):
-        self.new_id = kwargs.pop("new_id")
+    new_id = Field()
 
 
 class AllergyMessage(MessageType):
@@ -88,6 +140,7 @@ class AllergyMessage(MessageType):
     def __init__(
         self, **kwargs
     ):
+        # Note a special case, does not call super
         self.no_allergies = kwargs.pop("no_allergies")
 
         if not self.no_allergies:
@@ -107,15 +160,14 @@ class AllergyMessage(MessageType):
 class ResultMessage(MessageType):
     message_name = "result"
 
-    def __init__(self, **kwargs):
-        self.lab_number = kwargs.pop("lab_number")
-        self.profile_code = kwargs.pop("profile_code")
-        self.profile_description = kwargs.pop("profile_description")
-        self.request_datetime = kwargs.pop("request_datetime")
-        self.observation_datetime = kwargs.pop("observation_datetime")
-        self.last_edited = kwargs.pop("last_edited")
-        self.result_status = kwargs.pop("result_status", None)
-        self.observations = kwargs.pop("observations")
+    lab_number = Field()
+    profile_code = Field()
+    profile_description = Field()
+    request_datetime = Field()
+    observation_datetime = Field()
+    last_edited = Field()
+    result_status = Field()
+    observations = Field()
 
     def to_dict(self):
         as_dict = super(ResultMessage, self).to_dict()
@@ -134,40 +186,28 @@ class OrderMessage(MessageType):
         Even though we don't currently deal with these, e.g.
         Message Processors expect one to exist.
         """
+        pass
 
 
 class InpatientAdmissionMessage(MessageType):
     message_name = "inpatient_admission"
 
-    def __init__(
-        self,
-        **kwargs
-    ):
-        self.ward_code = kwargs.pop("ward_code")
-        self.room_code = kwargs.pop("room_code")
-        self.bed_code = kwargs.pop("bed_code")
-        self.external_identifier = kwargs.pop("external_identifier")
-        self.datetime_of_admission = kwargs.pop("datetime_of_admission")
-        self.datetime_of_discharge = kwargs.pop("datetime_of_discharge")
-        self.admission_diagnosis = kwargs.pop("admission_diagnosis")
+    ward_code = Field()
+    room_code = Field()
+    bed_code = Field()
+    external_identifier = Field()
+    datetime_of_admission = Field()
+    datetime_of_discharge = Field()
+    admission_diagnosis = Field()
 
 
 class InpatientAdmissionTransferMessage(InpatientAdmissionMessage):
-    def __init__(
-        self,
-        **kwargs
-    ):
-        self.datetime_of_transfer = kwargs.pop("datetime_of_transfer")
-        super(InpatientAdmissionTransferMessage, self).__init__(**kwargs)
+    datetime_of_transfer = Field()
 
 
 class InpatientAdmissionDeleteMessage(MessageType):
     # not correct, we need to work out how this will work
     message_name = "inpatient_locations"
 
-    def __init__(
-        self,
-        **kwargs
-    ):
-        self.external_identifier = kwargs.pop("external_identifier")
-        self.datetime_of_deletion = kwargs.pop("datetime_of_deletion")
+    external_identifier = Field()
+    datetime_of_deletion = Field()

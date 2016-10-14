@@ -19,9 +19,6 @@ sys.path.append('.')
 
 from gloss import exceptions, models, settings
 
-
-
-
 app = Flask('gloss.api')
 app.debug = settings.DEBUG
 stream_handler = logging.StreamHandler()
@@ -133,15 +130,14 @@ if settings.SEND_MESSAGES_CONSOLE:
     @app.route("/hl7pretendomatic")
     def hl7pretendomatic():
         from gloss.tests.test_messages import MESSAGE_TYPES
-        from gloss.import_message import MessageProcessor
+        from gloss.translators.hl7 import hl7_translator
         import hl7
         messages = {k.replace("_", " "): v.replace("\r", "\n") for k, v in MESSAGE_TYPES.iteritems()}
         fields = {}
 
         for k, v in MESSAGE_TYPES.iteritems():
             y = hl7.parse(v)
-            message_type = MessageProcessor().get_message_type(y)
-            converted_messages = message_type(y)
+            converted_messages = hl7_translator.HL7Translator.translate(y)
             fields[k.replace("_", " ")] = converted_messages.pid.hospital_number
 
         return render_template(

@@ -1,58 +1,7 @@
-"""
-Gloss to translators for file formats
-"""
 import datetime
-import json
-import logging
-
-from gloss import notification
-from gloss.models import session_scope
-from gloss.translate import drugs
+from gloss.sites.rfh.coded_values import drugs
 from gloss import message_type
-
-class FileType(object):
-    """
-    Base class for Files that we'll be processing
-    with Gloss
-    """
-    def __init__(self, path):
-        self.path = path
-
-    def process(self):
-        """
-        Enforce transactions for processing
-        """
-        for container in self.process_file():
-            notification.notify(container)
-
-    def process_file(self):
-        raise NotImplementedError(
-            'Must implement {0}.process_file()'.format(self.__class__.__name__))
-
-
-class FileProcessor(object):
-    """
-    Base processor for data we're getting via (e.g. CSV) files
-    """
-    def get_file_type(self, path): pass
-    def process_file(self, path): pass
-
-
-class BaseFileRetriever(object):
-    """
-    Base File class that we expect to be implemented for every
-    file based integration.
-    """
-
-    @property
-    def file_type(self):
-        raise NotImplementedError(
-            'Must set file_type for {0}'.format(self.__class__.__name__))
-
-    def fetch(self):
-        raise NotImplementedError(
-            'Must implement {0}.fetch()'.format(self.__class__.__name__)
-        )
+from gloss.importers.file_importer import FileType
 
 
 class RFHBloodCulturesFileType(FileType):
@@ -73,7 +22,6 @@ class RFHBloodCulturesFileType(FileType):
         ]
 
     def row_to_result_message(self, row):
-
         return message_type.ResultMessage(
             lab_number=row.labno,
             profile_code='BC',
@@ -124,13 +72,13 @@ class RFHBloodCulturesFileType(FileType):
 
         )
 
-    def process_file(self):
-        logging.info('processing')
+    def import_message(self, gloss_service):
+        self.log.info('processing')
 
         with self.path.csv(header=True) as csv:
             for row in csv:
 
-                logging.info('Processing result {0}'.format(row.labno))
+                self.log.info('Processing result {0}'.format(row.labno))
                 yield message_type.MessageContainer(
                     messages=[self.row_to_result_message(row)],
                     hospital_number=row.hospno,

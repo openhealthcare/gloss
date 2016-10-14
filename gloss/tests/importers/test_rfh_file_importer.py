@@ -1,40 +1,10 @@
-"""
-Unittests for gloss.translate.files
-"""
 import datetime
-from mock import patch
+from mock import patch, MagicMock
 
 from gloss import message_type
 from gloss.tests.core import GlossTestCase
 
-from gloss.translate import files
-
-class FileTypeTestCase(GlossTestCase):
-
-    def test_process(self):
-
-        class MyFileType(files.FileType):
-            def process_file(self):
-                return [None]
-
-        with patch('gloss.notification.notify') as notify:
-            MyFileType('notareal.file').process()
-            notify.assert_called_with(None)
-
-    def test_process_file_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            files.FileType(None).process()
-
-
-class BaseFileRetrieverTestCase(GlossTestCase):
-
-    def test_file_type_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            ft = files.BaseFileRetriever().file_type
-
-    def test_fetch_not_implemented(self):
-        with self.assertRaises(NotImplementedError):
-            files.BaseFileRetriever().fetch()
+from gloss.sites.rfh.importers import file_importer
 
 
 class RFHBloodCulturesFileTypeTestCase(GlossTestCase):
@@ -178,16 +148,16 @@ class RFHBloodCulturesFileTypeTestCase(GlossTestCase):
             blank='')
 
     def test_to_date(self):
-        filetype = files.RFHBloodCulturesFileType('notareal.file')
+        filetype = file_importer.RFHBloodCulturesFileType('notareal.file')
         self.assertEqual(datetime.datetime(1976, 4, 23), filetype._to_date('23/4/1976'))
 
     def test_res(self):
-        filetype = files.RFHBloodCulturesFileType('notareal.file')
+        filetype = file_importer.RFHBloodCulturesFileType('notareal.file')
         expected = [u'Cefixime R', u'Augmentin R', u'Amphotericin R']
         self.assertEqual(expected, filetype.res(self.row))
 
     def test_sens(self):
-        filetype = files.RFHBloodCulturesFileType('notareal.file')
+        filetype = file_importer.RFHBloodCulturesFileType('notareal.file')
         expected = [u'Piperacillin-Tazobactam s', u'Amikacin s', u'Nitrofurantoin S',
                     u'Levofloxacin s',
                     u'Meropenem s', u'Gentamicin S', u'Ertapenem s', u'Ciprofloxacin s',
@@ -196,16 +166,17 @@ class RFHBloodCulturesFileTypeTestCase(GlossTestCase):
         self.assertEqual(expected, filetype.sens(self.row))
 
     def test_row_to_result_message(self):
-        filetype = files.RFHBloodCulturesFileType('notareal.file')
+        filetype = file_importer.RFHBloodCulturesFileType('notareal.file')
         msg = filetype.row_to_result_message(self.row)
         self.assertIsInstance(msg, message_type.ResultMessage)
         self.assertEqual('BC', msg.profile_code)
 
     def test_process_file(self):
-        filetype = files.RFHBloodCulturesFileType('notareal.file')
+        filetype = file_importer.RFHBloodCulturesFileType('notareal.file')
         with patch.object(filetype, 'path') as mock_path:
             mock_path.csv.return_value.__enter__.return_value.__iter__.return_value = [self.row]
+            service = MagicMock()
 
-            for container in filetype.process_file():
+            for container in filetype.import_message(service):
                 self.assertEqual('RFH', container.issuing_source)
                 self.assertEqual('555345', container.hospital_number)

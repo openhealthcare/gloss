@@ -35,6 +35,7 @@ class PatientQueryTestCase(GlossTestCase):
             'ethnicity': None,
             'sex': None,
             'marital_status': None,
+            'religion': None,
             'death_indicator': False,
             'date_of_birth': '12/12/1983',
             'date_of_death': None,
@@ -115,6 +116,7 @@ class PatientQueryTestCase(GlossTestCase):
             'death_indicator': False,
             'date_of_birth': '12/12/1983',
             'date_of_death': None,
+            'religion': None
         }]
 
         self.assertEqual('success', data['status'])
@@ -187,7 +189,8 @@ class DemographicsQueryTestCase(GlossTestCase):
             "date_of_death": None,
             "ethnicity": "Irish",
             "death_indicator": False,
-            "middle_name": None
+            "middle_name": None,
+            "religion": None
         }
         patient = models.Patient.query_from_identifier(
             '50013000', 'uclh', self.session
@@ -228,6 +231,7 @@ class DemographicsQueryTestCase(GlossTestCase):
             'post_code': None,
             'ethnicity': None,
             'sex': None,
+            'religion': None,
             'marital_status': None,
             'death_indicator': False,
             'date_of_birth': '12/12/1983',

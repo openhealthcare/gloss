@@ -1,10 +1,11 @@
 import datetime
+import mock
 from unittest import TestCase
 
 from gloss.tests.test_messages import (
     COMPLEX_WINPATH_RESULT, read_message
 )
-from gloss.import_message import WinPathResults
+from gloss.importers.hl7_importer import HL7Importer
 from gloss import message_type
 
 expected = {'hospital_number': u'50031772',
@@ -152,7 +153,9 @@ expected = {'hospital_number': u'50031772',
 class TestToDict(TestCase):
     def test_pathology_to_dict(self):
         msg = read_message(COMPLEX_WINPATH_RESULT)
-        message_container = WinPathResults(msg).construct_container()
+        service = mock.MagicMock()
+        service.issuing_source = "uclh"
+        message_container = HL7Importer().import_message(msg, service)
         result = message_container.to_dict()
         self.assertEqual(result, expected)
 

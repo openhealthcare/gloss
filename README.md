@@ -26,11 +26,15 @@ You will also need the python dependencies:
 
     pip install -r requirements.txt
 
+
+
 ### Starting the server(s)
 
 To run the HL7 server:
+    twistd --nodaemon gloss --service [[ class string to the gloss service ]]
 
-    twistd --nodaemon multiple_mllp --receiver gloss.ohc_receiver.OhcReceiver
+alternatively you can set the default gloss settings class in gloss.settings.DEFAULT_GLOSS_SERVICE
+
 
 To run the OPAL/JSON/HTTP API:
 
@@ -38,58 +42,40 @@ To run the OPAL/JSON/HTTP API:
 
 ## How Does Gloss work?
 
-Data coming into Gloss is understood to be a `Message`. Gloss understands various
-message types commonly found in a healthcare environment.
+Gloss has 4 stages
+  1) The Receiver, e.g. hl7/file, this should be a twisted server
+  2) Importer, receives what is given by the receiver and translates it to one or more GlossMessages
+  3) Subscriber, receives the outputs of the Importer and sends down stream, saves to the datbase etc
 
-Data coming into Gloss will go through the folliwing steps:
 
-    Translate ->
-    Identify ->
-    Notify (via Subscriptions ) ->
-    Archive ->
-    Broadcast ->
+# Receivers
+At the moment receivers should take a function or a method that returns a twisted service
+the function/method should take the importer as the argument
 
-### Translate
+Gloss ships with an mllp server, you can configure this with the ports
 
-#### HL7 Integrations
+example usage
+    GlossApi(
+      reciever=gloss.receivers.mullp_multi_servce(1190, 1999).make_service
+    )
 
-Gloss receives hl7 messages into the OhcReceiver
-these are translated into MessageTypes (as defined in gloss.message_types) by
-the MessageImporter classes in import_message.
 
-The MessageImporter returns a MessageContainer that has a MessageType class in
-a message_type field. These messages are then passed on to the Notify service.
+### Importers
 
-### Identify
+Gloss has an imoprt stage that takes the output of a receiver (which should be for example an hl7 message or a files contents) and translates it to a subclass gloss.message_type.MessageType. For example an AllergyMessage.
 
-### Notify
+
+### Translators
+
+To help this translators should be used to to simplify for example the translation of hl7 to MessageType. Gloss comes with a tranlators to tranlate from hl7 in gloss.translators.hl7 nad to opal json (currently in serialisers, we'll probably change the name to serialisers so it will stay there)
+
 
 ### Subscriptions
 
-Subscriptions handle any db saving or downstream broadcast logic. Subscriptions may be
-for a complete feed from an upstream source, or granular per patient. Subscriptions are
-filtered by the message_type property. Their `notify()` method will be called with the
-`gloss.message_types.MessageContainer` for all incoming messages of the relevant type.
+A gloss service takes in one more subscriber methods, these take a message container (gloss.message_type.MessageContainer), which has an array of all messages that have just come in, and the gloss service itself.
 
-Subscriptions are implemented by subclassing `gloss.subscriptions.Subscription`. A simple
-subscription might be:
+Example subscribers are the database subscriber that will save all messages it receives to the database
 
-
-    class WinPathMessage(Subscription, OpalSerialiser):
-        message_type = ResultMessage
-
-        def notify(self, message_container):
-            self.send_to_opal(message_container)
-
-Gloss discovers subscriptions you have defined via the SUBSCRIPTIONS setting. This
-is a tuple of strings representing module paths. Gloss will import any modules
-you place here, and discover any subscriptions in them.
-
-#### Subscription API
-
-### Archive
-
-### Broadcast
 
 ## REST Query API
 
@@ -148,18 +134,6 @@ dates. Defaults to:
 ### DEBUG
 
 Turn on debugging. Defaults to False.
-
-### PORTS
-
-Gloss will listen one or more ports by default these are 2574 and 2575
-
-### SUBSCRIPTIONS
-
-Tuple of strings containing module paths containing your subscriptions.
-
-### SEND_ALL_MESSAGES (optional)
-
-String containing an OPAL API endopoint. If present, all incoming messages which have a message subscription that inherits from `NotifyOpalWhenSubscribed` will be sent to this endpoint.
 
 ## Load testing
 
