@@ -31,6 +31,7 @@ You will also need the python dependencies:
 ### Starting the server(s)
 
 To run the HL7 server:
+
     twistd --nodaemon gloss --service [[ class string to the gloss service ]]
 
 alternatively you can set the default gloss settings class in gloss.settings.DEFAULT_GLOSS_SERVICE
@@ -43,9 +44,10 @@ To run the OPAL/JSON/HTTP API:
 ## How Does Gloss work?
 
 Gloss has 4 stages
-  1) The Receiver, e.g. hl7/file, this should be a twisted server
-  2) Importer, receives what is given by the receiver and translates it to one or more GlossMessages
-  3) Subscriber, receives the outputs of the Importer and sends down stream, saves to the datbase etc
+
+  1. The Receiver, e.g. hl7/file, this should be a twisted server
+  2. Importer, receives what is given by the receiver and translates it to one or more GlossMessages
+  3. Subscriber, receives the outputs of the Importer and sends down stream, saves to the datbase etc
 
 
 # Receivers
