@@ -43,7 +43,7 @@ To run the OPAL/JSON/HTTP API:
 
 ## How Does Gloss work?
 
-Gloss has 4 stages
+Gloss has 3 stages
 
   1. The Receiver, e.g. hl7/file, this should be a twisted server
   2. Importer, receives what is given by the receiver and translates it to one or more GlossMessages
