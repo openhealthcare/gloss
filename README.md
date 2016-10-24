@@ -26,8 +26,6 @@ You will also need the python dependencies:
 
     pip install -r requirements.txt
 
-
-
 ### Starting the server(s)
 
 To run the HL7 server:
@@ -43,24 +41,34 @@ To run the OPAL/JSON/HTTP API:
 
 ## How Does Gloss work?
 
-Gloss has 3 stages
+Gloss handles three types of upstream data sources. 
 
-  1. The Receiver, e.g. hl7/file, this should be a twisted server
-  2. Importer, receives what is given by the receiver and translates it to one or more GlossMessages
-  3. Subscriber, receives the outputs of the Importer and sends down stream, saves to the datbase etc
+  1. Query upstreams (e.g. an HL7 query or a database connection it can make queries via)
+  2. Polling upstreams (e.g. reading a file produced by a daily batch process, or polling a server for updates every n minutes)
+  3. Event upstreams (e.g. receiving a HL7 message every time a patient is admitted)
+
+Each of these upstream data sources will provide data to a Gloss `Importer` - which take raw data from an upstream source and translate that data into `GlossMessage`s.
+
+Gloss also defines `Subscribers` which perform actions whenever a new `GlossMessage` arrives, from any upstream source. The `Subscrier` is responsible for sending data on downstream, saving information locally, or any other processing that needs to be done.
 
 
-# Receivers
-At the moment receivers should take a function or a method that returns a twisted service
-the function/method should take the importer as the argument
+## Upstream Services 
 
-Gloss ships with an mllp server, you can configure this with the ports
+### Event Upstreams 
 
-example usage
+In order to configure Gloss to handle data from an Event Upstream, we define a `Receiver`.
+
+A Receiver is a callable which returns a Twisted service. The Receiver function will be passed a `GlossService` as an argument.
+
+#### MLLP Receiver 
+
+Gloss ships with an MLLP server (commonly used with HL7 messages), you can configure this with the ports
+
+```python
     GlossApi(
       reciever=gloss.receivers.mullp_multi_servce(1190, 1999).make_service
     )
-
+```
 
 ### Importers
 
