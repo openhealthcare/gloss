@@ -104,7 +104,6 @@ if __name__ == "__main__":
         )
     parser.add_argument('-d', '--duration', default='1', help="Desired duration in minutes")
     parser.add_argument('-t', '--throughput', default='600', help="Desired maximum throughput per minute")
-
     workers = len(settings.PORTS)
     args = parser.parse_args()
     duration = int(args.duration)

@@ -25,6 +25,7 @@ USE_EXTERNAL_LOOKUP = True
 # if this is created we will send dummy data from the defined function
 # MOCK_API = "gloss.sites.uch.mock_api.get_mock_data"
 MOCK_EXTERNAL_API = "gloss.sites.uch.mock_api.save_mock_patients"
+DEFAULT_GLOSS_SERVICE = "gloss.sites.uch.gloss_service.GLOSS_SERVICE"
 
 GLOSS_API_PORT = 6767
 GLOSS_API_HOST = "0.0.0.0"

@@ -1,6 +1,6 @@
 import random
 from gloss import models
-from gloss import coded_values
+from gloss.translators.hl7 import coded_values
 from datetime import datetime, date, timedelta
 from gloss.external_api import save_message
 

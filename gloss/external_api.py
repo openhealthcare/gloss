@@ -6,9 +6,10 @@ from hl7.containers import Message
 import hl7
 
 from gloss import models, exceptions, settings
-from gloss.message_segments import MSH, InpatientPID, QueryPD1, MSA, HL7Message
+from gloss.translators.hl7.segments import MSH, InpatientPID, QueryPD1, MSA
+from gloss.translators.hl7.hl7_translator import HL7Translator
 from gloss.message_type import (
-    PatientMessage, construct_message_container
+    PatientMessage
 )
 
 try:
@@ -19,11 +20,11 @@ except:
     logger = logging
 
 
-class DemographicsQueryResponse(HL7Message):
+class DemographicsQueryResponse(HL7Translator):
     segments = (MSH, MSA, InpatientPID, QueryPD1,)
 
 
-class DemographicsErrorResponse(HL7Message):
+class DemographicsErrorResponse(HL7Translator):
     segments = (MSH, MSA,)
 
 

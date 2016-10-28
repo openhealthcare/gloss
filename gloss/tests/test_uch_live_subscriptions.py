@@ -4,10 +4,13 @@ End to end tests for production UCH subscriptions
 import json
 from datetime import datetime, date
 
-from mock import patch, MagicMock
-
-from gloss.import_message import MessageProcessor
+# from gloss.import_message import MessageProcessor
 from gloss.tests.core import GlossTestCase
+from mock import patch
+from gloss.gloss_service import GlossService
+from gloss.receivers.mllp_multi_service import MultiMLLPServer
+from gloss.importers.hl7_importer import HL7Importer
+from gloss.sites.uch.subscribe.production import NotifyOpalWhenSubscribed
 from gloss.tests.test_messages import (
     INPATIENT_ADMISSION, read_message, PATIENT_MERGE, COMPLEX_WINPATH_RESULT,
     RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE, INPATIENT_AMEND,
@@ -15,24 +18,44 @@ from gloss.tests.test_messages import (
     COMPLEX_WINPATH_RESULT, PATIENT_DEATH, PATIENT_UPDATE, MULTIPLE_ALLERGIES
 )
 from gloss.models import (
-    Merge, get_or_create_identifier, InpatientAdmission, get_gloss_reference,
-    InpatientLocation, subscribe, Allergy, Result, Patient, Subscription,
+    Merge, InpatientAdmission, get_gloss_reference,
+    InpatientLocation, Allergy, Result, Patient, Subscription,
     PatientIdentifier
 )
 from gloss.message_type import PatientMessage, MessageContainer
 from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
+from gloss.subscribers.send_all_messages import SendAllMessages
 
 
-class TestInpatientAdmissionFlow(GlossTestCase):
+class AbstractUCHFlowTestCase(GlossTestCase):
+    def setUp(self):
+        super(AbstractUCHFlowTestCase, self).setUp()
+        self.service = GlossService(
+            receiver=MultiMLLPServer(ports=[2574, 2575], host="localhost").make_service,
+            importer=HL7Importer().import_and_notify,
+            subscribers=[
+                NotifyOpalWhenSubscribed().notify,
+                SendAllMessages(end_point="http://some_end_point/").notify,
+            ],
+            issuing_source="uclh"
+        )
+
+    def import_message(self, message):
+        msg = read_message(message)
+        self.service.importer(msg, self.service)
+
+
+class TestInpatientAdmissionFlow(AbstractUCHFlowTestCase):
+    message_model = InpatientAdmission
+    raw_hl7 = INPATIENT_ADMISSION
+
     def test_flow(self):
-        subscribe('50099878', "http://some_end_point/", self.session, "uclh")
-        message_processor = MessageProcessor()
-        message_processor.process_message(read_message(INPATIENT_ADMISSION))
+        self.import_message(self.raw_hl7)
         gloss_reference = get_gloss_reference('50099878', self.session)
-        self.assertTrue(gloss_reference is not None)
-        admission = InpatientAdmission.get_from_gloss_reference(
+        admission = self.message_model.get_from_gloss_reference(
             gloss_reference, self.session
         )
+
         self.assertEqual(
             datetime(2015, 11, 18, 17, 56), admission.datetime_of_admission
         )
@@ -70,14 +93,10 @@ class TestInpatientAdmissionFlow(GlossTestCase):
         )
 
 
-class TestInpatientDischarge(GlossTestCase):
+class TestInpatientDischarge(AbstractUCHFlowTestCase):
     hospital_number = "50099886"
     external_identifier = "940347"
-
-    def setUp(self):
-        self.message = read_message(INPATIENT_DISCHARGE)
-        self.message_processor = MessageProcessor()
-        super(TestInpatientDischarge, self).setUp()
+    raw_hl7 = INPATIENT_DISCHARGE
 
     def test_with_existing_inpatient_admission(self):
         old_inpatient_admission = self.get_inpatient_admission(
@@ -94,7 +113,7 @@ class TestInpatientDischarge(GlossTestCase):
         )
         self.session.add(old_inpatient_admission)
         self.session.add(old_inpatient_location)
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
             inpatient_admission.datetime_of_discharge,
@@ -113,7 +132,7 @@ class TestInpatientDischarge(GlossTestCase):
         self.assertEqual(inpatient_location.bed_code, "F3SR-36")
 
     def test_without_existing_inpatient_admission(self):
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
             inpatient_admission.datetime_of_discharge,
@@ -132,14 +151,10 @@ class TestInpatientDischarge(GlossTestCase):
         self.assertEqual(inpatient_location.bed_code, "F3SR-36")
 
 
-class TestInpatientAmend(GlossTestCase):
+class TestInpatientAmend(AbstractUCHFlowTestCase):
     hospital_number = "50030204"
     external_identifier = "930882"
-
-    def setUp(self):
-        self.message = read_message(INPATIENT_AMEND)
-        self.message_processor = MessageProcessor()
-        super(TestInpatientAmend, self).setUp()
+    raw_hl7 = INPATIENT_AMEND
 
     def test_with_existing_inpatient_admission(self):
         existing_inpatient_admission = self.get_inpatient_admission(
@@ -160,7 +175,7 @@ class TestInpatientAmend(GlossTestCase):
         existing_inpatient_location.bed_code = "A03"
         self.session.add(existing_inpatient_admission)
         self.session.add(existing_inpatient_location)
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
             inpatient_admission.datetime_of_admission,
@@ -183,7 +198,7 @@ class TestInpatientAmend(GlossTestCase):
         self.assertEqual(inpatient_location.bed_code, "T03-14")
 
     def test_without_existing_inpatient_admission(self):
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
             inpatient_admission.datetime_of_admission,
@@ -202,14 +217,10 @@ class TestInpatientAmend(GlossTestCase):
         self.assertEqual(inpatient_location.bed_code, "T03-14")
 
 
-class TestInpatientCancelDischarge(GlossTestCase):
+class TestInpatientCancelDischarge(AbstractUCHFlowTestCase):
     hospital_number = "40716752"
     external_identifier = "4449234"
-
-    def setUp(self):
-        self.message = read_message(INPATIENT_CANCEL_DISCHARGE)
-        self.message_processor = MessageProcessor()
-        super(TestInpatientCancelDischarge, self).setUp()
+    raw_hl7 = INPATIENT_CANCEL_DISCHARGE
 
     def test_with_existing_inpatient_admission(self):
         self.inpatient_admission = self.get_inpatient_admission(
@@ -229,7 +240,7 @@ class TestInpatientCancelDischarge(GlossTestCase):
         self.inpatient_location.bed_code = "A03"
         self.session.add(self.inpatient_admission)
         self.session.add(self.inpatient_location)
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         inpatient_admission = self.session.query(InpatientAdmission).one()
         self.assertEqual(
             inpatient_admission.datetime_of_admission,
@@ -247,14 +258,10 @@ class TestInpatientCancelDischarge(GlossTestCase):
         self.assertEqual(inpatient_location.bed_code, "F3SR-36")
 
 
-class TestInpatientDeleteSpell(GlossTestCase):
+class TestInpatientDeleteSpell(AbstractUCHFlowTestCase):
     hospital_number = "40716752"
     external_identifier = "4449234"
-
-    def setUp(self):
-        self.message = read_message(INPATIENT_SPELL_DELETE)
-        self.message_processor = MessageProcessor()
-        super(TestInpatientDeleteSpell, self).setUp()
+    raw_hl7 = INPATIENT_SPELL_DELETE
 
     def test_without_existing_inpatient_admission(self):
         self.inpatient_admission = self.get_inpatient_admission(
@@ -275,28 +282,23 @@ class TestInpatientDeleteSpell(GlossTestCase):
         self.inpatient_location.bed_code = "A03"
         self.session.add(self.inpatient_admission)
         self.session.add(self.inpatient_location)
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         num_inpatients = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_inpatients, 0)
         num_locations = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_locations, 0)
 
     def test_with(self):
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         num_inpatients = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_inpatients, 0)
         num_locations = self.session.query(InpatientAdmission).count()
         self.assertEqual(num_locations, 0)
 
 
-class TestInpatientTransfer(GlossTestCase):
+class TestInpatientTransfer(AbstractUCHFlowTestCase):
     hospital_number = "50099878"
-
-    def setUp(self):
-        super(TestInpatientTransfer, self).setUp()
-
-        self.message = read_message(INPATIENT_TRANSFER)
-        self.message_processor = MessageProcessor()
+    raw_hl7 = INPATIENT_TRANSFER
 
     def test_flow_if_with_previous(self):
         transfer_time = datetime(2012, 12, 14, 11, 0)
@@ -313,7 +315,7 @@ class TestInpatientTransfer(GlossTestCase):
         self.session.add(self.inpatient_location)
         self.session.commit()
 
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
 
         # make sure we're not creating multiple admissions
         self.session.query(InpatientAdmission).one()
@@ -344,7 +346,7 @@ class TestInpatientTransfer(GlossTestCase):
         self.assertEqual("T06-04", new_location.bed_code)
 
     def test_flow_if_no_previous(self):
-        self.message_processor.process_message(self.message)
+        self.import_message(self.raw_hl7)
         self.session.query(InpatientAdmission).one()
         inpatient_location = self.session.query(InpatientLocation).one()
         self.assertIsNone(inpatient_location.datetime_of_transfer)
@@ -353,12 +355,13 @@ class TestInpatientTransfer(GlossTestCase):
         self.assertEqual("T06-04", inpatient_location.bed_code)
 
 
-class TestMergeFlow(GlossTestCase):
+class TestMergeFlow(AbstractUCHFlowTestCase):
+    raw_hl7 = PATIENT_MERGE
+
     def test_complete_flow(self):
         old_hospital_id = "50028000"
         new_hospital_id = "MV 19823"
-        message_processor = MessageProcessor()
-        message_processor.process_message(read_message(PATIENT_MERGE))
+        self.import_message(self.raw_hl7)
         old_gloss_reference = self.session.query(PatientIdentifier).filter(
             PatientIdentifier.identifier == old_hospital_id
         ).one().gloss_reference
@@ -367,7 +370,6 @@ class TestMergeFlow(GlossTestCase):
             PatientIdentifier.identifier == new_hospital_id
         ).one().gloss_reference
 
-
         exists = self.session.query(Merge).filter(
             Merge.gloss_reference == old_gloss_reference,
             Merge.new_reference == new_gloss_reference
@@ -375,16 +377,12 @@ class TestMergeFlow(GlossTestCase):
         self.assertEqual(exists, 1)
 
 
-class TestAllergyFlow(GlossTestCase):
-
-    def setUp(self):
-        super(TestAllergyFlow, self).setUp()
-        self.message_processor = MessageProcessor()
+class TestAllergyFlow(AbstractUCHFlowTestCase):
 
     def test_with_allergies(self):
         allergy = self.get_allergy("97995111", issuing_source="uclh")
         self.session.add(allergy)
-        self.message_processor.process_message(read_message(ALLERGY))
+        self.import_message(ALLERGY)
         found_allergy = self.session.query(Allergy).one()
         self.assertEqual('Product Allergy', found_allergy.allergy_type_description)
         self.assertEqual('CERT-1', found_allergy.certainty_id)
@@ -405,7 +403,7 @@ class TestAllergyFlow(GlossTestCase):
     def test_with_no_allergies(self):
         allergy = self.get_allergy("97995000", issuing_source="uclh")
         self.session.add(allergy)
-        self.message_processor.process_message(read_message(NO_ALLERGY))
+        self.import_message(NO_ALLERGY)
         found_allergy = self.session.query(Allergy).one()
         self.assertTrue(found_allergy.no_allergies)
         gloss_ref = get_gloss_reference(
@@ -414,7 +412,7 @@ class TestAllergyFlow(GlossTestCase):
         self.assertEqual(gloss_ref, found_allergy.gloss_reference)
 
     def test_with_multiple_allergies(self):
-        self.message_processor.process_message(read_message(MULTIPLE_ALLERGIES))
+        self.import_message(MULTIPLE_ALLERGIES)
         allergies = self.session.query(Allergy).all()
         self.assertTrue(len(allergies), 2)
         allergy = allergies[0]
@@ -452,17 +450,14 @@ class TestAllergyFlow(GlossTestCase):
         )
 
 
-class TestResultsFlow(GlossTestCase):
+class TestResultsFlow(AbstractUCHFlowTestCase):
     """
         currently a shell of a test that makes sure we get no errors
         from repeating fields
     """
 
-    @patch('gloss.subscribe.subscription.settings')
-    def test_message_with_notes(self, settings_mock):
-        settings_mock.SEND_ALL_MESSAGES = "http:not_real"
-        message_processor = MessageProcessor()
-        message_processor.process_message(read_message(RESULTS_MESSAGE))
+    def test_message_with_notes(self):
+        self.import_message(RESULTS_MESSAGE)
         result = self.session.query(Result).one()
         expected_comments = " ".join([
             "Units: mL/min/1.73sqm Multiply eGFR by 1.21 for people of",
@@ -553,8 +548,7 @@ class TestResultsFlow(GlossTestCase):
         self.assertEqual('FINAL', downstream["result_status"])
 
     def test_complex_message(self):
-        message_processor = MessageProcessor()
-        message_processor.process_message(read_message(COMPLEX_WINPATH_RESULT))
+        self.import_message(COMPLEX_WINPATH_RESULT)
         results = self.session.query(Result).all()
         self.assertEqual(2, len(results))
         result_1 = results[0]
@@ -748,15 +742,14 @@ class TestResultsFlow(GlossTestCase):
         self.assertEqual("DIFFERENTIAL", result_2.profile_description)
 
 
-class TestPatientUpdate(GlossTestCase):
+class TestPatientUpdate(AbstractUCHFlowTestCase):
     def setUp(self):
         super(TestPatientUpdate, self).setUp()
-        self.message_processor = MessageProcessor()
         self.patient = self.create_patient("50092915", "uclh")
         self.session.add(self.patient)
 
     def test_patient_update(self):
-        self.message_processor.process_message(read_message(PATIENT_UPDATE))
+        self.import_message(PATIENT_UPDATE)
         patient = self.session.query(Patient).one()
         self.assertEqual("TESTING MEDCHART", patient.surname)
         self.assertEqual("MEDHCART FIRSTNAME", patient.first_name)
@@ -768,7 +761,7 @@ class TestPatientUpdate(GlossTestCase):
         self.assertIsNone(patient.date_of_death)
 
     def test_patient_death(self):
-        self.message_processor.process_message(read_message(PATIENT_DEATH))
+        self.import_message(PATIENT_DEATH)
         patient = self.session.query(Patient).one()
         self.assertEqual("TESTING MEDCHART", patient.surname)
         self.assertEqual("MEDHCART FIRSTNAME", patient.first_name)
@@ -778,7 +771,7 @@ class TestPatientUpdate(GlossTestCase):
 
     def test_patient_only_update_known_patients(self):
         self.session.query(Subscription).delete()
-        self.message_processor.process_message(read_message(PATIENT_DEATH))
+        self.import_message(PATIENT_DEATH)
         patient = self.session.query(Patient).one()
         self.assertEqual("Smith", patient.surname)
         self.assertEqual("Jane", patient.first_name)
@@ -786,18 +779,20 @@ class TestPatientUpdate(GlossTestCase):
         self.assertEqual("Ms", patient.title)
         self.assertEqual(date(1983, 12, 12), patient.date_of_birth)
 
-
     def test_only_update_with_existent_fields(self):
         messages = [PatientMessage(
-            first_name="Mary"
+            hospital_number="50092915",
+            first_name="Mary",
+            surname="Smith",
+            date_of_birth=date(1983, 12, 12),
+            title="Ms"
         )]
         container = MessageContainer(
             messages=messages,
             hospital_number="50092915",
             issuing_source="uclh"
         )
-        subscription = UclhPatientUpdateSubscription()
-        subscription.notify(container)
+        NotifyOpalWhenSubscribed().notify(container, self.service)
         patient = self.session.query(Patient).one()
 
         # only update first name

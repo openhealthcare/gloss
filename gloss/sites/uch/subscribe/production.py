@@ -1,9 +1,16 @@
 """
 Subscriptions for production deployment
 """
+from gloss.models import (
+    atomic_method, get_or_create_identifier, get_subscription_endpoint
+)
+from gloss.serialisers.opal import send_to_opal
+from gloss import settings
+from twisted.logger import Logger
+from gloss.utils import AbstractClass
 import json
-from datetime import datetime
 from copy import copy
+from gloss.subscribers.base_subscriber import BaseSubscriber
 
 from gloss import settings
 from gloss.message_type import (
@@ -16,16 +23,47 @@ from gloss.models import (
     create_or_update_inpatient_admission, create_or_update_inpatient_location,
     get_or_create_admission, get_or_create_location, get_or_create_identifier
 )
-from gloss.subscribe.subscription import (
-    db_message_processor, NotifyOpalWhenSubscribed
-)
+from gloss.utils import itersubclasses
+
+
+def db_message_processor(some_fun):
+    def add_gloss_ref(self, message_container, service, session=None):
+        gloss_ref = get_or_create_identifier(
+            message_container.hospital_number,
+            session,
+            issuing_source=message_container.issuing_source
+        )
+        return some_fun(
+            self,
+            message_container,
+            service,
+            session=session,
+            gloss_ref=gloss_ref,
+        )
+    return atomic_method(add_gloss_ref)
+
+
+class NotifyOpalWhenSubscribed(BaseSubscriber):
+    """ checks whether we're subscribed, sends a message to an opal
+        application if so
+    """
+    def notify(self, message_container, gloss_service):
+        sub_classes = itersubclasses(self.__class__)
+        message_classes = set(i.__class__ for i in message_container.messages)
+
+        for sub_class in sub_classes:
+            cares_about = getattr(sub_class, "message_types", [])
+            relevent = message_classes.intersection(set(cares_about))
+            if relevent:
+                sc = sub_class()
+                sc.notify(message_container, gloss_service)
 
 
 class UclhAllergySubscription(NotifyOpalWhenSubscribed):
     message_types = [AllergyMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         messages = message_container.messages
         session.query(Allergy).filter(
             Allergy.gloss_reference == gloss_ref
@@ -33,7 +71,8 @@ class UclhAllergySubscription(NotifyOpalWhenSubscribed):
 
         if messages:
             for message in messages:
-                allergy = Allergy(**vars(message))
+                kwargs = vars(message)
+                allergy = Allergy(**kwargs)
                 allergy.gloss_reference = gloss_ref
                 session.add(allergy)
 
@@ -43,7 +82,7 @@ class UclhMergeSubscription(NotifyOpalWhenSubscribed):
     message_types = [PatientMergeMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         # we're storing all merges, in theory we shouldn't have to
         # if we don't know about the gloss reference already, why
         # record a merge?
@@ -69,7 +108,7 @@ class UclhInpatientAdmissionSubscription(NotifyOpalWhenSubscribed):
     message_types = [InpatientAdmissionMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
             inpatient_admission, created = get_or_create_admission(
@@ -100,7 +139,7 @@ class UclhInpatientAdmissionDeleteSubscription(NotifyOpalWhenSubscribed):
     message_types = [InpatientAdmissionDeleteMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
             session.query(InpatientAdmission).filter(
@@ -112,7 +151,7 @@ class UclhInpatientTransferSubscription(NotifyOpalWhenSubscribed):
     message_types = [InpatientAdmissionTransferMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
             inpatient_admission, created = get_or_create_admission(
@@ -144,7 +183,7 @@ class UclhWinPathResultSubscription(NotifyOpalWhenSubscribed):
     message_types = [ResultMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         messages = message_container.messages
         for message in messages:
             model_kwargs = copy(vars(message))
@@ -158,7 +197,7 @@ class UclhPatientUpdateSubscription(NotifyOpalWhenSubscribed):
     message_types = [PatientMessage]
 
     @db_message_processor
-    def notify(self, message_container, session=None, gloss_ref=None):
+    def notify(self, message_container, gloss_service, session=None, gloss_ref=None):
         # theoretically we don't have to query for known here, if we don't know
         # them, they won't be there so the update won't do anything
         # let's be explicit for now
@@ -170,9 +209,10 @@ class UclhPatientUpdateSubscription(NotifyOpalWhenSubscribed):
 
         if known:
             for message in message_container.messages:
+                kwargs = vars(message)
                 q = session.query(Patient).filter_by(
                     gloss_reference=gloss_ref
                 )
                 q.update(
-                    vars(message)
+                    kwargs
                 )

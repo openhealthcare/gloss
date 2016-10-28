@@ -28,9 +28,11 @@ class TestMockPatient(GlossTestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].__class__, PatientMessage)
         self.assertIsNone(result[0].date_of_death)
+        self.assertIsNone(result[0].death_indicator)
 
         for k, v in vars(result[0]).iteritems():
-            if not k == "date_of_death":
+            if not k == "date_of_death" and not k == "death_indicator":
+                print "k %s v %s" % (k, v)
                 self.assertIsNotNone(getattr(result[0], k))
 
         self.assertTrue(n.called)
