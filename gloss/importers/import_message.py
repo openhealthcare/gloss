@@ -1,7 +1,5 @@
-from twisted.logger import Logger
-from gloss.message_segments import *
-from gloss import notification
-from gloss.models import session_scope, Error
+from gloss.translaters import *
+from base_importers import SafelImporter
 from utils import itersubclasses
 from message_type import (
     InpatientAdmissionTransferMessage,
@@ -30,13 +28,21 @@ class MessageImporter(HL7Message):
         return message_container
 
     def process(self):
-        message_container = self.construct_container()
-        notification.notify(message_container)
+        return self.construct_container()
 
     def process_message(self, session=None):
         """
         We expect this to be overridden by subclasses
         """
+
+
+class HL7Translator(object):
+    @property
+    def gloss_message_type(self):
+        raise NotImplementedError("we need a gloss message type")
+
+    def translate_to_gloss(self):
+        pass
 
 
 class PatientMerge(MessageImporter):
@@ -55,7 +61,7 @@ class PatientMerge(MessageImporter):
         message_container = self.construct_container(
             hospital_number=self.mrg.duplicate_hospital_number
         )
-        notification.notify(message_container)
+        return message_container
 
     def process_message(self, session=None):
         return [self.gloss_message_type(
@@ -108,7 +114,6 @@ class PatientUpdate(MessageImporter):
 class InpatientAdmit(MessageImporter):
     message_type = u"ADT"
     trigger_event = u"A01"
-    segments = (EVN, InpatientPID, PV1, PV2,)
     gloss_message_type = InpatientAdmissionMessage
 
     def process_message(self):
@@ -256,8 +261,6 @@ class WinPathResults(MessageImporter):
                 comments=comments.get(obxs.obx.set_id, None)
             )
 
-
-
         def get_comments(ntes):
             set_id_to_comment = defaultdict(list)
             for nte_package in ntes:
@@ -290,9 +293,7 @@ class WinPathResults(MessageImporter):
         return messages
 
 
-class MessageProcessor(object):
-    log = Logger(namespace="processor")
-
+class HL7Importer(SafelImporter):
     def get_msh_for_message(self, msg):
         """
         We need this because we don't know the correct messageType subclass to
@@ -322,20 +323,4 @@ class MessageProcessor(object):
             )
             return
 
-        try:
-            message_type(msg).process()
-        except Exception as e:
-            self.log.error("failed to parse")
-            self.log.error(str(msg).replace("\r", "\n"))
-            self.log.error("with %s" % e)
-            try:
-                with session_scope() as session:
-                    err = Error(
-                        error=str(e),
-                        message=str(msg)
-                    )
-                    session.add(err)
-            except Exception as e:
-                self.log.error("failed to save error to database")
-                self.log.error("with %s" % e)
-            raise
+        return message_type(msg).process()

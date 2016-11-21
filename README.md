@@ -30,7 +30,10 @@ You will also need the python dependencies:
 
 To run the HL7 server:
 
-    twistd --nodaemon multiple_mllp --receiver gloss.ohc_receiver.OhcReceiver
+    twistd --nodaemon gloss --service [[ class string to the gloss service ]]
+
+alternatively you can set the default gloss settings class in gloss.settings.DEFAULT_GLOSS_SERVICE
+
 
 To run the OPAL/JSON/HTTP API:
 
@@ -38,58 +41,51 @@ To run the OPAL/JSON/HTTP API:
 
 ## How Does Gloss work?
 
-Data coming into Gloss is understood to be a `Message`. Gloss understands various
-message types commonly found in a healthcare environment.
+Gloss handles three types of upstream data sources. 
 
-Data coming into Gloss will go through the folliwing steps:
+  1. Query upstreams (e.g. an HL7 query or a database connection it can make queries via)
+  2. Polling upstreams (e.g. reading a file produced by a daily batch process, or polling a server for updates every n minutes)
+  3. Event upstreams (e.g. receiving a HL7 message every time a patient is admitted)
 
-    Translate ->
-    Identify ->
-    Notify (via Subscriptions ) ->
-    Archive ->
-    Broadcast ->
+Each of these upstream data sources will provide data to a Gloss `Importer` - which take raw data from an upstream source and translate that data into `GlossMessage`s.
 
-### Translate
+Gloss also defines `Subscribers` which perform actions whenever a new `GlossMessage` arrives, from any upstream source. The `Subscrier` is responsible for sending data on downstream, saving information locally, or any other processing that needs to be done.
 
-#### HL7 Integrations
 
-Gloss receives hl7 messages into the OhcReceiver
-these are translated into MessageTypes (as defined in gloss.message_types) by
-the MessageImporter classes in import_message.
+## Upstream Services 
 
-The MessageImporter returns a MessageContainer that has a MessageType class in
-a message_type field. These messages are then passed on to the Notify service.
+### Event Upstreams 
 
-### Identify
+In order to configure Gloss to handle data from an Event Upstream, we define a `Receiver`.
 
-### Notify
+A Receiver is a callable which returns a Twisted service. The Receiver function will be passed a `GlossService` as an argument.
+
+#### MLLP Receiver 
+
+Gloss ships with an MLLP server (commonly used with HL7 messages), you can configure this with the ports
+
+```python
+    GlossApi(
+      reciever=gloss.receivers.mullp_multi_servce(1190, 1999).make_service
+    )
+```
+
+### Importers
+
+Gloss has an imoprt stage that takes the output of a receiver (which should be for example an hl7 message or a files contents) and translates it to a subclass gloss.message_type.MessageType. For example an AllergyMessage.
+
+
+### Translators
+
+To help this translators should be used to to simplify for example the translation of hl7 to MessageType. Gloss comes with a tranlators to tranlate from hl7 in gloss.translators.hl7 nad to opal json (currently in serialisers, we'll probably change the name to serialisers so it will stay there)
+
 
 ### Subscriptions
 
-Subscriptions handle any db saving or downstream broadcast logic. Subscriptions may be
-for a complete feed from an upstream source, or granular per patient. Subscriptions are
-filtered by the message_type property. Their `notify()` method will be called with the
-`gloss.message_types.MessageContainer` for all incoming messages of the relevant type.
+A gloss service takes in one more subscriber methods, these take a message container (gloss.message_type.MessageContainer), which has an array of all messages that have just come in, and the gloss service itself.
 
-Subscriptions are implemented by subclassing `gloss.subscriptions.Subscription`. A simple
-subscription might be:
+Example subscribers are the database subscriber that will save all messages it receives to the database
 
-
-    class WinPathMessage(Subscription, OpalSerialiser):
-        message_type = ResultMessage
-
-        def notify(self, message_container):
-            self.send_to_opal(message_container)
-
-Gloss discovers subscriptions you have defined via the SUBSCRIPTIONS setting. This
-is a tuple of strings representing module paths. Gloss will import any modules
-you place here, and discover any subscriptions in them.
-
-#### Subscription API
-
-### Archive
-
-### Broadcast
 
 ## REST Query API
 
@@ -148,18 +144,6 @@ dates. Defaults to:
 ### DEBUG
 
 Turn on debugging. Defaults to False.
-
-### PORTS
-
-Gloss will listen one or more ports by default these are 2574 and 2575
-
-### SUBSCRIPTIONS
-
-Tuple of strings containing module paths containing your subscriptions.
-
-### SEND_ALL_MESSAGES (optional)
-
-String containing an OPAL API endopoint. If present, all incoming messages which have a message subscription that inherits from `NotifyOpalWhenSubscribed` will be sent to this endpoint.
 
 ## Load testing
 

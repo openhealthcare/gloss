@@ -4,10 +4,15 @@ from gloss.tests.test_messages import (
     FULL_BLOOD_COUNT, read_message, CYTOPATHOLOGY_RESULTS_MESSAGE,
     ALLERGY, PATIENT_QUERY_RESPONSE, PATIENT_NOT_FOUND
 )
-from gloss.message_segments import HL7Message
+from gloss.translators.hl7.hl7_translator import HL7Translator
+from gloss.translators.hl7.segments import (
+    MSH, ResultsPID, ResultsPV1, ORC, OBR, OBX, NTE, RepeatingField,
+    AllergiesPID, PV2, MSA
+)
+from gloss.exceptions import TranslatorError
 
 
-class WinPathResults(HL7Message):
+class WinPathResults(HL7Translator):
     message_type = u"ORU"
     trigger_event = u"R01"
 
@@ -30,16 +35,16 @@ class TestSegments(TestCase):
 
 class TestWithWrongMessage(TestCase):
     def test_with_wrong_message(self):
-        class SomeMsg(HL7Message):
+        class SomeMsg(HL7Translator):
             segments = (MSH, PV2,)
 
-        with self.assertRaises(KeyError):
+        with self.assertRaises(TranslatorError):
             SomeMsg(read_message(FULL_BLOOD_COUNT))
 
 
 class TestResultsPID(TestCase):
     def test_with_no_date_of_birth(self):
-        class SomeMsg(HL7Message):
+        class SomeMsg(HL7Translator):
             segments = (MSH, ResultsPID,)
 
         no_dob = CYTOPATHOLOGY_RESULTS_MESSAGE.replace("19881107", "")
@@ -49,7 +54,7 @@ class TestResultsPID(TestCase):
 
 class TestAllergiesPID(TestCase):
     def test_with_no_date_of_birth(self):
-        class SomeMsg(HL7Message):
+        class SomeMsg(HL7Translator):
             segments = (MSH, AllergiesPID,)
 
         no_dob = ALLERGY.replace("19720221", "")
@@ -59,7 +64,7 @@ class TestAllergiesPID(TestCase):
 
 class TestMSH(TestCase):
     def test_deduce_error_code(self):
-        class SomeMsg(HL7Message):
+        class SomeMsg(HL7Translator):
             segments = (MSH, MSA,)
 
         msg = SomeMsg(read_message(PATIENT_QUERY_RESPONSE))

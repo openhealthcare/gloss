@@ -335,9 +335,11 @@ def session_scope():
 
 def atomic_method(some_fun):
     def wrap_method(*args, **kwargs):
-        with session_scope() as session:
-            if "session" not in kwargs:
+        if "session" not in kwargs:
+            with session_scope() as session:
                 kwargs["session"] = session
+                result = some_fun(*args, **kwargs)
+        else:
             result = some_fun(*args, **kwargs)
         return result
 
