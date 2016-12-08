@@ -12,12 +12,13 @@ from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
 from gloss.settings import HOST, PORTS
 from hl7.client import MLLPClient
-from gloss.utils import import_function
+from gloss.utils import import_from_string
 
 
 sys.path.append('.')
 
 from gloss import exceptions, models, settings
+from gloss.information_source import get_information_source
 
 app = Flask('gloss.api')
 app.debug = settings.DEBUG
@@ -26,7 +27,7 @@ stream_handler.setLevel(logging.INFO)
 app.logger.addHandler(stream_handler)
 
 if getattr(settings, "MOCK_EXTERNAL_API", None):
-    post_message_for_identifier = import_function(settings.MOCK_EXTERNAL_API)
+    post_message_for_identifier = import_from_string(settings.MOCK_EXTERNAL_API)
 
 
 def json_api(route, **kwargs):
@@ -79,12 +80,7 @@ def get_demographics(session, issuing_source, identifier):
 
 @json_api('/api/patient/<identifier>')
 def patient_query(session, issuing_source, identifier):
-    get_demographics(session, issuing_source, identifier)
-
-    result = models.patient_to_message_container(
-        identifier, issuing_source, session
-    )
-
+    result = get_information_source().patient_information(identifier)
     return result.to_dict()
 
 

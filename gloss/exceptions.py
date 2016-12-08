@@ -2,7 +2,9 @@
 Errors and exceptions for Gloss
 """
 
+
 class Error(Exception): pass
+
 
 class APIError(Error):
 
@@ -10,5 +12,10 @@ class APIError(Error):
         self.msg = msg
         super(APIError, self).__init__(*a, **kw)
 
+
 class TranslatorError(Exception):
+    pass
+
+
+class PatientNotFound(Error):
     pass

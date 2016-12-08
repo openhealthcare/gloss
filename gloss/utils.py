@@ -29,7 +29,7 @@ def itersubclasses(cls, _seen=None):
                     yield sub
 
 
-def import_function(some_str):
+def import_from_string(some_str):
     module, func = some_str.rsplit(".", 1)
     imported_module = importlib.import_module(module)
     return getattr(imported_module, func)

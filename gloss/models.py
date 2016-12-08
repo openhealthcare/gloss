@@ -16,7 +16,7 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from gloss import settings, message_type
-from gloss.utils import itersubclasses, import_function
+from gloss.utils import itersubclasses, import_from_string
 engine = create_engine(settings.DATABASE_STRING)
 
 
@@ -81,7 +81,7 @@ class GlossSubrecord(object):
             return custom results for a specific class if requested
         """
         if getattr(settings, "MOCK_API", None):
-            some_func = import_function(settings.MOCK_API)
+            some_func = import_from_string(settings.MOCK_API)
             return some_func(cls, identifier, issuing_source, session)
         else:
             return cls._to_messages(identifier, issuing_source, session)

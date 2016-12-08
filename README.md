@@ -41,7 +41,7 @@ To run the OPAL/JSON/HTTP API:
 
 ## How Does Gloss work?
 
-Gloss handles three types of upstream data sources. 
+Gloss handles three types of upstream data sources.
 
   1. Query upstreams (e.g. an HL7 query or a database connection it can make queries via)
   2. Polling upstreams (e.g. reading a file produced by a daily batch process, or polling a server for updates every n minutes)
@@ -52,15 +52,15 @@ Each of these upstream data sources will provide data to a Gloss `Importer` - wh
 Gloss also defines `Subscribers` which perform actions whenever a new `GlossMessage` arrives, from any upstream source. The `Subscrier` is responsible for sending data on downstream, saving information locally, or any other processing that needs to be done.
 
 
-## Upstream Services 
+## Upstream Services
 
-### Event Upstreams 
+### Event Upstreams
 
 In order to configure Gloss to handle data from an Event Upstream, we define a `Receiver`.
 
 A Receiver is a callable which returns a Twisted service. The Receiver function will be passed a `GlossService` as an argument.
 
-#### MLLP Receiver 
+#### MLLP Receiver
 
 Gloss ships with an MLLP server (commonly used with HL7 messages), you can configure this with the ports
 
@@ -85,6 +85,15 @@ To help this translators should be used to to simplify for example the translati
 A gloss service takes in one more subscriber methods, these take a message container (gloss.message_type.MessageContainer), which has an array of all messages that have just come in, and the gloss service itself.
 
 Example subscribers are the database subscriber that will save all messages it receives to the database
+
+### InformationSource
+
+The Information source sits between the gloss api and the database layer for patient information. This allows different services to query external services if necessary for patient information.
+
+By default it will check the database and if it doesn't find it, post an hl7 message. This functionality will be changed in future to just look in the database.
+
+You can set your own by settings an INFORMATION_SOURCE path to a class in your settings. This class has a single method
+called patient_information which takes an identifier. The class takes an intialiser of the information source.
 
 
 ## REST Query API
