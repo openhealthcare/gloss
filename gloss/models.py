@@ -210,8 +210,6 @@ class PatientIdentifier(Base, GlossSubrecord):
 
 
 class Merge(Base, GlossSubrecord):
-    PART_OF_BULK_DOWNLOAD = False
-
     new_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
     new_reference = relationship(
         "GlossolaliaReference", foreign_keys=[new_reference_id]

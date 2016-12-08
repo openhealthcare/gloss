@@ -20,30 +20,23 @@ class PatientQueryTestCase(GlossTestCase):
         resp = api.patient_query('555-nope')
         self.assertEqual(msg, resp.data)
 
-    # def test_with_patient(self):
-    #     self.session.add(self.create_patient('555-yeppers', 'uclh'))
-    #     resp = api.patient_query('555-yeppers')
-    #     data = json.loads(resp.data)
-    #
-    #     demographics = [{
-    #         'first_name': 'Jane',
-    #         'surname': 'Smith',
-    #         'middle_name': None,
-    #         'title': 'Ms',
-    #         'gp_practice_code': None,
-    #         'post_code': None,
-    #         'ethnicity': None,
-    #         'sex': None,
-    #         'marital_status': None,
-    #         'religion': None,
-    #         'death_indicator': False,
-    #         'date_of_birth': '12/12/1983',
-    #         'date_of_death': None,
-    #     }]
-    #
-    #     self.assertEqual('success', data['status'])
-    #     self.assertEqual(len(data['messages']), 1)
-    #     self.assertEqual(demographics, data['messages']['demographics'])
+    def test_found_with_a_merge(self):
+        patient = self.create_patient('555-yeppers', 'uclh')
+        new_patient = self.create_patient('556-yeppers', 'uclh')
+        self.session.add(patient)
+        self.session.add(new_patient)
+        merge = self.create_subrecord_with_id(
+            models.Merge, '555-yeppers', 'uclh'
+        )
+        merge.new_reference = new_patient.gloss_reference
+        self.session.add(merge)
+        resp = api.patient_query('555-yeppers')
+        data = json.loads(resp.data)
+        expected = {
+            "new_id": '556-yeppers'
+        }
+        self.assertEqual(data["messages"]["duplicate_patient"], [expected])
+
 
     def test_with_allergies(self):
         self.session.add(self.create_patient('555-yeppers', 'uclh'))
@@ -89,117 +82,6 @@ class DemographicsCreateTestCase(GlossTestCase):
     def test_unimplemented(self):
         resp = api.demographics_create()
         self.assertEqual(NOPE, resp.data)
-
-
-class DemographicsQueryTestCase(GlossTestCase):
-    def test_not_found(self):
-        self.mock_mllp_send.return_value = test_messages.PATIENT_NOT_FOUND
-        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
-        resp = api.demographics_query('555-nope')
-        self.assertEqual(msg, resp.data)
-        self.assertEqual(self.session.query(models.Patient).count(), 0)
-
-    @patch("gloss.api.settings")
-    def test_dont_use_external_lookup(self, settings_mock):
-        settings_mock.USE_EXTERNAL_LOOKUP = False
-
-        response = api.demographics_query('50013000')
-        msg = '{"status": "error", "data": "We can\'t find any patients with that identifier 50013000"}'
-        self.assertFalse(self.mock_mllp_send.called)
-        self.assertEqual(msg, response.data)
-        self.assertEqual(self.session.query(models.Patient).count(), 0)
-
-    def test_found_on_api(self):
-        self.mock_mllp_send.return_value = test_messages.PATIENT_QUERY_RESPONSE
-        resp = json.loads(api.demographics_query('50013000').data)
-        self.assertEqual(self.session.query(models.Patient).count(), 1)
-
-        self.mock_mllp_client.assert_called_once_with(
-            settings.DEMOGRAPHICS_HOST,
-            settings.DEMOGRAPHICS_PORT
-        )
-
-        call_args = self.mock_mllp_send.call_args[0][0]
-        self.assertEqual(call_args[0][0][0], 'MSH')
-        self.assertEqual(call_args[0][3][0], 'elcid')
-        self.assertEqual(call_args[0][4][0], 'UCLH')
-        self.assertEqual(call_args[0][5][0], 'Unicare')
-        self.assertEqual(call_args[0][6][0], 'UCLH')
-        self.assertEqual(call_args[0][9][0], 'QRY^A19')
-        self.assertEqual(call_args[0][10][0], 'ELC00000000000000001')
-        self.assertEqual(call_args[0][12][0], '2.4')
-        self.assertEqual(call_args[1][0][0], 'QRD')
-        self.assertEqual(call_args[1][2][0], 'R')
-        self.assertEqual(call_args[1][3][0], 'I')
-        self.assertEqual(call_args[1][4][0], 'ELC00000000000000001')
-        self.assertEqual(call_args[1][7][0][0], '1^RD')
-        self.assertEqual(call_args[1][8][0][0], '50013000')
-        self.assertEqual(call_args[1][9][0], 'DEM')
-
-        expected = {
-            "first_name": "TESTFIRSTNAME",
-            "post_code": "EN7 6AR",
-            "surname": "TESTSURNAME",
-            "gp_practice_code": "F83043",
-            "title": "MR",
-            "marital_status": "Single",
-            "sex": "Male",
-            "date_of_birth": "15/02/1980",
-            "date_of_death": None,
-            "ethnicity": "Irish",
-            "death_indicator": False,
-            "middle_name": None,
-            "religion": None
-        }
-        patient = models.Patient.query_from_identifier(
-            '50013000', 'uclh', self.session
-        ).one()
-
-        expected["date_of_birth"] = datetime.date(1980, 2, 15)
-        for k, v in expected.iteritems():
-            self.assertEqual(getattr(patient, k), v)
-
-    def test_found_with_a_merge(self):
-        patient = self.create_patient('555-yeppers', 'uclh')
-        new_patient = self.create_patient('556-yeppers', 'uclh')
-        self.session.add(patient)
-        self.session.add(new_patient)
-        merge = self.create_subrecord_with_id(
-            models.Merge, '555-yeppers', 'uclh'
-        )
-        merge.new_reference = new_patient.gloss_reference
-        self.session.add(merge)
-        data = json.loads(api.demographics_query('555-yeppers').data)
-        expected = {
-            "new_id": '556-yeppers'
-        }
-        self.assertEqual(data["messages"]["duplicate_patient"], [expected])
-
-    def test_with_patient(self):
-        self.session.add(self.create_patient('555-yeppers', 'uclh'))
-
-        resp = api.demographics_query('555-yeppers')
-        data = json.loads(resp.data)
-
-        demographics = [{
-            'first_name': 'Jane',
-            'surname': 'Smith',
-            'middle_name': None,
-            'title': 'Ms',
-            'gp_practice_code': None,
-            'post_code': None,
-            'ethnicity': None,
-            'sex': None,
-            'religion': None,
-            'marital_status': None,
-            'death_indicator': False,
-            'date_of_birth': '12/12/1983',
-            'date_of_death': None,
-        }]
-
-        self.assertEqual('success', data['status'])
-        self.assertEqual(demographics, data['messages']['demographics'])
-        self.assertEqual(self.mock_mllp_send.call_count, 0)
 
 
 class SubscribeTestCase(GlossTestCase):

@@ -100,11 +100,6 @@ called patient_information which takes an identifier. The class takes an intiali
 
 Gloss also implements a REST Query API.
 
-### Demographics Query Service
-
-    /api/demographics/$IDENTIFIER
-    -> {'status': 'success': 'data': Demographics.to_dict()}
-    -> {'status': 'error': 'data': 'some error description to log'}
 
 ### Patient Query Service
 
@@ -115,9 +110,9 @@ Gloss also implements a REST Query API.
     #data:
     dict(
         identifier='UCH-555',
-            allergies=[
-                allergy_1
-            ],
+        allergies=[
+            allergy_1
+        ],
         results= [
             result_1, result_2
         ],

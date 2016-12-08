@@ -15,32 +15,34 @@ if getattr(settings, "MOCK_EXTERNAL_API", None):
 
 
 def get_information_source():
-    issuing_source = getattr(settings, "ISSUING_SOURCE", "uclh")
     if hasattr(settings, "INFORMATION_SOURCE"):
         info_cls = utils.import_from_string(settings.INFORMATION_SOURCE)
-        return info_cls(issuing_source)
+        return info_cls()
     else:
-        return InformationSource(issuing_source)
+        return InformationSource()
 
 
 class InformationSource(object):
-    def __init__(self, issuing_source):
-        self.issuing_source = issuing_source
+    def patient_exists(self, session, issuing_source, identifier):
+        patient_exists = models.Patient.query_from_identifier(
+            identifier, issuing_source, session
+        ).count()
 
-    def patient_information(self, identifier):
+
+    def patient_information(self, issuing_source, identifier):
         with models.session_scope() as session:
             patient_exists = models.Patient.query_from_identifier(
-                identifier, self.issuing_source, session
+                identifier, issuing_source, session
             ).count()
 
             if patient_exists:
                 return models.patient_to_message_container(
-                    identifier, self.issuing_source, session
+                    identifier, issuing_source, session
                 )
             if not patient_exists and settings.USE_EXTERNAL_LOOKUP:
                 post_message_for_identifier(identifier)
                 return models.patient_to_message_container(
-                    identifier, self.issuing_source, session
+                    identifier, issuing_source, session
                 )
             else:
                 raise exceptions.PatientNotFound(
@@ -48,3 +50,15 @@ class InformationSource(object):
                         identifier
                     )
                 )
+
+    def demographics_query(self, issuing_source, identifier):
+        get_demographics(session, issuing_source, identifier)
+
+        try:
+            messages = Merge.to_messages(
+                identifier, issuing_source, session
+            )
+        except Exception as e:
+            raise exceptions.APIError(e)
+
+        messages.extend(Patient.to_messages(identifier, issuing_source, session))

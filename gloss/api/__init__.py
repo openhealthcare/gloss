@@ -8,7 +8,6 @@ import logging
 from flask import Flask, Response, request, render_template
 from gloss.message_type import construct_message_container
 from gloss.models import Patient, Merge
-from gloss.external_api import post_message_for_identifier
 from gloss.serialisers.opal import OpalJSONSerialiser
 from gloss.settings import HOST, PORTS
 from hl7.client import MLLPClient
@@ -26,22 +25,23 @@ stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.INFO)
 app.logger.addHandler(stream_handler)
 
-if getattr(settings, "MOCK_EXTERNAL_API", None):
-    post_message_for_identifier = import_from_string(settings.MOCK_EXTERNAL_API)
 
-
-def json_api(route, **kwargs):
+def json_api(route, with_session=True, **kwargs):
     def wrapper(fn):
         @functools.wraps(fn)
         def as_json(*args, **kwargs):
+            issuing_source = getattr(settings, "ISSUING_SOURCE", "uclh")
             try:
-                with models.session_scope() as session:
-                    # TODO this should not be hardcoded
-                    issuing_source = "uclh"
-                    data = fn(session, issuing_source, *args, **kwargs)
-                    data["status"] = "success"
-                    app.logger.critical(data)
-                    return Response(json.dumps(data, cls=OpalJSONSerialiser))
+                if with_session:
+                    with models.session_scope() as session:
+                        # TODO this should not be hardcoded
+                        data = fn(session, issuing_source, *args, **kwargs)
+                else:
+                    data = fn(issuing_source, *args, **kwargs)
+
+                data["status"] = "success"
+                app.logger.critical(data)
+                return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
             except exceptions.APIError as err:
                 data = {'status': 'error', 'data': err.msg}
@@ -57,57 +57,17 @@ def json_api(route, **kwargs):
     return wrapper
 
 
-def get_demographics(session, issuing_source, identifier):
-    """ a utility that fetches demographics data remotely if its not
-        present locally
-    """
-    patient_exists = models.Patient.query_from_identifier(
-        identifier, issuing_source, session
-    ).count()
-
-    if patient_exists:
-        return
-
-    if not patient_exists and settings.USE_EXTERNAL_LOOKUP:
-        post_message_for_identifier(identifier)
-    else:
-        raise exceptions.APIError(
-            "We can't find any patients with that identifier {}".format(
-                identifier
-            )
-        )
-
-
-@json_api('/api/patient/<identifier>')
-def patient_query(session, issuing_source, identifier):
-    result = get_information_source().patient_information(identifier)
+@json_api('/api/patient/<identifier>', with_session=False)
+def patient_query(issuing_source, identifier):
+    result = get_information_source().patient_information(
+        issuing_source, identifier
+    )
     return result.to_dict()
 
 
 @json_api('/api/demographics/', methods=['POST'])
 def demographics_create(session, issuing_source):
     raise exceptions.APIError("We've not implemented this yet - sorry")
-
-
-@json_api('/api/demographics/<identifier>')
-def demographics_query(session, issuing_source, identifier):
-    get_demographics(session, issuing_source, identifier)
-
-    try:
-        messages = Merge.to_messages(
-            identifier, issuing_source, session
-        )
-    except Exception as e:
-        raise exceptions.APIError(e)
-
-    messages.extend(Patient.to_messages(identifier, issuing_source, session))
-
-    container = construct_message_container(
-        messages, identifier
-    )
-
-    return container.to_dict()
-
 
 @json_api('/api/subscribe/<identifier>')
 def subscribe(session, issuing_source, identifier):
