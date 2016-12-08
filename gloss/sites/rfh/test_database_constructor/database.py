@@ -18,9 +18,14 @@ def create_database():
     with get_connection("postgres") as conn:
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cur = conn.cursor()
-        cur.execute("CREATE DATABASE {}".format(DATABASE_NAME))
-        cur.execute(
-            "GRANT ALL PRIVILEGES ON DATABASE {0} TO {1}".format(
-                DATABASE_NAME, DATABASE_USER
+        cur.execute("SELECT 1 FROM pg_database WHERE datname = '{}'".format(
+            DATABASE_NAME
+        ))
+        exists = cur.fetchone()
+        if not exists:
+            cur.execute("CREATE DATABASE {}".format(DATABASE_NAME))
+            cur.execute(
+                "GRANT ALL PRIVILEGES ON DATABASE {0} TO {1}".format(
+                    DATABASE_NAME, DATABASE_USER
+                )
             )
-        )

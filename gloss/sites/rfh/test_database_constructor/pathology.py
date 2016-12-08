@@ -1,5 +1,5 @@
-from mllp.gloss.sites.rfh.test_data_base_constructor.database import get_connection
-from mllp.gloss.sites.rfh.test_data_base_constructor.pathology_data import PATHOLOGY_DATA
+from gloss.sites.rfh.test_database_constructor.database import get_connection, create_database
+from gloss.sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
 import datetime
 
 TABLE_NAME = 'tQuest_Pathology_Result_View'
@@ -109,6 +109,10 @@ def insert_data():
             insert_statement = "INSERT INTO {0} ({1}) VALUES ({2})".format(
                 TABLE_NAME, sql_column_names, value_strings
             )
-            import ipdb; ipdb.set_trace()
-            print insert_statement
             cur.execute(insert_statement)
+
+def setup():
+    create_database()
+    drop_table()
+    create_table()
+    insert_data()
