@@ -34,7 +34,6 @@ def json_api(route, with_session=True, **kwargs):
             try:
                 if with_session:
                     with models.session_scope() as session:
-                        # TODO this should not be hardcoded
                         data = fn(session, issuing_source, *args, **kwargs)
                 else:
                     data = fn(issuing_source, *args, **kwargs)

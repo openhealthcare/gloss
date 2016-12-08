@@ -20,10 +20,6 @@ from gloss.utils import itersubclasses, import_from_string
 engine = create_engine(settings.DATABASE_STRING)
 
 
-def get_plural_name(cls):
-    return "{}s".format(cls.__tablename__)
-
-
 @as_declarative()
 class Base(object):
     @declared_attr
@@ -58,10 +54,6 @@ class GlossSubrecord(object):
     @classmethod
     def get_from_gloss_reference(cls, gloss_reference, session):
         return cls.query_by_gloss_id(gloss_reference, session).one_or_none()
-
-    @classmethod
-    def list_from_gloss_reference(cls, gloss_reference, session):
-        return cls.query_by_gloss_id(gloss_reference, session).all()
 
     @classmethod
     def query_from_identifier(cls, identifier, issuing_source, session):
@@ -365,16 +357,6 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
         hospital_number, issuing_source, session
     )
     return subscription.filter(Subscription.active == True).count()
-
-
-def get_subscription_endpoint(hospital_number, session=None, issuing_source="uclh"):
-    subscription = Subscription.query_from_identifier(
-        hospital_number, issuing_source, session
-    )
-    subscription = subscription.filter(Subscription.active == True)
-
-    if subscription.count():
-        return subscription.first().end_point
 
 
 def is_known(hospital_number, session=None, issuing_source="uclh"):
