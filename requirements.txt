@@ -37,3 +37,4 @@ alembic==0.8.5
 Fabric==1.10.2
 gunicorn==19.4.5
 numpy==1.11.0
+python-tds==1.8.2

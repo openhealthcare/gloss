@@ -2,4 +2,5 @@
 omit =
      gloss/tests/*
      gloss/settings.py
+     gloss/sites/rfh/test_database_constructor/*
      *__main__.py*
