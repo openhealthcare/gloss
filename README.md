@@ -88,9 +88,7 @@ Example subscribers are the database subscriber that will save all messages it r
 
 ### InformationSource
 
-The Information source sits between the gloss api and the database layer for patient information. This allows different services to query external services if necessary for patient information.
-
-By default it will check the database and if it doesn't find it, post an hl7 message. This functionality will be changed in future to just look in the database.
+When the query api requests information it hits this. This checks the database and returns everything about the patient. This should be overridden to make external calls.
 
 You can set your own by settings an INFORMATION_SOURCE path to a class in your settings. This class has a single method
 called patient_information which takes an identifier. The class takes an intialiser of the information source.
