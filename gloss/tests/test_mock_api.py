@@ -1,4 +1,5 @@
 from mock import patch, MagicMock
+import datetime
 from gloss.sites.uch import mock_api
 from gloss.tests.core import GlossTestCase
 from gloss.models import Patient, Allergy, Merge
@@ -74,6 +75,30 @@ class TestMockPatient(GlossTestCase):
         c = self.session.query(Patient)
 
         self.assertEqual(c.count(), 0)
+
+    @patch('gloss.sites.uch.mock_api.date_generator')
+    @patch('gloss.sites.uch.mock_api.random')
+    def test_datetime_generator(self, random, date_generator):
+        date_generator.return_value = datetime.date(2000, 1, 2)
+        random.randint.return_value = 3
+        expected = mock_api.date_time_generator()
+        self.assertEqual(
+            expected, datetime.datetime(2000, 1, 2, 3, 3)
+        )
+
+    def test_date_generator(self):
+        """
+            if given the choice of yesterday or today it should return
+            one of those
+        """
+        expected = mock_api.date_generator(
+            start_date=datetime.date.today() - datetime.timedelta(1),
+            end_date=datetime.date.today()
+        )
+
+        result = expected == datetime.date.today() - datetime.timedelta(1)
+        result = result or expected == datetime.date.today()
+        self.assertTrue(result)
 
     def test_create_merge_with_mmm(self):
         mock_api.save_mock_patients("mmm1000000")
