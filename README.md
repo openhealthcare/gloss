@@ -41,7 +41,7 @@ To run the OPAL/JSON/HTTP API:
 
 ## How Does Gloss work?
 
-Gloss handles three types of upstream data sources. 
+Gloss handles three types of upstream data sources.
 
   1. Query upstreams (e.g. an HL7 query or a database connection it can make queries via)
   2. Polling upstreams (e.g. reading a file produced by a daily batch process, or polling a server for updates every n minutes)
@@ -52,15 +52,15 @@ Each of these upstream data sources will provide data to a Gloss `Importer` - wh
 Gloss also defines `Subscribers` which perform actions whenever a new `GlossMessage` arrives, from any upstream source. The `Subscrier` is responsible for sending data on downstream, saving information locally, or any other processing that needs to be done.
 
 
-## Upstream Services 
+## Upstream Services
 
-### Event Upstreams 
+### Event Upstreams
 
 In order to configure Gloss to handle data from an Event Upstream, we define a `Receiver`.
 
 A Receiver is a callable which returns a Twisted service. The Receiver function will be passed a `GlossService` as an argument.
 
-#### MLLP Receiver 
+#### MLLP Receiver
 
 Gloss ships with an MLLP server (commonly used with HL7 messages), you can configure this with the ports
 
@@ -86,16 +86,18 @@ A gloss service takes in one more subscriber methods, these take a message conta
 
 Example subscribers are the database subscriber that will save all messages it receives to the database
 
+### InformationSource
+
+When the query api requests information it hits this. This checks the database and returns everything about the patient. This should be overridden to make external calls.
+
+You can set your own by settings an INFORMATION_SOURCE path to a class in your settings. This class has a single method
+called patient_information which takes an identifier. The class takes an intialiser of the information source.
+
 
 ## REST Query API
 
 Gloss also implements a REST Query API.
 
-### Demographics Query Service
-
-    /api/demographics/$IDENTIFIER
-    -> {'status': 'success': 'data': Demographics.to_dict()}
-    -> {'status': 'error': 'data': 'some error description to log'}
 
 ### Patient Query Service
 
@@ -106,9 +108,9 @@ Gloss also implements a REST Query API.
     #data:
     dict(
         identifier='UCH-555',
-            allergies=[
-                allergy_1
-            ],
+        allergies=[
+            allergy_1
+        ],
         results= [
             result_1, result_2
         ],

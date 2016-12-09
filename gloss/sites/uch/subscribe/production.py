@@ -2,7 +2,7 @@
 Subscriptions for production deployment
 """
 from gloss.models import (
-    atomic_method, get_or_create_identifier, get_subscription_endpoint
+    atomic_method, get_or_create_identifier
 )
 from gloss.serialisers.opal import send_to_opal
 from gloss import settings

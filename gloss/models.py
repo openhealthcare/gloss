@@ -16,12 +16,8 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from gloss import settings, message_type
-from gloss.utils import itersubclasses, import_function
+from gloss.utils import itersubclasses, import_from_string
 engine = create_engine(settings.DATABASE_STRING)
-
-
-def get_plural_name(cls):
-    return "{}s".format(cls.__tablename__)
 
 
 @as_declarative()
@@ -60,10 +56,6 @@ class GlossSubrecord(object):
         return cls.query_by_gloss_id(gloss_reference, session).one_or_none()
 
     @classmethod
-    def list_from_gloss_reference(cls, gloss_reference, session):
-        return cls.query_by_gloss_id(gloss_reference, session).all()
-
-    @classmethod
     def query_from_identifier(cls, identifier, issuing_source, session):
         return session.query(cls).\
         filter(cls.gloss_reference_id == GlossolaliaReference.id).\
@@ -81,7 +73,7 @@ class GlossSubrecord(object):
             return custom results for a specific class if requested
         """
         if getattr(settings, "MOCK_API", None):
-            some_func = import_function(settings.MOCK_API)
+            some_func = import_from_string(settings.MOCK_API)
             return some_func(cls, identifier, issuing_source, session)
         else:
             return cls._to_messages(identifier, issuing_source, session)
@@ -210,8 +202,6 @@ class PatientIdentifier(Base, GlossSubrecord):
 
 
 class Merge(Base, GlossSubrecord):
-    PART_OF_BULK_DOWNLOAD = False
-
     new_reference_id = Column(Integer, ForeignKey('glossolaliareference.id'))
     new_reference = relationship(
         "GlossolaliaReference", foreign_keys=[new_reference_id]
@@ -367,16 +357,6 @@ def is_subscribed(hospital_number, session=None, issuing_source="uclh"):
         hospital_number, issuing_source, session
     )
     return subscription.filter(Subscription.active == True).count()
-
-
-def get_subscription_endpoint(hospital_number, session=None, issuing_source="uclh"):
-    subscription = Subscription.query_from_identifier(
-        hospital_number, issuing_source, session
-    )
-    subscription = subscription.filter(Subscription.active == True)
-
-    if subscription.count():
-        return subscription.first().end_point
 
 
 def is_known(hospital_number, session=None, issuing_source="uclh"):

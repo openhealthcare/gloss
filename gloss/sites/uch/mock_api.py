@@ -37,14 +37,15 @@ def date_generator(*args, **kwargs):
         end_date = date.today()
     if not start_date:
         today = date.today()
-        back = 90
-        # Very occassionally we run code on Leap Day.
-        if today.month == 2 and today.day == 29:
-            back = 88
+        # multiple of 4 in case we're in a leap year
+        back = 92
         start_date = date(today.year - back, today.month, today.day)
 
     year_diff = end_date.year - start_date.year
-    year = end_date.year - random.randint(1, year_diff)
+    if year_diff == 0:
+        year = end_date.year
+    else:
+        year = end_date.year - random.randint(1, year_diff)
 
     if year == start_date.year:
         first_month = start_date.month
@@ -55,6 +56,7 @@ def date_generator(*args, **kwargs):
         last_month = end_date.month
     else:
         last_month = 12
+
     month = random.randint(first_month, last_month)
 
     if month == end_date.month and year == end_date.year:
