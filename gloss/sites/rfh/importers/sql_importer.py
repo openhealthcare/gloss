@@ -109,13 +109,12 @@ def get_rows(hospital_number):
     server = settings.server
     database = settings.database
     query = """
-    select * from tQuest_Pathology_Result_View where Patient_Number={}
-    ORDER BY Event_Date
+    select * from tQuest_Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
     """.format(hospital_number)
 
     with pytds.connect(server, database, username, password) as conn:
         with conn.cursor() as cur:
-            cur.execute(query)
+            cur.execute(query.strip())
             result = cur.fetch_many()
 
     return result

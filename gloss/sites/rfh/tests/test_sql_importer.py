@@ -6,6 +6,31 @@ from gloss.sites.rfh.importers import sql_importer
 from gloss import message_type
 
 
+class SQLReadRowTestCase(GlossTestCase):
+    @patch('gloss.sites.rfh.importers.sql_importer.settings')
+    @patch('gloss.sites.rfh.importers.sql_importer.pytds')
+    def test_read_row(self, pytds, settings):
+        settings.db_username = "username"
+        settings.db_password = "password"
+        settings.server = "server"
+        settings.database = "database"
+
+        cur = MagicMock(name="cur")
+        cur.fetch_many.return_value = "some results"
+        conn = MagicMock(name="conn")
+        conn.cursor().__enter__ = MagicMock(return_value=cur)
+        pytds.connect().__enter__ = MagicMock(return_value=conn)
+        assert(sql_importer.get_rows("some identifier") == "some results")
+        assert(pytds.connect.call_args[0] == (
+            'server', 'database', 'username', 'password'
+        ))
+        found_query = cur.execute.call_args[0][0]
+        expected_query = """
+            select * from tQuest_Pathology_Result_View where Patient_Number='some identifier' ORDER BY Event_Date
+        """.strip()
+        assert(found_query == expected_query)
+
+
 @patch("gloss.sites.rfh.importers.sql_importer.get_rows")
 class SQLImporterTestCase(GlossTestCase):
     def test_cast_to_message_container(self, get_rows):
