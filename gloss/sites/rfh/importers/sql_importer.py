@@ -36,13 +36,14 @@ def cast_row_to_observation(row):
         status = "Final"
     else:
         status = "Interim"
-    return dict(
+    return message_type.ObservationMessage(
         test_code=row.get("OBX_exam_code_ID"),
         test_name=row.get("OBX_exam_code_Text"),
         observation_value=row.get("Result_Value"),
         units=row.get("Result_Units"),
         result_status=status,
         reference_range=row.get("Result_Range"),
+        external_identifier=str(row.get("OBX_id")),
     )
 
 
@@ -59,8 +60,6 @@ def cast_rows_to_result_message(grouped_rows):
         status = "Interim"
 
     return message_type.ResultMessage(
-        hospital_number=last_row.get("Patient_Number"),
-        issuing_source="rfh",
         lab_number=get_unique_result_identifier(last_row),
         profile_code=last_row.get("OBR_exam_code_ID"),
         profile_description=last_row.get("OBR_exam_code_Text"),

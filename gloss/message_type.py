@@ -157,6 +157,19 @@ class AllergyMessage(MessageType):
             self.allergy_start_datetime = kwargs.pop("allergy_start_datetime")
 
 
+class ObservationMessage(MessageType):
+    message_name = "observation"
+    value_type = Field()
+    test_code = Field()
+    test_name = Field()
+    observation_value = Field()
+    units = Field()
+    reference_range = Field()
+    result_status = Field()
+    comments = Field()
+    external_identifier = Field(required=True)
+
+
 class ResultMessage(MessageType):
     message_name = "result"
 
@@ -167,7 +180,7 @@ class ResultMessage(MessageType):
     observation_datetime = Field()
     last_edited = Field()
     result_status = Field()
-    observations = Field()
+    observations = Field(required=True)
 
     def to_dict(self):
         as_dict = super(ResultMessage, self).to_dict()

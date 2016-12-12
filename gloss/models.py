@@ -89,6 +89,14 @@ class GlossSubrecord(object):
             messages.append(subrecord.to_message(session))
         return messages
 
+    @classmethod
+    def from_messages(cls, message_container, session):
+        messages = (
+            i for i in message_container.messages if i.__class__ == self.message_type
+        )
+        self.message
+
+
 
 class Error(Base):
     error = Column(Text)
@@ -258,7 +266,6 @@ class Subscription(Base, GlossSubrecord):
     system = Column(String(250))
     active = Column(Boolean, default=True)
     end_point = Column(String(250))
-
 
 
 class Allergy(Base, GlossSubrecord):
