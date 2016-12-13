@@ -6,31 +6,29 @@ import json
 import sys
 import logging
 from flask import Flask, Response, request, render_template
-from gloss.message_type import construct_message_container
-from gloss.models import Patient, Merge
-from gloss.serialisers.opal import OpalJSONSerialiser
-from gloss.settings import HOST, PORTS
 from hl7.client import MLLPClient
-from gloss.utils import import_from_string
-
-
+from gloss.serialisers.opal import OpalJSONSerialiser
+from gloss.core.settings_utils import set_settings_env
 sys.path.append('.')
 
-from gloss import exceptions, models, settings
+#TODO change this to use parser
+set_settings_env(sys.argv[-1])
+from gloss.conf import settings
+from gloss import exceptions, models
 from gloss.information_source import get_information_source
 
 app = Flask('gloss.api')
-app.debug = settings.DEBUG
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.INFO)
 app.logger.addHandler(stream_handler)
+app.debug = settings.DEBUG
 
 
 def json_api(route, with_session=True, **kwargs):
     def wrapper(fn):
         @functools.wraps(fn)
         def as_json(*args, **kwargs):
-            issuing_source = getattr(settings, "ISSUING_SOURCE", "uclh")
+            issuing_source = settings.ISSUING_SOURCE
             try:
                 if with_session:
                     with models.session_scope() as session:
@@ -68,6 +66,7 @@ def patient_query(issuing_source, identifier):
 def demographics_create(session, issuing_source):
     raise exceptions.APIError("We've not implemented this yet - sorry")
 
+
 @json_api('/api/subscribe/<identifier>')
 def subscribe(session, issuing_source, identifier):
     end_point = request.form["end_point"]
@@ -79,7 +78,6 @@ def subscribe(session, issuing_source, identifier):
 def unsubscribe(session, issuing_source, identifier):
     models.unsubscribe(identifier, session, issuing_source)
     return {}
-
 
 if settings.SEND_MESSAGES_CONSOLE:
     @app.route("/hl7pretendomatic")
@@ -103,10 +101,10 @@ if settings.SEND_MESSAGES_CONSOLE:
 
     @json_api('/api/mllp_send/data')
     def send_mllp_to_self(session, issuing_source):
-        port = PORTS[0]
+        port = settings.PORTS[0]
         message = request.form["message"]
         messages = message.split("|", 2)
         message = "\rMSH|^~\\&|{}\r".format(messages[-1]).replace("\n", "\r")
-        with MLLPClient(HOST, port) as client:
+        with MLLPClient(settings.HOST, port) as client:
             client.send_message(message)
         return {}

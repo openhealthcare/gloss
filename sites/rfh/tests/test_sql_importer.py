@@ -1,14 +1,14 @@
 from datetime import datetime
 from mock import patch, MagicMock
 from gloss.tests.core import GlossTestCase
-from gloss.sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
-from gloss.sites.rfh.importers import sql_importer
+from sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
+from sites.rfh.importers import sql_importer
 from gloss import message_type
 
 
 class SQLReadRowTestCase(GlossTestCase):
-    @patch('gloss.sites.rfh.importers.sql_importer.settings')
-    @patch('gloss.sites.rfh.importers.sql_importer.pytds')
+    @patch('sites.rfh.importers.sql_importer.settings')
+    @patch('sites.rfh.importers.sql_importer.pytds')
     def test_read_row(self, pytds, settings):
         settings.db_username = "username"
         settings.db_password = "password"
@@ -31,7 +31,7 @@ class SQLReadRowTestCase(GlossTestCase):
         assert(found_query == expected_query)
 
 
-@patch("gloss.sites.rfh.importers.sql_importer.get_rows")
+@patch("sites.rfh.importers.sql_importer.get_rows")
 class SQLImporterTestCase(GlossTestCase):
     def test_cast_to_message_container(self, get_rows):
         get_rows.side_effect = lambda x: [y for y in PATHOLOGY_DATA if y["Patient_Number"] == x]

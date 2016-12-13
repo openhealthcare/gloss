@@ -15,7 +15,7 @@ from hl7.client import MLLPClient
 sys.path.append(".")
 
 from gloss.tests import test_messages
-from gloss import settings
+from gloss.conf import settings
 
 MESSAGE_NAMES =[ 'PATIENT_UPDATE', 'PATIENT_DEATH', 'PATIENT_MERGE',
                  'INPATIENT_ADMISSION', 'INPATIENT_DISCHARGE',

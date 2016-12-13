@@ -1,4 +1,5 @@
-from gloss import settings, models, exceptions, utils
+from gloss import models, exceptions, utils
+from gloss.conf import settings
 from gloss.external_api import post_message_for_identifier
 
 """

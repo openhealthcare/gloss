@@ -21,11 +21,9 @@ class JsonSerialiserTestCase(TestCase):
         self.assertEqual(expected_dict, json.loads(input_json))
 
 
-@patch('gloss.serialisers.opal.settings')
 @patch("requests.post")
 class SendDownstreamTestCase(GlossTestCase):
-    def test_send_down_stream(self, post_mock, settings_mock):
-        settings_mock.PASSTHROUGH_SUBSCRIPTIONS = {'foo': 'http://fee.com/'}
+    def test_send_down_stream(self, post_mock):
         message_container = MagicMock()
         message_container.issuing_source = "foo"
         message_container.to_dict = MagicMock(return_value={"fee": "fo"})

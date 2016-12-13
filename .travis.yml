@@ -5,8 +5,10 @@ install:
   - pip install -r requirements.txt
   - pip install coveralls
 script:
+  - py.test --app rfh --cov=gloss --cov-report=rfh
+  - py.test --app uch --cov=gloss --cov-report=uch
   - py.test --cov=gloss --cov-report=html
-after_success: coveralls
+after_success: coveralls --merge
 notifications:
   slack: ohcuk:6spaME3CB7f2PGrMAcklYWqp
 sudo: false

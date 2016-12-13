@@ -2,7 +2,7 @@ from zope.interface import implements
 from twisted.plugin import IPlugin
 from twisted.python import usage, reflect
 from twisted.application.service import IServiceMaker
-from gloss import settings
+from gloss.conf import settings
 
 class Options(usage.Options):
     """Define the options accepted by the ``twistd multiple_mllp`` plugin"""

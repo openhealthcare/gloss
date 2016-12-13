@@ -1,7 +1,7 @@
 import json
 import datetime
 import requests
-from gloss import settings
+from gloss.conf import settings
 from twisted.logger import Logger
 
 
