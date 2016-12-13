@@ -72,3 +72,4 @@ target/
 # twisted
 twistd.pid
 .DS_Store
+/sites/**/local_settings.py

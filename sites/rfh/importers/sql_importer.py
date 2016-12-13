@@ -103,26 +103,26 @@ def get_results_and_observations(rows):
     return messages
 
 
-# def get_rows(hospital_number):
-#     username = settings.db_username
-#     password = settings.db_password
-#     server = settings.server
-#     database = settings.database
-#     query = """
-#     select * from tQuest_Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
-#     """.format(hospital_number)
-#
-#     with pytds.connect(server, database, username, password) as conn:
-#         with conn.cursor() as cur:
-#             cur.execute(query.strip())
-#             result = cur.fetch_many()
-#
-#     return result
-
 def get_rows(hospital_number):
-    # temporary cover so you don't need to set up a database
-    from sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
-    return [y for y in PATHOLOGY_DATA if y["Patient_Number"] == hospital_number]
+    username = settings.db_username
+    password = settings.db_password
+    server = settings.server
+    database = settings.database
+    query = """
+    select * from tQuest_Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
+    """.format(hospital_number)
+
+    with pytds.connect(server, database, username, password) as conn:
+        with conn.cursor() as cur:
+            cur.execute(query.strip())
+            result = cur.fetch_many()
+
+    return result
+
+# def get_rows(hospital_number):
+#     # temporary cover so you don't need to set up a database
+#     from sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
+#     return [y for y in PATHOLOGY_DATA if y["Patient_Number"] == hospital_number]
 
 def patient_information(hospital_number):
     # TODO this assumes an RFH identifier, the data also has
