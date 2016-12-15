@@ -61,10 +61,10 @@ class InformationSourceTestCase(GlossTestCase):
     @patch('sites.rfh.information_source.settings')
     @patch('sites.rfh.information_source.pytds')
     def test_read_row(self, pytds, settings):
-        settings.db_username = "username"
-        settings.db_password = "password"
-        settings.server = "server"
-        settings.database = "database"
+        settings.upstream_db_username = "username"
+        settings.upstream_db_password = "password"
+        settings.upstream_ip_address = "server"
+        settings.upstream_database_name = "database"
 
         cur = MagicMock(name="cur")
         cur.fetch_many.return_value = "some results"

@@ -102,15 +102,15 @@ class InformationSource(BaseInformationSource):
         return messages
 
     def get_rows(self, hospital_number):
-        username = settings.db_username
-        password = settings.db_password
-        server = settings.server
-        database = settings.database
+        username = settings.upstream_db_username
+        password = settings.upstream_db_password
+        server = settings.upstream_ip_address
+        database = settings.upstream_database_name
         query = """
-        select * from tQuest_Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
+        select * from Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
         """.format(hospital_number)
 
-        with pytds.connect(server, database, username, password) as conn:
+        with pytds.connect(server, database, username, password, as_dict=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(query.strip())
                 result = cur.fetch_many()
