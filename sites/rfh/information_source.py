@@ -108,7 +108,7 @@ class InformationSource(BaseInformationSource):
         database = settings.upstream_database_name
         # query the test view
         query = """
-        select * from Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
+        select * from Pathology_Test_Result_View where Patient_Number='{}' ORDER BY Event_Date
         """.format(hospital_number)
 
         with pytds.connect(server, database, username, password, as_dict=True) as conn:
