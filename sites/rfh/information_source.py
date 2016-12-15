@@ -106,6 +106,7 @@ class InformationSource(BaseInformationSource):
         password = settings.upstream_db_password
         server = settings.upstream_ip_address
         database = settings.upstream_database_name
+        # query the test view
         query = """
         select * from Pathology_Result_View where Patient_Number='{}' ORDER BY Event_Date
         """.format(hospital_number)
