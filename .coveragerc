@@ -1,7 +1,6 @@
 [report]
 omit =
      gloss/tests/*
-     gloss/settings.py
      gloss/sites/rfh/test_database_constructor/*
      gloss/sites/rfh/example_messages/test_messages.py
      *__main__.py*

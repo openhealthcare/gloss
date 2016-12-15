@@ -1,6 +1,7 @@
 from hl7.client import MLLPClient
 import hl7
-from gloss.settings import HOST, PORTS
+from gloss.conf import settings
+from gloss.utils import import_from_string
 
 
 TEST_RESULT_1 = """MSH|^~\&|WinPath HL7||TQuest|1234|201606161043||ORU^R01|24066424|P|2.3.1|||AL|||||
@@ -74,9 +75,10 @@ MESSAGES = RAW_MESSAGES
 def read_message(some_msg):
     return hl7.parse(some_msg.replace("\n", "\r"))
 
-
 def send_messages(messages):
-    port = PORTS[0]
-    with MLLPClient(HOST, port) as client:
+    gloss_service = import_from_string(settings.GLOSS_SERVICE)
+    port = gloss_service.receiver.ports[0]
+    host = gloss_service.receiver.host
+    with MLLPClient(host, port) as client:
         for message in messages:
             client.send_message(message)

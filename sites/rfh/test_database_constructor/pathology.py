@@ -1,5 +1,5 @@
-from gloss.sites.rfh.test_database_constructor.database import get_connection, create_database
-from gloss.sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
+from sites.rfh.test_database_constructor.database import get_connection, create_database
+from sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
 import datetime
 
 TABLE_NAME = 'tQuest_Pathology_Result_View'

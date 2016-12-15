@@ -5,14 +5,12 @@ from gloss.models import (
     atomic_method, get_or_create_identifier
 )
 from gloss.serialisers.opal import send_to_opal
-from gloss import settings
+from gloss.conf import settings
 from twisted.logger import Logger
 from gloss.utils import AbstractClass
 import json
 from copy import copy
 from gloss.subscribers.base_subscriber import BaseSubscriber
-
-from gloss import settings
 from gloss.message_type import (
     AllergyMessage, InpatientAdmissionMessage, PatientMergeMessage,
     ResultMessage, InpatientAdmissionDeleteMessage, PatientMessage,

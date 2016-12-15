@@ -27,17 +27,21 @@ You will also need the python dependencies:
     pip install -r requirements.txt
 
 ### Starting the server(s)
+create a folder in sites with the name of your site. Add a settings.py to this folder.
 
 To run the HL7 server:
 
-    twistd --nodaemon gloss --service [[ class string to the gloss service ]]
+    twistd --nodaemon gloss --site [[ your_site_name ]]
 
-alternatively you can set the default gloss settings class in gloss.settings.DEFAULT_GLOSS_SERVICE
+This will give you a gloss service that listens for HL7 messages on ports 2574 and 2575 and sends all of those messages to "http://127.0.0.1:8000/glossapi/v0.1/glossapi/"
 
 
 To run the OPAL/JSON/HTTP API:
 
-    python -m gloss.api
+    python -m gloss.api --site [[ your_app_name ]]
+
+This will give you a flask service that sits at 0.0.0.0:6767
+
 
 ## How Does Gloss work?
 
@@ -57,8 +61,6 @@ Gloss also defines `Subscribers` which perform actions whenever a new `GlossMess
 ### Event Upstreams
 
 In order to configure Gloss to handle data from an Event Upstream, we define a `Receiver`.
-
-A Receiver is a callable which returns a Twisted service. The Receiver function will be passed a `GlossService` as an argument.
 
 #### MLLP Receiver
 
@@ -127,13 +129,13 @@ Gloss also implements a REST Query API.
 
 ## Configuration
 
-You can configure Gloss using a local_settings.py file.
+You can configure Gloss a settings file in your app, ie sites/[[ your_app_name ]]/settings.py
 
 Available settings are:
 
 ### DATABASE_STRING
 
-The Sqlalchemy database string you would like to use.
+The postgres database string you would like to use. Note gloss only supports postgres
 
 ### DATE_FORMAT and DATETIME_FORMAT
 
@@ -157,14 +159,19 @@ Our load test script will fire a given amount messages as as many ports as are g
 
 Database migrations use [![alembic]](http://alembic.readthedocs.org/)
 
-To create a migration run "alembic revision --autogenerate"
+always use the -x attribute to point to your site.
 
-To update to head run "alembic upgrade head"
+To create a migration run "alembic -x site={{ your_site_name }} revision --autogenerate"
+
+To update to head run "alembic -x site={{ your_site_name }} upgrade head"
 
 To upgrade or downgrade you can use upgrade +1 (e.g. "alembic downgrade -1") or it pattern matches with the version number.
 
 For example, if it is unique you can run "alembic upgrade ad" and it'll upgrade to the version number beginning
 "ad"
+
+## Testing
+tests in gloss are done with py.test. py.test will run all the tests with the default settings. To run all the tests with your apps specific settings run py.test --site [[ your_site_name ]]
 
 ## Licence
 

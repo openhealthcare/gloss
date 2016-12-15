@@ -5,12 +5,13 @@ from hl7 import client
 from hl7.containers import Message
 import hl7
 
-from gloss import models, exceptions, settings
+from gloss import models, exceptions
 from gloss.translators.hl7.segments import MSH, InpatientPID, QueryPD1, MSA
 from gloss.translators.hl7.hl7_translator import HL7Translator
 from gloss.message_type import (
     PatientMessage
 )
+from gloss.conf import settings
 
 try:
     from flask import current_app

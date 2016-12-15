@@ -6,6 +6,7 @@ from gloss.models import (
 )
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
+from gloss.conf import settings
 from mock import patch, MagicMock
 
 

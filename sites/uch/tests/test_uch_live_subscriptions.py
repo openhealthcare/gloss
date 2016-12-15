@@ -7,10 +7,10 @@ from datetime import datetime, date
 # from gloss.import_message import MessageProcessor
 from gloss.tests.core import GlossTestCase
 from mock import patch
-from gloss.gloss_service import GlossService
+from sites.uch.gloss_service import GlossService
 from gloss.receivers.mllp_multi_service import MultiMLLPServer
 from gloss.importers.hl7_importer import HL7Importer
-from gloss.sites.uch.subscribe.production import NotifyOpalWhenSubscribed
+from sites.uch.subscribe.production import NotifyOpalWhenSubscribed
 from gloss.tests.test_messages import (
     INPATIENT_ADMISSION, read_message, PATIENT_MERGE, COMPLEX_WINPATH_RESULT,
     RESULTS_MESSAGE, INPATIENT_TRANSFER, INPATIENT_DISCHARGE, INPATIENT_AMEND,
@@ -23,7 +23,7 @@ from gloss.models import (
     PatientIdentifier
 )
 from gloss.message_type import PatientMessage, MessageContainer
-from gloss.sites.uch.subscribe.production import UclhPatientUpdateSubscription
+from sites.uch.subscribe.production import UclhPatientUpdateSubscription
 from gloss.subscribers.send_all_messages import SendAllMessages
 
 

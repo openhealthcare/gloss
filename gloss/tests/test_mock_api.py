@@ -1,6 +1,6 @@
 from mock import patch, MagicMock
 import datetime
-from gloss.sites.uch import mock_api
+from sites.uch import mock_api
 from gloss.tests.core import GlossTestCase
 from gloss.models import Patient, Allergy, Merge
 from gloss.message_type import AllergyMessage, PatientMessage
@@ -19,7 +19,7 @@ class TestMockPatient(GlossTestCase):
             result[0].allergen_reference, allergy.allergen_reference
         )
 
-    @patch("gloss.sites.uch.mock_api.nullable")
+    @patch("sites.uch.mock_api.nullable")
     def test_with_no_nullable(self, n):
         n.side_effect = lambda x: x()
 
@@ -38,7 +38,7 @@ class TestMockPatient(GlossTestCase):
 
         self.assertTrue(n.called)
 
-    @patch("gloss.sites.uch.mock_api.random.randint")
+    @patch("sites.uch.mock_api.random.randint")
     def test_nullable_false(self, randint_mock):
         randint_mock.return_value = 5
         some_func = MagicMock(return_value=3)
@@ -46,7 +46,7 @@ class TestMockPatient(GlossTestCase):
         self.assertEqual(result, 3)
         self.assertTrue(some_func.called)
 
-    @patch("gloss.sites.uch.mock_api.random.randint")
+    @patch("sites.uch.mock_api.random.randint")
     def test_nullable_true(self, randint_mock):
         randint_mock.return_value = 1
         some_func = MagicMock(return_value=3)
@@ -76,8 +76,8 @@ class TestMockPatient(GlossTestCase):
 
         self.assertEqual(c.count(), 0)
 
-    @patch('gloss.sites.uch.mock_api.date_generator')
-    @patch('gloss.sites.uch.mock_api.random')
+    @patch('sites.uch.mock_api.date_generator')
+    @patch('sites.uch.mock_api.random')
     def test_datetime_generator(self, random, date_generator):
         date_generator.return_value = datetime.date(2000, 1, 2)
         random.randint.return_value = 3

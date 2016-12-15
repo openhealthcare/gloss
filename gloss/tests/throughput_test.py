@@ -10,7 +10,7 @@ import multiprocessing
 sys.path.append(".")
 
 from gloss.tests.test_messages import read_message, MESSAGES
-from gloss import settings
+from gloss.conf import settings
 
 
 def post_to_mllp_client(port, original_amount):

@@ -1,13 +1,13 @@
 """
 Unittests for gloss.api
 """
-import json, datetime
+import json
 from mock import patch, MagicMock
 
 from gloss import models
 from gloss.tests import test_messages
 from gloss.tests.core import GlossTestCase
-from gloss import api, settings, message_type
+from gloss import api, message_type
 
 
 NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
@@ -17,7 +17,7 @@ class PatientQueryTestCase(GlossTestCase):
     def test_not_found(self):
         self.mock_mllp_send.return_value = test_messages.PATIENT_NOT_FOUND
         msg = '{"status": "error", "data": "We can\'t find any patients with that identifier"}'
-        resp = api.patient_query('555-nope')
+        resp = api.patient_query('not-found')
         self.assertEqual(msg, resp.data)
 
     def test_found_with_a_merge(self):

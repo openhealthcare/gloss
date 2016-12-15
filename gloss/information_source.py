@@ -1,4 +1,5 @@
-from gloss import settings, models, exceptions, utils
+from gloss import models, exceptions, utils
+from gloss.conf import settings
 from gloss.external_api import post_message_for_identifier
 
 """
@@ -24,10 +25,9 @@ def get_information_source():
 
 class InformationSource(object):
     def patient_exists(self, session, issuing_source, identifier):
-        patient_exists = models.Patient.query_from_identifier(
+        return models.Patient.query_from_identifier(
             identifier, issuing_source, session
         ).count()
-
 
     def patient_information(self, issuing_source, identifier):
         with models.session_scope() as session:
@@ -50,15 +50,3 @@ class InformationSource(object):
                         identifier
                     )
                 )
-
-    def demographics_query(self, issuing_source, identifier):
-        get_demographics(session, issuing_source, identifier)
-
-        try:
-            messages = Merge.to_messages(
-                identifier, issuing_source, session
-            )
-        except Exception as e:
-            raise exceptions.APIError(e)
-
-        messages.extend(Patient.to_messages(identifier, issuing_source, session))

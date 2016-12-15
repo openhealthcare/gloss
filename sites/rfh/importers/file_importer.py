@@ -1,5 +1,5 @@
 import datetime
-from gloss.sites.rfh.coded_values import drugs
+from sites.rfh.coded_values import drugs
 from gloss import message_type
 from gloss.importers.file_importer import FileType
 

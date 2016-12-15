@@ -2,17 +2,22 @@ from __future__ import with_statement
 import sys
 import os
 from alembic import context
+
 from sqlalchemy import engine_from_config, pool
 from logging.config import fileConfig
 PROJECT_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(PROJECT_PATH)
-from gloss.settings import DATABASE_STRING
+from gloss.core import settings_utils
+site = context.get_x_argument(as_dictionary=True)["site"]
+settings_utils.set_settings_env(site)
+from gloss.conf import settings
 from gloss.models import Base
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("url", DATABASE_STRING)
+config.set_main_option("sqlalchemy.url", settings.DATABASE_STRING)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

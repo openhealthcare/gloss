@@ -15,7 +15,8 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
-from gloss import settings, message_type
+from gloss import message_type
+from gloss.conf import settings
 from gloss.utils import itersubclasses, import_from_string
 engine = create_engine(settings.DATABASE_STRING)
 

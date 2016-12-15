@@ -4,7 +4,7 @@ from mock import patch, MagicMock
 from gloss import message_type
 from gloss.tests.core import GlossTestCase
 
-from gloss.sites.rfh.importers import file_importer
+from sites.rfh.importers import file_importer
 
 
 class RFHBloodCulturesFileTypeTestCase(GlossTestCase):
