@@ -77,6 +77,6 @@ class InformationSourceTestCase(GlossTestCase):
         ))
         found_query = cur.execute.call_args[0][0]
         expected_query = """
-            select * from tQuest_Pathology_Result_View where Patient_Number='some identifier' ORDER BY Event_Date
+            select * from Pathology_Result_View where Patient_Number='some identifier' ORDER BY Event_Date
         """.strip()
         assert(found_query == expected_query)
