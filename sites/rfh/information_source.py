@@ -105,16 +105,16 @@ class InformationSource(BaseInformationSource):
         username = settings.upstream_db_username
         password = settings.upstream_db_password
         server = settings.upstream_ip_address
-        database = settings.upstream_database_name
+        database = settings.upstream_db_name
         # query the test view
         query = """
-        select * from Pathology_Test_Result_View where Patient_Number='{}' ORDER BY Event_Date
+        select * from Pathology_Test_Result_view where Patient_Number='{}' ORDER BY Event_Date
         """.format(hospital_number)
 
         with pytds.connect(server, database, username, password, as_dict=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(query.strip())
-                result = cur.fetch_many()
+                result = cur.fetchmany()
 
         return result
 

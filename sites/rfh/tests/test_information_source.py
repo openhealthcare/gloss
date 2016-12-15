@@ -64,7 +64,7 @@ class InformationSourceTestCase(GlossTestCase):
         settings.upstream_db_username = "username"
         settings.upstream_db_password = "password"
         settings.upstream_ip_address = "server"
-        settings.upstream_database_name = "database"
+        settings.upstream_db_name = "database"
 
         cur = MagicMock(name="cur")
         cur.fetch_many.return_value = "some results"
