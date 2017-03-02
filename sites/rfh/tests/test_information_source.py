@@ -57,14 +57,16 @@ class InformationSourceTestCase(GlossTestCase):
         assert(observation.units == '')
         assert(observation.external_identifier == '20334305')
 
-
     @patch('sites.rfh.information_source.settings')
     @patch('sites.rfh.information_source.pytds')
     def test_read_row(self, pytds, settings):
-        settings.upstream_db_username = "username"
-        settings.upstream_db_password = "password"
-        settings.upstream_ip_address = "server"
-        settings.upstream_db_name = "database"
+        settings.UPSTREAM_DB = dict(
+            USERNAME="username",
+            PASSWORD="password",
+            IP_ADDRESS="server",
+            DATABASE="database",
+            TABLE_NAME="our_table"
+        )
 
         cur = MagicMock(name="cur")
         cur.fetchmany.return_value = "some results"
@@ -81,6 +83,6 @@ class InformationSourceTestCase(GlossTestCase):
         ))
         found_query = cur.execute.call_args[0][0]
         expected_query = """
-            select * from Pathology_Test_Result_view where Patient_Number='some identifier' ORDER BY Event_Date
+            select * from our_table where Patient_Number='some identifier' ORDER BY Event_Date
         """.strip()
         assert(found_query == expected_query)

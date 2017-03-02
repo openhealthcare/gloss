@@ -102,16 +102,18 @@ class InformationSource(BaseInformationSource):
         return messages
 
     def get_rows(self, hospital_number):
-        username = settings.upstream_db_username
-        password = settings.upstream_db_password
-        server = settings.upstream_ip_address
-        database = settings.upstream_db_name
+        username = settings.UPSTREAM_DB["USERNAME"]
+        password = settings.UPSTREAM_DB["PASSWORD"]
+        ip_address = settings.UPSTREAM_DB["IP_ADDRESS"]
+        database = settings.UPSTREAM_DB["DATABASE"]
+        table_name = settings.UPSTREAM_DB["TABLE_NAME"]
+
         # query the test view
         query = """
-        select * from Pathology_Test_Result_view where Patient_Number='{}' ORDER BY Event_Date
-        """.format(hospital_number)
+        select * from {0} where Patient_Number='{1}' ORDER BY Event_Date
+        """.format(table_name, hospital_number)
 
-        with pytds.connect(server, database, username, password, as_dict=True) as conn:
+        with pytds.connect(ip_address, database, username, password, as_dict=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(query.strip())
                 result = cur.fetchmany()
