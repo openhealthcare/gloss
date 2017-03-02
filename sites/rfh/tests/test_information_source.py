@@ -67,10 +67,14 @@ class InformationSourceTestCase(GlossTestCase):
         settings.upstream_db_name = "database"
 
         cur = MagicMock(name="cur")
-        cur.fetch_many.return_value = "some results"
+        cur.fetchmany.return_value = "some results"
         conn = MagicMock(name="conn")
-        conn.cursor().__enter__ = MagicMock(return_value=cur)
-        pytds.connect().__enter__ = MagicMock(return_value=conn)
+        conn.cursor().__enter__ = MagicMock(
+            return_value=cur,
+        )
+        pytds.connect().__enter__ = MagicMock(
+            return_value=conn,
+        )
         assert(self.information_source.get_rows("some identifier") == "some results")
         assert(pytds.connect.call_args[0] == (
             'server', 'database', 'username', 'password'
