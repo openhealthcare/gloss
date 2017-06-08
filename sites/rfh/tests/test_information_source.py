@@ -33,7 +33,40 @@ class InformationSourceTestCase(GlossTestCase):
         assert(patient.surname == 'ZZZTEST')
         assert(patient.first_name == 'TEST')
         assert(patient.sex == 'Female')
-        assert(patient.title == None)
+        assert(patient.title == "")
+
+    def test_cast_patient_with_cerner_data(self):
+        row = dict(
+            CRS_SEX="M",
+            SEX="F",
+            CRS_Forename1="Daniel",
+            CRS_Surname="Jane",
+            CRS_Title="Mr",
+            title="M",
+            CRS_DOB=datetime(1964, 1, 1),
+            DOB=datetime(1965, 1, 1)
+        )
+        patient = self.information_source.cast_row_to_patient(row)
+        assert(patient.first_name == "Daniel")
+        assert(patient.surname == "Jane")
+        assert(patient.sex == "Male")
+        assert(patient.title == "Mr")
+        assert(patient.date_of_birth == datetime(1964, 1, 1))
+
+    def test_get_or_fallback(self):
+        # if its there override
+        row = dict(greeting="hello", farewell="goodbye")
+        found = self.information_source.get_or_fallback(
+            row, "greeting", "farewell"
+        )
+        assert(row["greeting"] == found)
+
+        # if its not, don't
+        row = dict(greeting="", farewell="goodbye")
+        found = self.information_source.get_or_fallback(
+            row, "greeting", "farewell"
+        )
+        assert(row["farewell"] == found)
 
     def test_cast_result(self):
         # lets just check the first result

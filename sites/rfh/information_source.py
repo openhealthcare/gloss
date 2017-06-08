@@ -14,8 +14,24 @@ class InvalidAssumption(Exception):
 
 
 class InformationSource(BaseInformationSource):
+
+    def get_or_fallback(self, row, primary_field, secondary_field):
+        """ look at one field, if its empty, use a different field
+        """
+        # we use Cerner information if it exists, otherwise
+        # we fall back to winpath demograhpics
+        # these are combined in the same table
+        # so we fall back to a different
+        # field name in the same row
+        result = row.get(primary_field)
+
+        if not result:
+            result = row.get(secondary_field, "")
+
+        return result
+
     def cast_row_to_patient(self, row):
-        sex_abbreviation = row.get("SEX")
+        sex_abbreviation = self.get_or_fallback(row, "CRS_SEX", "SEX")
 
         if sex_abbreviation == "M":
             sex = "Male"
@@ -23,11 +39,11 @@ class InformationSource(BaseInformationSource):
             sex = "Female"
 
         return message_type.PatientMessage(
-            surname=row.get("Surname"),
-            first_name=row.get("Firstname"),
+            surname=self.get_or_fallback(row, "CRS_Surname", "Surname"),
+            first_name=self.get_or_fallback(row, "CRS_Forename1", "Firstname"),
             sex=sex,
-            title=row.get("title"),
-            date_of_birth=row.get("date_of_birth")
+            title=self.get_or_fallback(row, "CRS_Title", "title"),
+            date_of_birth=self.get_or_fallback(row, "CRS_DOB", "date_of_birth")
         )
 
     def cast_row_to_observation(self, row):

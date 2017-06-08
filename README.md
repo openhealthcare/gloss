@@ -171,7 +171,7 @@ For example, if it is unique you can run "alembic upgrade ad" and it'll upgrade 
 "ad"
 
 ## Testing
-tests in gloss are done with py.test. py.test will run all the tests with the default settings. To run all the tests with your apps specific settings run py.test --site [[ your_site_name ]]
+tests in gloss are done with py.test. py.test will run all the tests with the default settings. To run all the tests with your apps specific settings run py.test
 
 ## Licence
 
