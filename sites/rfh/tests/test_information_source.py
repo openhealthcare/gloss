@@ -11,6 +11,26 @@ class InformationSourceTestCase(GlossTestCase):
         super(InformationSourceTestCase, self).setUp()
         self.information_source = InformationSource()
 
+    def test_result_information(self):
+        with patch.object(self.information_source, "get_rows") as get_rows:
+            get_rows.side_effect = lambda x: [y for y in PATHOLOGY_DATA if y["Patient_Number"] == x]
+            message_container = self.information_source.result_information(
+                'issuing_identifier', '20552710'
+            )
+        assert(message_container.hospital_number == '20552710')
+        assert(message_container.issuing_source == 'rfh')
+        assert(len(message_container.messages) == 6)
+
+    def test_result_information_without_results(self):
+        with patch.object(self.information_source, "get_rows") as get_rows:
+            get_rows.return_value = []
+            message_container = self.information_source.result_information(
+                'issuing_identifier', '20552710'
+            )
+        assert(message_container.hospital_number == '20552710')
+        assert(message_container.issuing_source == 'rfh')
+        assert(len(message_container.messages) == 0)
+
     def test_cast_to_message_container(self):
         with patch.object(self.information_source, "get_rows") as get_rows:
             get_rows.side_effect = lambda x: [y for y in PATHOLOGY_DATA if y["Patient_Number"] == x]

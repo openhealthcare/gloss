@@ -136,6 +136,18 @@ class InformationSource(BaseInformationSource):
 
         return result
 
+    def result_information(self, issuing_identifier, hospital_number):
+        rows = self.get_rows(hospital_number)
+        if len(rows):
+            messages = self.get_results_and_observations(rows)
+        else:
+            messages = []
+        return message_type.MessageContainer(
+            hospital_number=hospital_number,
+            issuing_source="rfh",
+            messages=messages
+        )
+
     def patient_information(self, issuing_source, hospital_number):
         rows = self.get_rows(hospital_number)
         if len(rows):
