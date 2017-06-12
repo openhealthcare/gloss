@@ -1,6 +1,8 @@
 from gloss import models, exceptions, utils
 from gloss.conf import settings
 from gloss.external_api import post_message_for_identifier
+from gloss import message_type
+
 
 """
     the information source is a data api, that by default gets
@@ -24,23 +26,46 @@ def get_information_source():
 
 
 class InformationSource(object):
-    def patient_exists(self, session, issuing_source, identifier):
-        return models.Patient.query_from_identifier(
+    def check_or_fetch_patient(self, session, issuing_source, identifier):
+        """ checks if a patient exists locally, and if not
+            queries upstream if possible
+        """
+        patient_already_exists = models.Patient.query_from_identifier(
             identifier, issuing_source, session
         ).count()
 
-    def patient_information(self, issuing_source, identifier):
-        with models.session_scope() as session:
-            patient_exists = models.Patient.query_from_identifier(
-                identifier, issuing_source, session
-            ).count()
+        if patient_already_exists:
+            return True
 
-            if patient_exists:
-                return models.patient_to_message_container(
+        if not patient_already_exists:
+            if settings.USE_EXTERNAL_LOOKUP:
+                post_message_for_identifier(identifier)
+                return True
+        return False
+
+    def result_information(self, issuing_source, identifier):
+        with models.session_scope() as session:
+            if self.check_or_fetch_patient(
+                session, issuing_source, identifier
+            ):
+                messages = models.Result.to_messages(
                     identifier, issuing_source, session
                 )
-            if not patient_exists and settings.USE_EXTERNAL_LOOKUP:
-                post_message_for_identifier(identifier)
+                return message_type.construct_message_container(
+                    messages, identifier, issuing_source
+                )
+            else:
+                raise exceptions.PatientNotFound(
+                    "We can't find any patients with that identifier {}".format(
+                        identifier
+                    )
+                )
+
+    def patient_information(self, issuing_source, identifier):
+        with models.session_scope() as session:
+            if self.check_or_fetch_patient(
+                session, issuing_source, identifier
+            ):
                 return models.patient_to_message_container(
                     identifier, issuing_source, session
                 )

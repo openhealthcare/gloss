@@ -146,7 +146,11 @@ class GlossTestCase(TestCase):
             "profile_code": "ELU",
             "profile_description": "RENAL PROFILE",
             "result_status": "FINAL",
-            "observations": json.dumps(observations)
+            "lab_number": None,
+            "last_edited": None,
+            "observation_datetime": None,
+            "observations": json.dumps(observations),
+            "request_datetime": None
         }
 
     def get_result(self, identifier, issuing_source):
