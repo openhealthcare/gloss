@@ -6,7 +6,12 @@ install:
   - pip install coveralls
 script:
   - py.test --cov=gloss --cov-report=html
-after_success: coveralls --merge
+after_success:
+  - ls -lha coverages
+  - coveralls-lcov -v -n coverage/Firefox\ 31.0.0\ \(Linux\ 0.0.0\)/lcov.info > coverage/coverage.json
+  - cat coverage/coverage.json
+  - coveralls debug --merge=coverage/coverage.json
+  - coveralls --merge=coverage/coverage.json
 notifications:
   slack: ohcuk:6spaME3CB7f2PGrMAcklYWqp
 sudo: false
