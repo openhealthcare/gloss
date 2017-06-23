@@ -38,12 +38,16 @@ class InformationSource(BaseInformationSource):
         else:
             sex = "Female"
 
+        dob = self.get_or_fallback(row, "CRS_DOB", "date_of_birth")
+        if dob:
+            dob = dob.date()
+
         return message_type.PatientMessage(
             surname=self.get_or_fallback(row, "CRS_Surname", "Surname"),
             first_name=self.get_or_fallback(row, "CRS_Forename1", "Firstname"),
             sex=sex,
             title=self.get_or_fallback(row, "CRS_Title", "title"),
-            date_of_birth=self.get_or_fallback(row, "CRS_DOB", "date_of_birth")
+            date_of_birth=dob
         )
 
     def cast_row_to_observation(self, row):

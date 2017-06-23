@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from mock import patch, MagicMock
 from gloss.tests.core import GlossTestCase
 from sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
@@ -71,7 +71,7 @@ class InformationSourceTestCase(GlossTestCase):
         assert(patient.surname == "Jane")
         assert(patient.sex == "Male")
         assert(patient.title == "Mr")
-        assert(patient.date_of_birth == datetime(1964, 1, 1))
+        assert(patient.date_of_birth == date(1964, 1, 1))
 
     def test_get_or_fallback(self):
         # if its there override
