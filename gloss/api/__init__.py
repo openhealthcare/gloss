@@ -39,6 +39,17 @@ def json_api(route, with_session=True, **kwargs):
                     data = fn(issuing_source, *args, **kwargs)
 
                 data["status"] = "success"
+                if "messages" in data:
+                    if "result" in data["messages"]:
+                        num_rows = len(data["messages"]["result"])
+                        num_observations = sum(len(i["observations"]) for i in data["messages"]["result"])
+
+                        amount = time() - ts
+                        logging_message = "loaded %s lab tests with a total of %s observations in %2.4fs (%2.4fs per result, %2.4fs per observation)"
+                        logging_message = logging_message % (num_rows, num_observations, amount, amount/num_rows, amount/num_observations)
+
+                        app.logger.critical(logging_message)
+
                 app.logger.critical("%s in %2.4fs" % (route, ts))
                 return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
