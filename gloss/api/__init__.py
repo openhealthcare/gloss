@@ -39,7 +39,7 @@ def json_api(route, with_session=True, **kwargs):
                     data = fn(issuing_source, *args, **kwargs)
 
                 data["status"] = "success"
-                app.logger.info("%s in %2.4fs" % (route, ts))
+                app.logger.critical("%s in %2.4fs" % (route, ts))
                 return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
             except exceptions.APIError as err:
