@@ -122,7 +122,7 @@ class InformationSourceTestCase(GlossTestCase):
         )
 
         cur = MagicMock(name="cur")
-        cur.fetchmany.return_value = "some results"
+        cur.fetchall.return_value = "some results"
         conn = MagicMock(name="conn")
         conn.cursor().__enter__ = MagicMock(
             return_value=cur,

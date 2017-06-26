@@ -136,7 +136,7 @@ class InformationSource(BaseInformationSource):
         with pytds.connect(ip_address, database, username, password, as_dict=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(query.strip())
-                result = cur.fetchmany()
+                result = cur.fetchall()
 
         return result
 
