@@ -50,7 +50,7 @@ def json_api(route, with_session=True, **kwargs):
 
                         app.logger.critical(logging_message)
 
-                app.logger.critical("%s in %2.4fs" % (route, ts))
+                app.logger.critical("func: %r %2.4f sec" % (route, ts))
                 return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
             except exceptions.APIError as err:
