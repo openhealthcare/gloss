@@ -67,10 +67,9 @@ def patient_query(issuing_source, identifier):
 @json_api('/api/patient_times/<identifier>', with_session=False)
 def patient_times(issuing_source, identifier):
     info_source = get_information_source()
-    # get_rows_start = time()
-    # info_source.get_rows(identifier)
-    # get_rows_time = time() - get_rows_start
-    get_rows_time = 0
+    get_rows_start = time()
+    info_source.get_rows(identifier)
+    get_rows_time = time() - get_rows_start
     get_patient_start = time()
     info_source.patient_information(issuing_source, identifier)
     get_patient_time = time() - get_patient_start
