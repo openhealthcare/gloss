@@ -171,7 +171,7 @@ For example, if it is unique you can run "alembic upgrade ad" and it'll upgrade 
 "ad"
 
 ## Testing
-tests in gloss are done with py.test. py.test will run all the tests with the default settings. To run all the tests with your apps specific settings run py.test
+tests in gloss are done with py.test. py.test will run all the tests with the default settings. To run a specific test with py.test run it the usual way, e.g. py.test gloss/tests/test_api.py::JsonApiTestCase
 
 ## Licence
 

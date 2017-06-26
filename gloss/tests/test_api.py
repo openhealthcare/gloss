@@ -14,6 +14,20 @@ from gloss.information_source import InformationSource
 NOPE = '{"status": "error", "data": "We\'ve not implemented this yet - sorry"}'
 
 
+class JsonApiTestCase(GlossTestCase):
+
+    def test_wrapper_logging(self):
+        with patch.object(api.app.logger, "info") as info:
+            some_route = MagicMock(name="mock route")
+            some_route.__name__ = "mock_route"
+            some_route.return_value = {"some": "result"}
+            some_fun = api.json_api("/somewhere")(some_route)
+            some_fun("hello")
+            self.assertTrue(info.called)
+            log_call_args = info.call_args[0][0]
+            self.assertIn("/somewhere", log_call_args)
+
+
 @patch("gloss.api.get_information_source")
 class ResultQueryTestCase(GlossTestCase):
     def test_result_query(self, get_information_source):
