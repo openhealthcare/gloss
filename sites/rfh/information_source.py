@@ -16,6 +16,13 @@ app.debug = settings.DEBUG
 
 TABLE_NAME = "something"
 
+RELEVANT_TESTS = (
+    "C REACTIVE PROTEIN",
+    "FULL BLOOD COUNT",
+    "LIVER PROFILE",
+    "CLOTTING SCREEN",
+)
+
 
 class InvalidAssumption(Exception):
     pass
@@ -140,12 +147,18 @@ class InformationSource(BaseInformationSource):
 
         # query the test view
         query = """
-        select * from {0} where Patient_Number='{1}' ORDER BY Event_Date
-        """.format(table_name, hospital_number)
+        select * from {0} where Patient_Number='{1}' and
+        OBR_exam_code_Text IN ({2})
+        ORDER BY Event_Date
+        """.format(
+            table_name,
+            hospital_number,
+            ", ".join("'{}'".format(i) for i in RELEVANT_TESTS)
+        ).replace("\n", " ").strip()
 
         with pytds.connect(ip_address, database, username, password, as_dict=True) as conn:
             with conn.cursor() as cur:
-                cur.execute(query.strip())
+                cur.execute(query)
                 result = cur.fetchall()
 
         app.logger.critical(
