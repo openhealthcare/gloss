@@ -1,5 +1,7 @@
 from gloss.information_source import InformationSource as BaseInformationSource
 from collections import defaultdict
+import datetime
+import dateutil.relativedelta
 
 import pytds
 
@@ -136,7 +138,6 @@ class InformationSource(BaseInformationSource):
 
         return messages
 
-
     def get_rows(self, hospital_number):
         ts = time()
         username = settings.UPSTREAM_DB["USERNAME"]
@@ -144,16 +145,23 @@ class InformationSource(BaseInformationSource):
         ip_address = settings.UPSTREAM_DB["IP_ADDRESS"]
         database = settings.UPSTREAM_DB["DATABASE"]
         table_name = settings.UPSTREAM_DB["TABLE_NAME"]
+        now = datetime.datetime.now()
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        three_months_ago = midnight - dateutil.relativedelta.relativedelta(
+            months=3
+        )
+        three_months_ago = three_months_ago.strftime("%Y-%m-%d %H:%M:%S")
 
         # query the test view
         query = """
         select * from {0} where Patient_Number='{1}' and
-        OBR_exam_code_Text IN ({2})
+        OBR_exam_code_Text IN ({2}) and Date_of_the_Observation >= '{3}'
         ORDER BY Event_Date
         """.format(
             table_name,
             hospital_number,
-            ", ".join("'{}'".format(i) for i in RELEVANT_TESTS)
+            ", ".join("'{}'".format(i) for i in RELEVANT_TESTS),
+            three_months_ago
         ).replace("\n", " ").strip()
 
         with pytds.connect(ip_address, database, username, password, as_dict=True) as conn:
