@@ -95,7 +95,7 @@ class InformationSource(BaseInformationSource):
     def get_unique_result_identifier(self, row):
         return "{0}_{1}".format(row["Result_ID"], row["OBR_Sequence_ID"])
 
-    def get_results_and_observations(self, rows):
+    def get_results_and_observations(self, rows, since=None):
         # going through the result_id seems to be the set id of the OBR
         # the set id is not unique as there can be multiple OBRs, even of the
         # same type, but we can use the set id and the sequence id to create a unique
@@ -121,7 +121,17 @@ class InformationSource(BaseInformationSource):
 
         return messages
 
+    from flask import Flask
+    from time import time
+    app = Flask('gloss.api')
+    import logging
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    app.logger.addHandler(stream_handler)
+    app.debug = settings.DEBUG
+
     def get_rows(self, hospital_number):
+        ts = time()
         username = settings.UPSTREAM_DB["USERNAME"]
         password = settings.UPSTREAM_DB["PASSWORD"]
         ip_address = settings.UPSTREAM_DB["IP_ADDRESS"]
@@ -138,6 +148,9 @@ class InformationSource(BaseInformationSource):
                 cur.execute(query.strip())
                 result = cur.fetchall()
 
+        app.logger.critical(
+            "func: get_rows %2.4f sec" % (time() - ts)
+        )
         return result
 
     def result_information(self, issuing_identifier, hospital_number):
@@ -152,10 +165,10 @@ class InformationSource(BaseInformationSource):
             messages=messages
         )
 
-    def patient_information(self, issuing_source, hospital_number):
+    def patient_information(self, issuing_source, hospital_number, since=None):
         rows = self.get_rows(hospital_number)
         if len(rows):
-            messages = self.get_results_and_observations(rows)
+            messages = self.get_results_and_observations(rows, since=since)
             messages.append(self.cast_row_to_patient(rows[-1]))
         else:
             messages = []

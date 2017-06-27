@@ -2,6 +2,7 @@
 The Public Gloss API
 """
 import functools
+import datetime
 import json
 import sys
 import logging
@@ -39,18 +40,20 @@ def json_api(route, with_session=True, **kwargs):
                     data = fn(issuing_source, *args, **kwargs)
 
                 data["status"] = "success"
-                if "messages" in data:
-                    if "result" in data["messages"]:
-                        num_rows = len(data["messages"]["result"])
-                        num_observations = sum(len(i["observations"]) for i in data["messages"]["result"])
+                # if "messages" in data:
+                #     if "result" in data["messages"]:
+                #         num_rows = len(data["messages"]["result"])
+                #         num_observations = sum(len(i["observations"]) for i in data["messages"]["result"])
+                #
+                #         # amount = time() - ts
+                        # logging_message = "loaded %s lab tests with a total of %s observations in %2.4fs (%2.4fs per result, %2.4fs per observation)"
+                        # logging_message = logging_message % (num_rows, num_observations, amount, amount/num_rows, amount/num_observations)
+                        #
+                        # app.logger.critical(logging_message)
 
-                        amount = time() - ts
-                        logging_message = "loaded %s lab tests with a total of %s observations in %2.4fs (%2.4fs per result, %2.4fs per observation)"
-                        logging_message = logging_message % (num_rows, num_observations, amount, amount/num_rows, amount/num_observations)
-
-                        app.logger.critical(logging_message)
-
-                app.logger.critical("func: %r %2.4f sec" % (route, ts))
+                app.logger.critical(
+                    "func: %r %2.4f sec" % (route, time() - ts)
+                )
                 return Response(json.dumps(data, cls=OpalJSONSerialiser))
 
             except exceptions.APIError as err:
@@ -69,8 +72,17 @@ def json_api(route, with_session=True, **kwargs):
 
 @json_api('/api/patient/<identifier>', with_session=False)
 def patient_query(issuing_source, identifier):
+    since_raw = request.args.get('since', None)
+
+    if since_raw:
+        since = datetime.datetime.strptime(
+            since_raw, '%d/%m/%Y %H:%M:%S'
+        )
+    else:
+        since = None
+
     result = get_information_source().patient_information(
-        issuing_source, identifier
+        issuing_source, identifier, since=None
     )
     return result.to_dict()
 

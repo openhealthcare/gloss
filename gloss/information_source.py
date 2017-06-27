@@ -61,7 +61,7 @@ class InformationSource(object):
                     )
                 )
 
-    def patient_information(self, issuing_source, identifier):
+    def patient_information(self, issuing_source, identifier, since=None):
         with models.session_scope() as session:
             if self.check_or_fetch_patient(
                 session, issuing_source, identifier
