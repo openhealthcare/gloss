@@ -5,6 +5,14 @@ import pytds
 
 from gloss.conf import settings
 from gloss import message_type
+from flask import Flask
+from time import time
+app = Flask('gloss.api')
+import logging
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+app.logger.addHandler(stream_handler)
+app.debug = settings.DEBUG
 
 TABLE_NAME = "something"
 
@@ -121,14 +129,6 @@ class InformationSource(BaseInformationSource):
 
         return messages
 
-    from flask import Flask
-    from time import time
-    app = Flask('gloss.api')
-    import logging
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-    app.logger.addHandler(stream_handler)
-    app.debug = settings.DEBUG
 
     def get_rows(self, hospital_number):
         ts = time()
