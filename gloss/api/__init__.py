@@ -62,6 +62,16 @@ def patient_query(issuing_source, identifier):
     return result.to_dict()
 
 
+@json_api('/api/result/<identifier>', with_session=False)
+def result_query(issuing_source, identifier):
+    """ Returns all results for a patient
+    """
+    result = get_information_source().result_information(
+        issuing_source, identifier
+    )
+    return result.to_dict()
+
+
 @json_api('/api/demographics/', methods=['POST'])
 def demographics_create(session, issuing_source):
     raise exceptions.APIError("We've not implemented this yet - sorry")

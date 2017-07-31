@@ -6,7 +6,9 @@ install:
   - pip install coveralls
 script:
   - py.test --cov=gloss --cov-report=html
-after_success: coveralls --merge
+after_success:
+  - coveralls debug
+  - coveralls
 notifications:
   slack: ohcuk:6spaME3CB7f2PGrMAcklYWqp
 sudo: false

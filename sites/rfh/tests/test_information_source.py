@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from mock import patch, MagicMock
 from gloss.tests.core import GlossTestCase
 from sites.rfh.test_database_constructor.pathology_data import PATHOLOGY_DATA
@@ -10,6 +10,26 @@ class InformationSourceTestCase(GlossTestCase):
     def setUp(self):
         super(InformationSourceTestCase, self).setUp()
         self.information_source = InformationSource()
+
+    def test_result_information(self):
+        with patch.object(self.information_source, "get_rows") as get_rows:
+            get_rows.side_effect = lambda x: [y for y in PATHOLOGY_DATA if y["Patient_Number"] == x]
+            message_container = self.information_source.result_information(
+                'issuing_identifier', '20552710'
+            )
+        assert(message_container.hospital_number == '20552710')
+        assert(message_container.issuing_source == 'rfh')
+        assert(len(message_container.messages) == 6)
+
+    def test_result_information_without_results(self):
+        with patch.object(self.information_source, "get_rows") as get_rows:
+            get_rows.return_value = []
+            message_container = self.information_source.result_information(
+                'issuing_identifier', '20552710'
+            )
+        assert(message_container.hospital_number == '20552710')
+        assert(message_container.issuing_source == 'rfh')
+        assert(len(message_container.messages) == 0)
 
     def test_cast_to_message_container(self):
         with patch.object(self.information_source, "get_rows") as get_rows:
@@ -51,7 +71,7 @@ class InformationSourceTestCase(GlossTestCase):
         assert(patient.surname == "Jane")
         assert(patient.sex == "Male")
         assert(patient.title == "Mr")
-        assert(patient.date_of_birth == datetime(1964, 1, 1))
+        assert(patient.date_of_birth == date(1964, 1, 1))
 
     def test_get_or_fallback(self):
         # if its there override
@@ -102,7 +122,7 @@ class InformationSourceTestCase(GlossTestCase):
         )
 
         cur = MagicMock(name="cur")
-        cur.fetchmany.return_value = "some results"
+        cur.fetchall.return_value = "some results"
         conn = MagicMock(name="conn")
         conn.cursor().__enter__ = MagicMock(
             return_value=cur,

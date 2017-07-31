@@ -38,12 +38,16 @@ class InformationSource(BaseInformationSource):
         else:
             sex = "Female"
 
+        dob = self.get_or_fallback(row, "CRS_DOB", "date_of_birth")
+        if dob:
+            dob = dob.date()
+
         return message_type.PatientMessage(
             surname=self.get_or_fallback(row, "CRS_Surname", "Surname"),
             first_name=self.get_or_fallback(row, "CRS_Forename1", "Firstname"),
             sex=sex,
             title=self.get_or_fallback(row, "CRS_Title", "title"),
-            date_of_birth=self.get_or_fallback(row, "CRS_DOB", "date_of_birth")
+            date_of_birth=dob
         )
 
     def cast_row_to_observation(self, row):
@@ -132,9 +136,21 @@ class InformationSource(BaseInformationSource):
         with pytds.connect(ip_address, database, username, password, as_dict=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(query.strip())
-                result = cur.fetchmany()
+                result = cur.fetchall()
 
         return result
+
+    def result_information(self, issuing_identifier, hospital_number):
+        rows = self.get_rows(hospital_number)
+        if len(rows):
+            messages = self.get_results_and_observations(rows)
+        else:
+            messages = []
+        return message_type.MessageContainer(
+            hospital_number=hospital_number,
+            issuing_source="rfh",
+            messages=messages
+        )
 
     def patient_information(self, issuing_source, hospital_number):
         rows = self.get_rows(hospital_number)
